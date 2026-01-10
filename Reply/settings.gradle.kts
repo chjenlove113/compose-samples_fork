@@ -36,3 +36,8 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Reply"
 include(":app")
+include(":data")
+include(":domain")
+include(":presentation")
+//include(":buildSrcProj")
+include(":utils")

@@ -13,6 +13,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
+        android:name = "com.news.presentation.NewsApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -21,15 +22,24 @@
         android:theme="@style/Theme.Reply"
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="31">
+<!--        <activity-->
+<!--            android:name=".ui.MainActivity"-->
+<!--            android:exported="true"-->
+<!--            android:label="@string/app_name"-->
+<!--            android:theme="@style/Theme.Reply"-->
+<!--            android:windowSoftInputMode="adjustResize">-->
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.MAIN" />-->
+
+<!--                <category android:name="android.intent.category.LAUNCHER" />-->
+<!--            </intent-filter>-->
+<!--        </activity>-->
         <activity
-            android:name=".ui.MainActivity"
-            android:exported="true"
+            android:name="com.news.presentation.main.MainActivity"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Reply"
-            android:windowSoftInputMode="adjustResize">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
