@@ -137,8 +137,8 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    implementation("com.google.dagger:hilt-android:2.56.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.56.1")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
     implementation(project(":presentation"))
 }

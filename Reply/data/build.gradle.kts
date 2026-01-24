@@ -67,6 +67,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp")
     implementation("com.squareup.okhttp3:logging-interceptor")
 
-    implementation("com.google.dagger:hilt-android:2.56.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.56.1")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 }

@@ -1,10 +1,13 @@
 package com.news.data.di
 
+import com.news.data.api.NewsSiteService
 import com.news.data.api.NewsTagService
 import com.news.data.api.ShowHomeService
 import com.news.data.local.IAppDbService
+import com.news.data.repository.NewsSiteRepository
 import com.news.data.repository.NewsTagRepository
 import com.news.data.repository.ShowHomeRepository
+import com.news.domain.repository.INewsSiteRepository
 import com.news.domain.repository.INewsTagRepository
 import com.news.domain.repository.IShowHomeRepository
 import dagger.Module
@@ -16,9 +19,19 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 class RepositoryModule {
+
     @Provides
     @Singleton
-    fun provideTopHeadlineRepository(
+    fun provideNewsSiteRepository(
+        newsSiteService: NewsSiteService,
+        appDbService: IAppDbService
+    ): INewsSiteRepository {
+        return NewsSiteRepository(newsSiteService, appDbService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNewsTagRepository(
         newsTagService: NewsTagService,
         appDbService: IAppDbService
     ): INewsTagRepository {

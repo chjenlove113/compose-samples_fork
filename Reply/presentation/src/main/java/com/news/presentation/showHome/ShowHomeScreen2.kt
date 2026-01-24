@@ -1,5 +1,6 @@
 package com.news.presentation.showHome
 
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -35,6 +36,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.shapes
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
@@ -53,7 +57,12 @@ import com.news.presentation.base.ShowLoading
 import com.news.presentation.base.UiState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,43 +82,45 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import coil3.compose.AsyncImage
 import com.news.domain.models.AppSite
+import com.news.presentation.base.TabItem
 import com.news.presentation.components.NewsDetailScreen
 import com.news.presentation.newsTag.ExtraPaneScreen
 import com.news.presentation.showHomeChild.ShowHomeChildScreen
 import com.news.presentation.showHomeChild.ShowHomeChildViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlin.collections.forEach
 import kotlin.collections.map
 
 
 // Define our navigation keys for list, detail, and an extra pane
 @Serializable
-data object ItemsList : NavKey
+data object ItemsList2 : NavKey
 
 @Serializable
-data class ItemDetail(val id: News) : NavKey
+data class ItemDetail2(val id: News) : NavKey
 
 @Serializable
-data class ItemDetailSite(val slug: AppSite) : NavKey
+data class ItemDetailSite2(val slug: AppSite) : NavKey
 
 @Serializable
-data object ExtraScreen : NavKey
+data object ExtraScreen2 : NavKey
 
 @Composable
-fun ShowHomeRoute(
-    viewModel: ShowHomeViewModel = hiltViewModel(),
-    onSiteNameClicked: (Int) -> Unit
+fun ShowHomeRoute2(
+    viewModel: ShowHomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ShowHomeScreen(uiState, viewModel, onSiteNameClicked)
+    ShowHomeScreen2(uiState, viewModel, {0})
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-fun ShowHomeScreen(
+fun ShowHomeScreen2(
     uiState: UiState<ShowHomeDataModel>,
     viewModel: ShowHomeViewModel?,
-    onNewsClicked: (Int) -> Unit
+    onSiteNameClicked: () -> Int
 ) {
     when (uiState) {
         is UiState.Loading -> {
@@ -151,21 +162,106 @@ fun ShowHomeScreen(
                         entry<ItemsList>(
                             // Metadata for the list pane, including a placeholder for the detail pane
                             metadata = ListDetailSceneStrategy.listPane(
-//                                detailPlaceholder = {
-//                                    Column(
-//                                        modifier = Modifier
-//                                            .fillMaxSize()
-//                                            .background(Color.Yellow.copy(alpha = 0.4f)),
-//                                        verticalArrangement = Arrangement.Center,
-//                                        horizontalAlignment = Alignment.CenterHorizontally
-//                                    ) {
-//                                        Text("Choose an Item from the List ZZ")
-//                                    }
-//                                }
                             )
                         ) {
+                            var selectedTabIndex00 by remember { mutableIntStateOf(2) }
+// Callback function to update the state
+                            val updateResult: (Int) -> Unit = { newValue ->
+                                selectedTabIndex00 = newValue
+                            }
+                            Log.d("selectedTabIndex00",selectedTabIndex00.toString())
+                            val tabsItem = arrayListOf<TabItem>()
 
-                            ExploreContent(uiState.data, {backStack.add(ItemDetail(it))},{backStack.add(ItemDetailSite(it))},onNewsClicked)
+                            tabsItem.add(TabItem(title = "Home", screen = { ShowHomeRoute(onSiteNameClicked = updateResult) }))
+Log.d("selectedTabIndex00",selectedTabIndex00.toString())
+                            uiState.data.CategoryViewModel.AppSiteCateByGroup?.forEach {
+                                val appSite = ItemDetailSite(
+                                    AppSite(
+                                        it.Id,
+                                        it.Slug,
+                                        it.Key,
+                                        it.Name,
+                                        "",
+                                        "",
+                                        "",
+                                        ""
+                                    )
+                                )
+
+                                val viewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(key = it.Key,
+                                    creationCallback = { factory ->
+                                        factory.create(
+                                            appSite
+                                        )
+                                    }
+                                )
+                                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                                tabsItem.add(
+                                    TabItem(title = it.Name, screen = {
+                                        ShowHomeChildScreen(
+                                            viewModel = viewModel,
+                                            uiState = uiState
+                                        ) {
+                                            //backStack.add(com.news.presentation.newsTag.ExtraScreen) // Navigate to an extra pane
+                                        }
+                                    })
+
+                                )
+
+
+                            }
+                            val tabs by remember {mutableStateOf(
+                                tabsItem)
+                            }
+
+                            val scope = rememberCoroutineScope()
+                            // 2. Manage the selected tab state
+                            //var selectedTabIndex00 by remember { mutableIntStateOf(selectedTabIndex0) }
+                            val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = selectedTabIndex00)
+
+                            Column {
+                                // Tab Row implementation
+                                ScrollableTabRow(selectedTabIndex = selectedTabIndex00) {
+                                    tabs.forEachIndexed { index, tab ->
+                                        Tab(
+                                            selected = selectedTabIndex00 == index,
+                                            onClick = {
+                                                selectedTabIndex00 = index
+                                                scope.launch {
+                                                    pagerState.animateScrollToPage(selectedTabIndex00)
+                                                }
+                                            },
+                                            text = { Text(text = tab.title, maxLines = 1) }
+                                        )
+                                    }
+                                }
+
+                                // Horizontal Pager implementation (The ViewPager equivalent)
+                                HorizontalPager(
+                                    state = pagerState,
+                                    modifier = Modifier.fillMaxSize()
+                                ) { page ->
+
+                                    // Display the content (screen composable) for the current page/tab
+                                    tabs[page].screen()
+                                }
+                            }
+
+                            // Synchronize pager swipes with the TabRow indicator
+                            LaunchedEffect(selectedTabIndex00) {
+                                // No explicit synchronization is needed here because `selectedTabIndex`
+                                // in `TabRow` is already observing `pagerState.currentPage`
+                                pagerState.animateScrollToPage(selectedTabIndex00)
+                                // Collect from the a snapshotFlow reading the currentPage
+                                snapshotFlow { pagerState.currentPage }.collect { page ->
+                                    // Do something with each page change, for example:
+                                    // viewModel.sendPageSelectedEvent(page)
+                                    selectedTabIndex00 = page
+                                    Log.d("selectedTabIndex00", "Page changed to $page")
+                                }
+                            }
+
+                            //ExploreContent2(tabs, selectedTabIndex00, {backStack.add(ItemDetail(it))},{backStack.add(ItemDetailSite(it))})
 
                         }
                         entry<ItemDetail>(
@@ -226,210 +322,54 @@ fun ShowHomeScreen(
 }
 
 @Composable
-fun ShowHomeContent(x0: ShowHomeDataModel, x1: (News) -> Unit) {
-    LazyColumn {
-        items(
-            count = x0.LstNewsHeader?.size ?: 0,
-            itemContent = { NewsHeaderItem(x0.LstNewsHeader!![it], x1) })
-    }
-}
+fun ExploreContent2(tabs: ArrayList<TabItem>, selectedTabIndex0: Int = 0, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit) {
 
-@Composable
-fun NewsHeaderItem(x0: News, x1: (News) -> Unit) {
-    Text(x0.Title)
-}
+        val scope = rememberCoroutineScope()
+        // 2. Manage the selected tab state
+        var selectedTabIndex00 by remember { mutableIntStateOf(selectedTabIndex0) }
+        val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = selectedTabIndex00)
 
-@Composable
-fun CategoryHeader(x0: ArrayList<AppSiteCateByGroup>?) {
-    TODO("Not yet implemented")
-}
-
-@Composable
-fun ExploreContent(allEventCategories: ShowHomeDataModel, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit,onNewsClicked: (Int) -> Unit) {
-    LazyColumn {
-        item {
-            AutoAdvancePager(allEventCategories.LstNewsHeader ?: emptyList())
-        }
-        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { (catId, catName, zz, yy,catSlug,catKey) ->
-            EventItem(catId, catName, catSlug,yy ?: emptyList(), onEventClick,onEventClickSiteName, onNewsClicked)
-        }
-    }
-}
-
-// LazyListScope Item
-fun LazyListScope.EventItem(
-    catId: Int,
-    catName: String,
-    catSlug: String?,
-    eventList: List<News>,
-    onEventClick: (News) -> Unit,
-    onEventClickSite: (AppSite) -> Unit,
-    onNewsClicked: (Int) -> Unit
-) {
-    stickyHeader {
-//        ExploreHeader(catName, slug = catSlug ?: "",onEventClickSite)
-        ExploreHeader(catId,catName, slug = catSlug ?: "",onEventClickSite, onNewsClicked)
-    }
-    items(eventList.size) { index ->
-        Card(onClick = { onEventClick(eventList[index]) }) {
-            Column(modifier = Modifier.padding(horizontal = 9.dp)) {
-                ExploreHeaderItem(eventList[index].Title)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-        }
-    }
-}
-
-@Composable
-fun ExploreHeader(id:Int,title: String, slug: String = "", onEventClickSiteName: (AppSite) -> Unit,onNewsClicked: (Int) -> Unit) {
-    Text(text = title, modifier = Modifier.padding(9.dp).clickable(){
-        onNewsClicked(id-7)
-        //onEventClickSiteName(AppSite(0,slug,slug,title,"","","",""))
-    })
-}
-@Composable
-fun ExploreHeaderItem(title: String) {
-    Text(text = title, modifier = Modifier.padding(9.dp))
-}
-///
-@Composable
-fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        val pagerState = rememberPagerState(pageCount = { pageItems.size })
-        val pagerIsDragged by pagerState.interactionSource.collectIsDraggedAsState()
-
-        val pageInteractionSource = remember { MutableInteractionSource() }
-        val pageIsPressed by pageInteractionSource.collectIsPressedAsState()
-
-        // Stop auto-advancing when pager is dragged or one of the pages is pressed
-        val autoAdvance = !pagerIsDragged && !pageIsPressed
-
-        if (autoAdvance) {
-            LaunchedEffect(pagerState, pageInteractionSource) {
-                while (true) {
-                    delay(2000)
-                    val nextPage = (pagerState.currentPage + 1) % pageItems.size
-                    pagerState.animateScrollToPage(nextPage)
-                }
-            }
-        }
-
-        HorizontalPager(
-            state = pagerState
-        ) { page ->
-            Box() {
-                AsyncImage(
-                    model = pageItems[page].Image,
-                    contentDescription = pageItems[page].Title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .height(300.dp)
-                        .padding(8.dp)
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .height(180.dp)
-                        .padding(8.dp)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.primary
-                                )
-                            )
-                        )
-                        .align(Alignment.BottomStart)
-                ) {
-
-                }
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(16.dp)
-                        .fillMaxWidth()
-                ) {
-
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 8.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Text(
-                            text = pageItems[page].Source,
-                            fontSize = MaterialTheme.typography.titleSmall.fontSize,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = modifier
-                                .clickable(
-                                    interactionSource = pageInteractionSource,
-                                    indication = LocalIndication.current
-                                ) {
-                                    // Handle page click
-                                }
-                        )
-                    }
-
-//                    Text(
-//                        text = pageItems[page].ShortDes,
-//                        fontSize = MaterialTheme.typography.titleSmall.fontSize,
-//                        maxLines = 1,
-//                        overflow = TextOverflow.Ellipsis,
-//                    )
-                    Text(
-                        text = pageItems[page].Title,
-                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = modifier
-                            .fillMaxSize()
-                            .clickable(
-                                interactionSource = pageInteractionSource,
-                                indication = LocalIndication.current
-                            ) {
-                                // Handle page click
+        Column {
+            // Tab Row implementation
+            ScrollableTabRow(selectedTabIndex = selectedTabIndex00) {
+                tabs.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = selectedTabIndex00 == index,
+                        onClick = {
+                            selectedTabIndex00 = index
+                            scope.launch {
+                                pagerState.animateScrollToPage(index)
                             }
-                            .wrapContentSize(align = Alignment.Center)
+                        },
+                        text = { Text(text = tab.title, maxLines = 1) }
                     )
-
-
-
                 }
-
-
             }
 
-        }
+            // Horizontal Pager implementation (The ViewPager equivalent)
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
 
-        PagerIndicator(pageItems.size, pagerState.currentPage)
-    }
-}
-
-@Composable
-fun PagerIndicator(pageCount: Int, currentPageIndex: Int, modifier: Modifier = Modifier) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .wrapContentHeight()
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            repeat(pageCount) { iteration ->
-                val color = if (currentPageIndex == iteration) Color.DarkGray else Color.LightGray
-                Box(
-                    modifier = modifier
-                        .padding(2.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                        .size(8.dp)
-                )
+                // Display the content (screen composable) for the current page/tab
+                tabs[page].screen()
             }
         }
-    }
+
+        // Synchronize pager swipes with the TabRow indicator
+        LaunchedEffect(pagerState.currentPage) {
+            // No explicit synchronization is needed here because `selectedTabIndex`
+            // in `TabRow` is already observing `pagerState.currentPage`
+
+            // Collect from the a snapshotFlow reading the currentPage
+            snapshotFlow { pagerState.currentPage }.collect { page ->
+                // Do something with each page change, for example:
+                // viewModel.sendPageSelectedEvent(page)
+                selectedTabIndex00 = page
+                Log.d("selectedTabIndex00", "Page changed to $page")
+            }
+        }
+
+
 }

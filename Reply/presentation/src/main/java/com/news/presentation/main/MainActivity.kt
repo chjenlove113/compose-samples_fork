@@ -77,6 +77,8 @@ import com.news.presentation.base.Screen
 import com.news.presentation.base.Destination
 import com.news.presentation.base.bottomNavItems
 import com.news.presentation.components.NewsDetailScreen
+import com.news.presentation.showHome.ShowHomeRoute2
+import com.news.presentation.showHomeChild.ShowHomeChildRoute
 
 private sealed interface TopLevelRoute1 {
     val icon: ImageVector
@@ -147,7 +149,7 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = "screen1"
                     ) {
-                        ShowHomeRoute()
+                        ShowHomeRoute2()
                     }
 
                     composable(
@@ -159,7 +161,7 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = "screen3"
                     ) {
-                        NewsTagRoute()
+                        ShowHomeChildRoute()
                     }
                 }
 
@@ -334,10 +336,23 @@ private fun navigationSuiteItems(
         onClick = {
             navigateWithBackStackHandling("screen1", navHost)
         },
-        label = { Text("Screen 1") },
+        label = { Text("#HOME") },
         icon = {
             Icon(
-                imageVector = AppDestinations.HOME.icon, contentDescription = "Screen 1"
+                imageVector = AppDestinations.HOME.icon, contentDescription = "HOME"
+            )
+        },
+    )
+
+    item(
+        selected = currentDestination?.hierarchy?.any { it.route == "screen3" } == true,
+        onClick = {
+            navigateWithBackStackHandling("screen3", navHost)
+        },
+        label = { Text("#ALL NEWS") },
+        icon = {
+            Icon(
+                imageVector = AppDestinations.SHOPPING.icon, contentDescription = "SHOPPING"
             )
         },
     )
@@ -347,10 +362,10 @@ private fun navigationSuiteItems(
         onClick = {
             navigateWithBackStackHandling("screen2", navHost)
         },
-        label = { Text("Screen 2") },
+        label = { Text("#TAG") },
         icon = {
             Icon(
-                imageVector = AppDestinations.FAVORITES.icon, contentDescription = "Screen 2"
+                imageVector = AppDestinations.FAVORITES.icon, contentDescription = "TAG"
             )
         },
     )

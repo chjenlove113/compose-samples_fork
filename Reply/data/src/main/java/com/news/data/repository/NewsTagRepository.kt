@@ -9,6 +9,7 @@ import com.news.data.models.PostBaseModel
 import com.news.domain.mappers.toNewsTag
 import com.news.domain.models.NewsTag
 import com.news.domain.repository.INewsTagRepository
+import com.news.utils.AppContants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
@@ -23,7 +24,7 @@ class NewsTagRepository @Inject constructor(
 ) : INewsTagRepository {
     override fun getListNewsTag(): Flow<List<NewsTag>> {
         return flow {
-            emit(newsTagService.fetchNewsTagList(PostBaseModel("0x010000005AF87A9E1F172D1C4F960C68530762CA93C92B23E402335D")))
+            emit(newsTagService.fetchNewsTagList(PostBaseModel(AppContants.app_Id)))
         }.map { it.body()?.map {
             it.toNewsTag() } ?: emptyList() }
             .flatMapConcat { newsTagList -> flow {

@@ -44,7 +44,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
 
-    implementation("com.google.dagger:hilt-android:2.56.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.56.1")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }

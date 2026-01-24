@@ -1,5 +1,8 @@
 package com.news.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class AppSite(
     val Id :Int,
     val slug: String,
