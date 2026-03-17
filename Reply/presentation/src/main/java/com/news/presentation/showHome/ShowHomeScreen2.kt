@@ -173,7 +173,7 @@ fun ShowHomeScreen2(
                             val tabsItem = arrayListOf<TabItem>()
 
                             tabsItem.add(TabItem(title = "Home", screen = { ShowHomeRoute(onSiteNameClicked = updateResult) }))
-Log.d("selectedTabIndex00",selectedTabIndex00.toString())
+                            Log.d("selectedTabIndex00",selectedTabIndex00.toString())
                             uiState.data.CategoryViewModel.AppSiteCateByGroup?.forEach {
                                 val appSite = ItemDetailSite(
                                     AppSite(
@@ -225,8 +225,10 @@ Log.d("selectedTabIndex00",selectedTabIndex00.toString())
                                     tabs.forEachIndexed { index, tab ->
                                         Tab(
                                             selected = selectedTabIndex00 == index,
+
                                             onClick = {
                                                 selectedTabIndex00 = index
+                                                Log.d("onClick", "Page changed to $index")
                                                 scope.launch {
                                                     pagerState.animateScrollToPage(selectedTabIndex00)
                                                 }
@@ -241,7 +243,6 @@ Log.d("selectedTabIndex00",selectedTabIndex00.toString())
                                     state = pagerState,
                                     modifier = Modifier.fillMaxSize()
                                 ) { page ->
-
                                     // Display the content (screen composable) for the current page/tab
                                     tabs[page].screen()
                                 }
@@ -252,12 +253,14 @@ Log.d("selectedTabIndex00",selectedTabIndex00.toString())
                                 // No explicit synchronization is needed here because `selectedTabIndex`
                                 // in `TabRow` is already observing `pagerState.currentPage`
                                 pagerState.animateScrollToPage(selectedTabIndex00)
+
                                 // Collect from the a snapshotFlow reading the currentPage
                                 snapshotFlow { pagerState.currentPage }.collect { page ->
                                     // Do something with each page change, for example:
                                     // viewModel.sendPageSelectedEvent(page)
                                     selectedTabIndex00 = page
-                                    Log.d("selectedTabIndex00", "Page changed to $page")
+                                    pagerState.animateScrollToPage(selectedTabIndex00)
+                                    Log.d("snapshotFlow", "Page changed to $page")
                                 }
                             }
 
@@ -370,6 +373,55 @@ fun ExploreContent2(tabs: ArrayList<TabItem>, selectedTabIndex0: Int = 0, onEven
                 Log.d("selectedTabIndex00", "Page changed to $page")
             }
         }
+}
+
+@Composable
+fun ExploreContent3(tabs: ArrayList<TabItem>, selectedTabIndex0: Int = 0, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit) {
+
+    val scope = rememberCoroutineScope()
+    // 2. Manage the selected tab state
+    var selectedTabIndex00 by remember { mutableIntStateOf(selectedTabIndex0) }
+    val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = selectedTabIndex00)
+
+    Column {
+        // Tab Row implementation
+        ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
+            tabs.forEachIndexed { index, tab ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = {
+                        scope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
+                    text = { Text(text = tab.title, maxLines = 1) }
+                )
+            }
+        }
+
+        // Horizontal Pager implementation (The ViewPager equivalent)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+
+            // Display the content (screen composable) for the current page/tab
+            tabs[page].screen()
+        }
+    }
+
+//    // Synchronize pager swipes with the TabRow indicator
+//    LaunchedEffect(pagerState.currentPage) {
+//        // No explicit synchronization is needed here because `selectedTabIndex`
+//        // in `TabRow` is already observing `pagerState.currentPage`
+//
+//        // Collect from the a snapshotFlow reading the currentPage
+//        snapshotFlow { pagerState.currentPage }.collect { page ->
+//            // Do something with each page change, for example:
+//            // viewModel.sendPageSelectedEvent(page)
+//            Log.d("selectedTabIndex00", "Page changed to $page")
+//        }
+//    }
 
 
 }

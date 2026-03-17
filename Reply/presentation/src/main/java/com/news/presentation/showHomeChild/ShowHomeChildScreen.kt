@@ -33,6 +33,7 @@ import com.news.presentation.showHome.EventItem
 import com.news.presentation.showHome.ExploreContent
 import com.news.presentation.showHome.ItemDetail
 import com.news.presentation.showHome.ItemDetailSite
+import com.news.presentation.showHome.ShowHomeChildPagingViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,10 +51,11 @@ fun ShowHomeChildScreen(
     onNewsClicked: (News) -> Unit,
 ) {
 
-    when(uiState) {
+    when (uiState) {
         is UiState.Loading -> {
             ShowLoading()
         }
+
         is UiState.Error -> {
             ShowError(
                 text = stringResource(R.string.something_went_wrong),
@@ -67,8 +69,10 @@ fun ShowHomeChildScreen(
 
                 ExploreContentChild(
                     uiState.data,
-                    {  },
-                    {  })
+                    { },
+                    { }
+                    , viewModel?.navKey?.slug?.slug ?: ""
+                )
             }
 
 
@@ -78,37 +82,90 @@ fun ShowHomeChildScreen(
 }
 
 @Composable
-fun ExploreContentChild(allEventCategories: ShowHomeDataModel, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit) {
+fun ExploreContentChild(
+    allEventCategories: ShowHomeDataModel,
+    onEventClick: (News) -> Unit,
+    onEventClickSiteName: (AppSite) -> Unit,
+    appSite: String
+) {
     LazyColumn {
         item {
-            AutoAdvancePager(allEventCategories.LstNewsHeader ?: emptyList())
+            AutoAdvancePager(allEventCategories.CategoryViewModel.LstNewsHeader ?: emptyList())
         }
-        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { (catId, catName, zz, yy,catSlug,catKey) ->
-            EventItem(catId, catName, catSlug,yy ?: emptyList(), onEventClick,onEventClickSiteName,{})
-        }
+
+//        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { (catId, catName, zz, yy,catSlug,catKey) ->
+//            EventItem(catId, catName, catSlug,yy ?: emptyList(), onEventClick,onEventClickSiteName,{})
+//        }
     }
 
-    //Dynamic TabLayoutScreen(allEventCategories.CategoryViewModel.AppSiteCateByGroup)
+    DynamicTabLayoutScreen(allEventCategories.CategoryViewModel.AppSiteCateByGroup, appSite)
 }
 
 @Composable
-fun DynamicTabLayoutScreen(AppSiteCateByGroup: ArrayList<AppSiteCateByGroup>?) {
+fun DynamicTabLayoutScreen(AppSiteCateByGroup: ArrayList<AppSiteCateByGroup>?, appSite: String) {
 
     val initialArrayList = arrayListOf<TabItem>()
+
+    AppSiteCateByGroup?.size?.let {
+        if (it > 1) {
+            val appSite = ItemDetailSite(
+                AppSite(
+                    0,
+                    "", appSite, "All", "", "", "", ""
+                )
+            )
+            val viewModel =
+                hiltViewModel<ShowHomeChildPagingViewModel, ShowHomeChildPagingViewModel.Factory>(
+                    key = "all",
+                    creationCallback = { factory -> factory.create(appSite) }
+                )
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            initialArrayList.add(
+                TabItem(
+                    title = "All",
+                    screen = {
+                        ShowHomeChildCateScreen(
+                            viewModel = viewModel,
+                            uiState = uiState,
+                            x2 = {},
+                            site_Slug = ""
+                        )
+                    })
+            )
+        }
+    }
     AppSiteCateByGroup?.forEach {
-        initialArrayList.add(TabItem(title = it.Name, screen = { NewsDetailScreen(name = it.Name, onItemClick = {}, goToEx = {}) }))
+        val appSite = ItemDetailSite(
+            AppSite(
+                it.Id,
+                it.Slug, appSite, it.Name, "", "", "", ""
+            )
+        )
+        val viewModel =
+            hiltViewModel<ShowHomeChildPagingViewModel, ShowHomeChildPagingViewModel.Factory>(
+                key = it.Slug,
+                creationCallback = { factory -> factory.create(appSite) }
+            )
+        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+        initialArrayList.add(
+            TabItem(
+                title = it.Name,
+                screen = {
+                    ShowHomeChildCateScreen(
+                        viewModel = viewModel,
+                        uiState = uiState,
+                        x2 = {},
+                        site_Slug = it.Slug
+                    )
+                })
+        )
     }
 
     // Dynamic list of tabs
     val tabs = remember {
         initialArrayList
-//        mutableStateListOf(
-//            //TabItem(title = "Home", screen = { NewsDetailScreen(name = "Home", onItemClick = {}, goToEx = {}) }),
-//            //TabItem(title = "Settings", screen = { NewsDetailScreen(name = "Settings", onItemClick = {}, goToEx = {})  }),
-//            //TabItem(title = "Profile", screen = { NewsDetailScreen(name = "Profile", onItemClick = {}, goToEx = {}) })
-//            // More tabs can be added dynamically to this list
-//
-//        )
     }
 
     val pagerState = rememberPagerState(pageCount = { tabs.size })

@@ -1,5 +1,6 @@
 package com.news.data.repository
 
+import androidx.paging.PagingData
 import com.news.data.api.NewsSiteService
 import com.news.data.local.IAppDbService
 import com.news.data.mappers.toNewsSiteEntity
@@ -22,5 +23,9 @@ class NewsSiteRepository @Inject constructor(private val newsSiteService: NewsSi
             .flatMapConcat { newsSiteList -> flow {
                 emit(appDbService.deleteAllAndInsertAllNewsSite((newsSiteList.map { it.toNewsSiteEntity() }))) } }
             .flatMapConcat { appDbService.getNewsSite().map { it.map { it.toNewsSiteModel() } }}
+    }
+
+    override fun getListNewsSitePaging(): Flow<PagingData<NewsSite>> {
+        TODO("Not yet implemented")
     }
 }

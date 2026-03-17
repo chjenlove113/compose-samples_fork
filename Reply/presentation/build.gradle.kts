@@ -89,5 +89,7 @@ dependencies {
 
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
 
+    implementation(libs.androidx.paging.compose)
+
 
 }

@@ -305,7 +305,7 @@ fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier) {
         // Stop auto-advancing when pager is dragged or one of the pages is pressed
         val autoAdvance = !pagerIsDragged && !pageIsPressed
 
-        if (autoAdvance) {
+        if (autoAdvance && pageItems.isNotEmpty()) {
             LaunchedEffect(pagerState, pageInteractionSource) {
                 while (true) {
                     delay(2000)
