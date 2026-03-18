@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.news.domain.models.AppSite
 import com.news.domain.models.AppSiteCateByGroup
 import com.news.domain.models.News
@@ -125,11 +126,9 @@ fun DynamicTabLayoutScreen(AppSiteCateByGroup: ArrayList<AppSiteCateByGroup>?, a
                 TabItem(
                     title = "All",
                     screen = {
-                        ShowHomeChildCateScreen(
-                            viewModel = viewModel,
+                        ShowHomeChildCateScreen(lazyPagingItems = viewModel.items.collectAsLazyPagingItems(),
                             uiState = uiState,
-                            x2 = {},
-                            site_Slug = ""
+                            onRetry = {}
                         )
                     })
             )
@@ -153,11 +152,10 @@ fun DynamicTabLayoutScreen(AppSiteCateByGroup: ArrayList<AppSiteCateByGroup>?, a
             TabItem(
                 title = it.Name,
                 screen = {
-                    ShowHomeChildCateScreen(
-                        viewModel = viewModel,
+                    ShowHomeChildCateScreen(lazyPagingItems = viewModel.items.collectAsLazyPagingItems(),
                         uiState = uiState,
-                        x2 = {},
-                        site_Slug = it.Slug
+                        onRetry = {},
+                        siteSlug = it.Slug
                     )
                 })
         )

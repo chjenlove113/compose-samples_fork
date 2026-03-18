@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +22,7 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import com.news.domain.models.News
 import com.news.presentation.R
 import com.news.presentation.base.ShowError
@@ -32,87 +32,85 @@ import com.news.presentation.showHome.ShowHomeChildPagingViewModel
 
 @Composable
 fun ShowHomeChildCateRoute(
+    modifier: Modifier = Modifier,
     viewModel: ShowHomeChildPagingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ShowHomeChildCateScreen(uiState, viewModel, {}, "")
+    val lazyPagingItems = viewModel.items.collectAsLazyPagingItems()
+
+    ShowHomeChildCateScreen(
+        uiState = uiState,
+        lazyPagingItems = lazyPagingItems,
+        onRetry = {
+            viewModel.fetchShowHomeChildPaging(
+                site_Slug = "",
+                cat_Slug = viewModel.navKey.slug.slug
+            )
+        },
+        modifier = modifier
+    )
 }
 
 @Composable
 fun ShowHomeChildCateScreen(
     uiState: UiState<PagingData<News>>,
-    viewModel: ShowHomeChildPagingViewModel,
-    x2: () -> Unit,
-    site_Slug: String
+    lazyPagingItems: LazyPagingItems<News>,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    siteSlug: String = ""
 ) {
-    when (uiState) {
-        is UiState.Loading -> {
-            ShowLoading()
-        }
+    Column(modifier = modifier) {
+        when (uiState) {
+            is UiState.Loading -> {
+                ShowLoading()
+            }
 
-        is UiState.Error -> {
-            ShowError(
-                text = stringResource(R.string.something_went_wrong),
-                retryEnabled = true
-            ) {
-                viewModel?.fetchShowHomeChildPaging(
-                    1,
-                    site_Slug,
-                    viewModel?.navKey?.slug?.slug ?: ""
+            is UiState.Error -> {
+                ShowError(
+                    text = stringResource(R.string.something_went_wrong),
+                    retryEnabled = true,
+                    retryClicked = onRetry
                 )
             }
-        }
 
-        is UiState.Success -> {
-//            Column() {
-//                Text("site_Slug: $site_Slug, - KEY: ${viewModel?.navKey?.slug}")
-//            }
-            val lazyPagingItems = viewModel.items.collectAsLazyPagingItems()
-            val listState = rememberLazyListState()
+            is UiState.Success -> {
+                val listState = rememberLazyListState()
 
-            LazyColumn() {
-                pagingItems(lazyPagingItems, key = { "news_id_${it.Id}" }) { ite ->
-                    if (ite != null) {
-                        Text(ite.Title)
-                    }else{
-                        Text("null")
-                    }
-                }
-
-                when (val appendState = lazyPagingItems.loadState.append) {
-                    is androidx.paging.LoadState.Loading -> {
-                        item {
-                            ShowLoading()
+                LazyColumn(state = listState) {
+                    items(
+                        count = lazyPagingItems.itemCount,
+                        key = lazyPagingItems.itemKey { it.Id }
+                    ) { index ->
+                        val news = lazyPagingItems[index]
+                        if (news != null) {
+                            Text(news.Title)
+                        } else {
+                            Text(stringResource(R.string.loading))
                         }
                     }
-                    is LoadState.Error ->{
-                        item {
-                            ErrorItem(
-                                message = appendState.error.message ?: "Unknown error",
-                                onRetry = { lazyPagingItems.retry() }
-                            )
+
+                    when (val appendState = lazyPagingItems.loadState.append) {
+                        is LoadState.Loading -> {
+                            item {
+                                ShowLoading()
+                            }
                         }
+
+                        is LoadState.Error -> {
+                            item {
+                                ErrorItem(
+                                    message = appendState.error.message
+                                        ?: stringResource(R.string.something_went_wrong),
+                                    onRetry = { lazyPagingItems.retry() }
+                                )
+                            }
+                        }
+
+                        else -> {}
                     }
-                    else -> {}
                 }
             }
-
         }
-    }
-}
-
-fun <T : Any> LazyListScope.pagingItems(
-    lazyPagingItems: LazyPagingItems<T>,
-    key: ((item: T) -> Any)? = null,
-    itemContent: @Composable (T?) -> Unit
-) {
-    items(
-        count = lazyPagingItems.itemCount,
-        key = { index ->
-            lazyPagingItems[index]?.let { key?.invoke(it) } ?: "placeholder_index_$index"
-        }
-    ) { index ->
-        itemContent(lazyPagingItems[index])
     }
 }
 
@@ -135,4 +133,3 @@ fun ErrorItem(
         }
     }
 }
-
