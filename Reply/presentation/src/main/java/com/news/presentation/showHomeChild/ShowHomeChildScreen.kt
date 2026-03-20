@@ -91,7 +91,7 @@ fun ExploreContentChild(
 ) {
     LazyColumn {
         item {
-            AutoAdvancePager(allEventCategories.CategoryViewModel.LstNewsHeader ?: emptyList())
+            AutoAdvancePager(allEventCategories.CategoryViewModel.LstNewsHeader ?: emptyList(), onEventClickNewsItem = onEventClick)
         }
 
 //        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { (catId, catName, zz, yy,catSlug,catKey) ->

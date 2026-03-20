@@ -175,10 +175,11 @@ fun ShowHomeScreen(
                             val id = product.id
                             NewsDetailScreen(
                                 modifier = Modifier.background(Color.Red.copy(alpha = 0.4f)),
-                                name = id.Title, onItemClick = {}
-                            ) {
-                                backStack.add(com.news.presentation.newsTag.ExtraScreen) // Navigate to an extra pane
-                            }
+                                name = id.Title, onItemClick = {}, goToEx = {
+                                    backStack.add(com.news.presentation.newsTag.ExtraScreen) // Navigate to an extra pane
+                                },onCloseDetail = {backStack.removeAll(backStack.filter { it != ItemsList }) }
+                            )
+
                         }
                         entry<ItemDetailSite>(
                             // Metadata for the detail pane
@@ -248,7 +249,7 @@ fun CategoryHeader(x0: ArrayList<AppSiteCateByGroup>?) {
 fun ExploreContent(allEventCategories: ShowHomeDataModel, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit,onNewsClicked: (Int) -> Unit) {
     LazyColumn {
         item {
-            AutoAdvancePager(allEventCategories.LstNewsHeader ?: emptyList())
+            AutoAdvancePager(allEventCategories.LstNewsHeader ?: emptyList(), onEventClickNewsItem = onEventClick)
         }
         allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { (catId, catName, zz, yy,catSlug,catKey) ->
             EventItem(catId, catName, catSlug,yy ?: emptyList(), onEventClick,onEventClickSiteName, onNewsClicked)
@@ -294,7 +295,7 @@ fun ExploreHeaderItem(title: String) {
 }
 ///
 @Composable
-fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier) {
+fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier, onEventClickNewsItem: (News) -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         val pagerState = rememberPagerState(pageCount = { pageItems.size })
         val pagerIsDragged by pagerState.interactionSource.collectIsDraggedAsState()
@@ -318,7 +319,9 @@ fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier) {
         HorizontalPager(
             state = pagerState
         ) { page ->
-            Box() {
+            Box(Modifier.clickable{
+                onEventClickNewsItem(pageItems[page])
+            }) {
                 AsyncImage(
                     model = pageItems[page].Image,
                     contentDescription = pageItems[page].Title,
@@ -368,7 +371,7 @@ fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier) {
                                     interactionSource = pageInteractionSource,
                                     indication = LocalIndication.current
                                 ) {
-                                    // Handle page click
+                                    println(pageItems[page].Source)
                                 }
                         )
                     }
@@ -391,7 +394,7 @@ fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier) {
                                 interactionSource = pageInteractionSource,
                                 indication = LocalIndication.current
                             ) {
-                                // Handle page click
+                                onEventClickNewsItem(pageItems[page])
                             }
                             .wrapContentSize(align = Alignment.Center)
                     )

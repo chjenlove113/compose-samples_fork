@@ -83,7 +83,11 @@ fun ShowHomeChildCateScreen(
                     ) { index ->
                         val news = lazyPagingItems[index]
                         if (news != null) {
-                            Text(news.Title)
+                            Column() {
+                                Text(news.Title)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                news.App_Category_Name?.let { Text(it) }
+                            }
                         } else {
                             Text(stringResource(R.string.loading))
                         }
