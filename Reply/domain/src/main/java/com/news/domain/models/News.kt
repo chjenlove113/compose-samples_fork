@@ -1,7 +1,11 @@
 package com.news.domain.models
 
 import kotlinx.serialization.Serializable
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 import java.util.Date
+
+@Parcelize
 @Serializable
 data class News(
     val Id : Int,
@@ -31,7 +35,9 @@ data class News(
     val BackgroundColor2:String? = "",
     val Kind:String?,
     val NewsItemChilds:ArrayList<NewsChildItem>,
-    )
+    ) : Parcelable
+
+@Parcelize
 @Serializable
 data class NewsChildItem(
     val NewsId : Int,
@@ -43,9 +49,9 @@ data class NewsChildItem(
     val BackgroundColor2:String?,
     val Kind:String?,
 
-    val Title : String,
+    val Title : String?,
     //val Published : Date?,
     val LinkSource:String?,
     val SubTitle: String?
-)
+) : Parcelable
 

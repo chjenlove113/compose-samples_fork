@@ -1,7 +1,10 @@
 package com.news.domain.models
 
 import kotlinx.serialization.Serializable
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 @Serializable
 data class AppSite(
     val Id :Int,
@@ -12,4 +15,4 @@ data class AppSite(
     val TextColor:String?,
     val BackgroundColor:String?,
     val ShortDesc:String?,
-)
+) : Parcelable

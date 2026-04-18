@@ -1,5 +1,9 @@
 package com.news.domain.models
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
 data class NewsTagResponse(
     val AppName: String,
     val TagId: Int,
@@ -11,4 +15,4 @@ data class NewsTagResponse(
     val Is_Home: Boolean,
     val Stt: Int,
     val App_Id: Int
-)
+) : Parcelable

@@ -41,6 +41,15 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
@@ -91,6 +100,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlin.collections.forEach
+import kotlin.collections.listOf
 import kotlin.collections.map
 
 
@@ -135,293 +145,172 @@ fun ShowHomeScreen2(
         }
 
         is UiState.Success -> {
-            ////ShowHomeContent(uiState.data, onNewsClicked)
-            //ExploreContent(uiState.data, {})
+            // 1. Set up the navigator
+            val navigator = rememberListDetailPaneScaffoldNavigator<News>()
 
-            // Manage our back stack
-            val backStack = rememberNavBackStack(ItemsList)
-            // Create the ListDetailSceneStrategy
-            val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
-            Scaffold { paddingValues ->
-                NavDisplay(
-                    entryDecorators = listOf(
-                        // Add the default decorators for managing scenes and saving state
-                        rememberSaveableStateHolderNavEntryDecorator(),
-                        // Then add the view model store decorator
-                        rememberViewModelStoreNavEntryDecorator()
-                    ),
-                    backStack = backStack,
-                    modifier = Modifier
-                        .padding(paddingValues)
-                        .consumeWindowInsets(WindowInsets.statusBars),
-                    // onBack now takes 'count' because the strategy might pop multiple keys
-                    onBack = { backStack.removeLastOrNull()  },
-                    sceneStrategy = listDetailStrategy,
+            // 2. Manual toggle state for the detail full-screen mode
+            var isDetailFullScreen by remember { mutableStateOf(false) }
 
-                    entryProvider = entryProvider {
-                        entry<ItemsList>(
-                            // Metadata for the list pane, including a placeholder for the detail pane
-                            metadata = ListDetailSceneStrategy.listPane(
-                            )
-                        ) {
-                            var selectedTabIndex00 by remember { mutableIntStateOf(2) }
-// Callback function to update the state
-                            val updateResult: (Int) -> Unit = { newValue ->
-                                selectedTabIndex00 = newValue
-                            }
-                            Log.d("selectedTabIndex00",selectedTabIndex00.toString())
+            val currentSelectedItem = navigator.currentDestination?.contentKey
+
+            // 3. We manually define the Scaffold Value to force Full Screen behaviors
+            val manualValue = when {
+                // Case A: Nothing selected -> Force List (Secondary) to fill screen
+                currentSelectedItem == null -> {
+                    ThreePaneScaffoldValue(
+                        primary = PaneAdaptedValue.Hidden,     // Detail
+                        secondary = PaneAdaptedValue.Expanded, // List
+                        tertiary = PaneAdaptedValue.Hidden
+                    )
+                }
+                // Case B: Item selected + Full Screen Toggled -> Force Detail (Primary) to fill screen
+                isDetailFullScreen -> {
+                    ThreePaneScaffoldValue(
+                        primary = PaneAdaptedValue.Expanded, // Detail
+                        secondary = PaneAdaptedValue.Hidden, // List
+                        tertiary = PaneAdaptedValue.Hidden
+                    )
+                }
+                // Case C: Normal selection -> Use the navigator's adaptive logic (Split-screen on tablets)
+                else -> navigator.scaffoldValue
+            }
+            val scope = rememberCoroutineScope()
+
+
+            ListDetailPaneScaffold(
+                directive = navigator.scaffoldDirective,
+                value = manualValue,
+                listPane = {
+                    AnimatedPane{
+                        var selectedTabIndex00 by remember { mutableIntStateOf(2) }
+
+                        val updateResult: (Int) -> Unit = { newValue ->
+                            selectedTabIndex00 = newValue
+                        }
+
+                        val tabs = remember(uiState.data) {
                             val tabsItem = arrayListOf<TabItem>()
+                            tabsItem.add(TabItem(title = "Home", screen = {
+                                ShowHomeRoute(onSiteNameClicked = updateResult)
+                            }))
 
-                            tabsItem.add(TabItem(title = "Home", screen = { ShowHomeRoute(onSiteNameClicked = updateResult) }))
-                            Log.d("selectedTabIndex00",selectedTabIndex00.toString())
+                            val appSiteAll = ItemDetailSite(
+                                AppSite(0, "", "", "All", "", "", "", "")
+                            )
+
+                            tabsItem.add(
+                                TabItem(title = "All", screen = {
+                                    val childViewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(
+                                        key = "all",
+                                        creationCallback = { factory -> factory.create(appSiteAll) }
+                                    )
+                                    val childUiState by childViewModel.uiState.collectAsStateWithLifecycle()
+                                    ShowHomeChildScreen(
+                                        viewModel = childViewModel,
+                                        uiState = childUiState
+                                    ) { news ->
+                                        scope.launch {
+                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
+
+                                        }
+                                    }
+                                })
+                            )
+
                             uiState.data.CategoryViewModel.AppSiteCateByGroup?.forEach {
                                 val appSite = ItemDetailSite(
-                                    AppSite(
-                                        it.Id,
-                                        it.Slug,
-                                        it.Key,
-                                        it.Name,
-                                        "",
-                                        "",
-                                        "",
-                                        ""
-                                    )
+                                    AppSite(it.Id, it.Slug, it.Key, it.Name, "", "", "", "")
                                 )
 
-                                val viewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(key = it.Key,
-                                    creationCallback = { factory ->
-                                        factory.create(
-                                            appSite
-                                        )
-                                    }
-                                )
-                                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                                 tabsItem.add(
                                     TabItem(title = it.Name, screen = {
+                                        val childViewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(
+                                            key = it.Key,
+                                            creationCallback = { factory -> factory.create(appSite) }
+                                        )
+                                        val childUiState by childViewModel.uiState.collectAsStateWithLifecycle()
                                         ShowHomeChildScreen(
-                                            viewModel = viewModel,
-                                            uiState = uiState
-                                        ) {
-                                            //backStack.add(com.news.presentation.newsTag.ExtraScreen) // Navigate to an extra pane
+                                            viewModel = childViewModel,
+                                            uiState = childUiState
+                                        ) { news ->
+                                            scope.launch {
+                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
+
+                                            }
                                         }
                                     })
-
                                 )
-
-
                             }
-                            val tabs by remember {mutableStateOf(
-                                tabsItem)
-                            }
-
-                            val scope = rememberCoroutineScope()
-                            // 2. Manage the selected tab state
-                            //var selectedTabIndex00 by remember { mutableIntStateOf(selectedTabIndex0) }
-                            val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = selectedTabIndex00)
-
-                            Column {
-                                // Tab Row implementation
-                                ScrollableTabRow(selectedTabIndex = selectedTabIndex00) {
-                                    tabs.forEachIndexed { index, tab ->
-                                        Tab(
-                                            selected = selectedTabIndex00 == index,
-
-                                            onClick = {
-                                                selectedTabIndex00 = index
-                                                Log.d("onClick", "Page changed to $index")
-                                                scope.launch {
-                                                    pagerState.animateScrollToPage(selectedTabIndex00)
-                                                }
-                                            },
-                                            text = { Text(text = tab.title, maxLines = 1) }
-                                        )
-                                    }
-                                }
-
-                                // Horizontal Pager implementation (The ViewPager equivalent)
-                                HorizontalPager(
-                                    state = pagerState,
-                                    modifier = Modifier.fillMaxSize()
-                                ) { page ->
-                                    // Display the content (screen composable) for the current page/tab
-                                    tabs[page].screen()
-                                }
-                            }
-
-                            // Synchronize pager swipes with the TabRow indicator
-                            LaunchedEffect(selectedTabIndex00) {
-                                // No explicit synchronization is needed here because `selectedTabIndex`
-                                // in `TabRow` is already observing `pagerState.currentPage`
-                                pagerState.animateScrollToPage(selectedTabIndex00)
-
-                                // Collect from the a snapshotFlow reading the currentPage
-                                snapshotFlow { pagerState.currentPage }.collect { page ->
-                                    // Do something with each page change, for example:
-                                    // viewModel.sendPageSelectedEvent(page)
-                                    selectedTabIndex00 = page
-                                    pagerState.animateScrollToPage(selectedTabIndex00)
-                                    Log.d("snapshotFlow", "Page changed to $page")
-                                }
-                            }
-
-                            //ExploreContent2(tabs, selectedTabIndex00, {backStack.add(ItemDetail(it))},{backStack.add(ItemDetailSite(it))})
-
+                            tabsItem
                         }
-                        entry<ItemDetail>(
-                            // Metadata for the detail pane
-                            metadata = ListDetailSceneStrategy.detailPane()
-                        ) { product ->
-                            val id = product.id
+
+                        val scope = rememberCoroutineScope()
+                        val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = selectedTabIndex00)
+
+                        Column {
+                            // Tab Row implementation - Use pagerState.currentPage directly to avoid feedback loops
+                            ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
+                                tabs.forEachIndexed { index, tab ->
+                                    Tab(
+                                        selected = pagerState.currentPage == index,
+                                        onClick = {
+                                            //selectedTabIndex00 = index
+                                            scope.launch { pagerState.animateScrollToPage(index) }
+                                        },
+                                        text = { Text(text = tab.title, maxLines = 1) }
+                                    )
+                                }
+                            }
+
+                            // Horizontal Pager implementation
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.fillMaxSize()
+                            ) { page ->
+                                tabs[page].screen()
+                            }
+                        }
+
+//                    // Synchronize external changes to selectedTabIndex00 with pager
+//                    LaunchedEffect(selectedTabIndex00) {
+//                        if (pagerState.currentPage != selectedTabIndex00) {
+//                            pagerState.animateScrollToPage(selectedTabIndex00)
+//                        }
+//                    }
+//
+//                    // Synchronize pager swipes back to selectedTabIndex00 safely
+//                    LaunchedEffect(pagerState.currentPage) {
+//                        selectedTabIndex00 = pagerState.currentPage
+//                    }
+                    }
+
+                }, detailPane = {
+                    AnimatedPane{
+                        val selectedId = navigator.currentDestination?.contentKey
+                        if(selectedId!= null){
                             NewsDetailScreen(
-                                modifier = Modifier.background(Color.Red.copy(alpha = 0.4f)),
-                                name = id.Title, onItemClick = {}
-                            ) {
-                                backStack.add(com.news.presentation.newsTag.ExtraScreen) // Navigate to an extra pane
-                            }
-                        }
-                        entry<ItemDetailSite>(
-                            // Metadata for the detail pane
-                            metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = {})
-                        ) { product ->
-                            val id = product.slug
-                            val viewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(
-                                // Note: We need a new ViewModel for every new RouteB instance. Usually
-                                // we would need to supply a `key` String that is unique to the
-                                // instance, however, the ViewModelStoreNavEntryDecorator (supplied
-                                // above) does this for us, using `NavEntry.contentKey` to uniquely
-                                // identify the viewModel.
-                                //
-                                // tl;dr: Make sure you use rememberViewModelStoreNavEntryDecorator()
-                                // if you want a new ViewModel for each new navigation key instance.
-                                creationCallback = { factory ->
-                                    factory.create(product)
+                                news = selectedId,
+                                onBack = {
+                                    if (isDetailFullScreen) isDetailFullScreen = false
+                                    scope.launch {
+                                        navigator.navigateBack()
+
+                                    }
+                                },
+                                onExpand = {
+                                    isDetailFullScreen = !isDetailFullScreen
                                 }
-                            )
 
-                            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-                            ShowHomeChildScreen(
-                                viewModel = viewModel,
-                                uiState = uiState
-                            ) {
-                                backStack.add(com.news.presentation.newsTag.ExtraScreen) // Navigate to an extra pane
-                            }
-                        }
-                        entry<ExtraScreen>(
-                            // Metadata for an optional extra pane
-                            metadata = ListDetailSceneStrategy.extraPane()
-                        ) {
-                            ExtraPaneScreen(
-                                modifier = Modifier.background(Color.LightGray)
                             )
                         }
                     }
-                )
-            }
 
 
-        }
-    }
-}
-
-@Composable
-fun ExploreContent2(tabs: ArrayList<TabItem>, selectedTabIndex0: Int = 0, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit) {
-
-        val scope = rememberCoroutineScope()
-        // 2. Manage the selected tab state
-        var selectedTabIndex00 by remember { mutableIntStateOf(selectedTabIndex0) }
-        val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = selectedTabIndex00)
-
-        Column {
-            // Tab Row implementation
-            ScrollableTabRow(selectedTabIndex = selectedTabIndex00) {
-                tabs.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = selectedTabIndex00 == index,
-                        onClick = {
-                            selectedTabIndex00 = index
-                            scope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = { Text(text = tab.title, maxLines = 1) }
-                    )
                 }
-            }
 
-            // Horizontal Pager implementation (The ViewPager equivalent)
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
 
-                // Display the content (screen composable) for the current page/tab
-                tabs[page].screen()
-            }
-        }
-
-        // Synchronize pager swipes with the TabRow indicator
-        LaunchedEffect(pagerState.currentPage) {
-            // No explicit synchronization is needed here because `selectedTabIndex`
-            // in `TabRow` is already observing `pagerState.currentPage`
-
-            // Collect from the a snapshotFlow reading the currentPage
-            snapshotFlow { pagerState.currentPage }.collect { page ->
-                // Do something with each page change, for example:
-                // viewModel.sendPageSelectedEvent(page)
-                selectedTabIndex00 = page
-                Log.d("selectedTabIndex00", "Page changed to $page")
-            }
-        }
-}
-
-@Composable
-fun ExploreContent3(tabs: ArrayList<TabItem>, selectedTabIndex0: Int = 0, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit) {
-
-    val scope = rememberCoroutineScope()
-    // 2. Manage the selected tab state
-    var selectedTabIndex00 by remember { mutableIntStateOf(selectedTabIndex0) }
-    val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = selectedTabIndex00)
-
-    Column {
-        // Tab Row implementation
-        ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
-            tabs.forEachIndexed { index, tab ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = {
-                        scope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    },
-                    text = { Text(text = tab.title, maxLines = 1) }
                 )
-            }
-        }
 
-        // Horizontal Pager implementation (The ViewPager equivalent)
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-
-            // Display the content (screen composable) for the current page/tab
-            tabs[page].screen()
         }
     }
-
-//    // Synchronize pager swipes with the TabRow indicator
-//    LaunchedEffect(pagerState.currentPage) {
-//        // No explicit synchronization is needed here because `selectedTabIndex`
-//        // in `TabRow` is already observing `pagerState.currentPage`
-//
-//        // Collect from the a snapshotFlow reading the currentPage
-//        snapshotFlow { pagerState.currentPage }.collect { page ->
-//            // Do something with each page change, for example:
-//            // viewModel.sendPageSelectedEvent(page)
-//            Log.d("selectedTabIndex00", "Page changed to $page")
-//        }
-//    }
-
-
 }

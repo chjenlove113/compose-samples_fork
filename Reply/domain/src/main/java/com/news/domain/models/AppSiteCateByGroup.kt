@@ -1,5 +1,9 @@
 package com.news.domain.models
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
 data class AppSiteCateByGroup(
     val Id: Int,
     val Name: String,
@@ -18,4 +22,4 @@ data class AppSiteCateByGroup(
 
     val LstNewsHeader : ArrayList<News>?,
 
-)
+) : Parcelable

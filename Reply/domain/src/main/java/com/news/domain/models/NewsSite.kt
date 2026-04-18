@@ -1,5 +1,9 @@
 package com.news.domain.models
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
 data class NewsSite (
     val Id: Int,
     val Name: String,
@@ -9,4 +13,4 @@ data class NewsSite (
     val Bg_Color: String?,
     val Text_Color: String?,
     val Stt: String?,
-)
+) : Parcelable

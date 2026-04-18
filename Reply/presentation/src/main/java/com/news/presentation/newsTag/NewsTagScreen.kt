@@ -119,7 +119,7 @@ fun NewsTagScreen(
                         .consumeWindowInsets(WindowInsets.statusBars),
                     // onBack now takes 'count' because the strategy might pop multiple keys
                     onBack = { backStack.removeLastOrNull()  },
-                    sceneStrategy = listDetailStrategy,
+                    sceneStrategies = listOf(listDetailStrategy),
 
                     entryProvider = entryProvider {
                         entry<ItemsList>(

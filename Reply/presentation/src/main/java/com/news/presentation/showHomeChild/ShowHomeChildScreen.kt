@@ -1,23 +1,32 @@
 package com.news.presentation.showHomeChild
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
+import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.news.domain.models.AppSite
 import com.news.domain.models.AppSiteCateByGroup
@@ -26,23 +35,66 @@ import com.news.domain.models.ShowHomeDataModel
 import com.news.presentation.R
 import com.news.presentation.base.ShowError
 import com.news.presentation.base.ShowLoading
-import com.news.presentation.base.TabItem
 import com.news.presentation.base.UiState
 import com.news.presentation.components.NewsDetailScreen
 import com.news.presentation.showHome.AutoAdvancePager
-import com.news.presentation.showHome.EventItem
-import com.news.presentation.showHome.ExploreContent
 import com.news.presentation.showHome.ItemDetail
 import com.news.presentation.showHome.ItemDetailSite
+import com.news.presentation.showHome.ItemsList
 import com.news.presentation.showHome.ShowHomeChildPagingViewModel
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun ShowHomeChildRoute(
-    viewModel: ShowHomeChildViewModel = hiltViewModel()
+    viewModel: ShowHomeChildViewModel = hiltViewModel(),
+    onNewsClicked: ((News) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ShowHomeChildScreen(uiState, viewModel, {})
+
+    if (onNewsClicked != null) {
+        ShowHomeChildScreen(uiState, viewModel, onNewsClicked)
+    } else {
+        // Internal navigation for screen3 when called directly from MainActivity
+        val backStack = rememberNavBackStack(ItemsList)
+        val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
+        //backup our back stack
+        val backStackBackup = rememberNavBackStack()
+        NavDisplay(
+            backStack = backStack,
+            sceneStrategies = listOf(listDetailStrategy),
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator()
+            ),
+            onBack = { backStack.removeLastOrNull() },
+            entryProvider = entryProvider {
+                entry<ItemsList>(metadata = ListDetailSceneStrategy.listPane()) {
+                    ShowHomeChildScreen(uiState, viewModel) { news ->
+                        backStack.add(ItemDetail(news))
+                    }
+                }
+                entry<ItemDetail>(metadata = ListDetailSceneStrategy.detailPane()) { product ->
+                    NewsDetailScreen(
+                        news = product.id,
+                        onBack = {
+                            backStackBackup.filter { it is ItemsList }.forEach {
+                                backStack.add(it)
+                            }
+                            backStackBackup.isEmpty()
+                            backStack.removeAll { it is ItemDetail }
+                        },
+                        onExpand = {
+                            backStack.filter { it is ItemsList }.forEach {
+                                backStackBackup.add(it)
+                            }
+                            backStack.removeAll { it is ItemsList }
+                        }
+                    )
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -51,7 +103,6 @@ fun ShowHomeChildScreen(
     viewModel: ShowHomeChildViewModel?,
     onNewsClicked: (News) -> Unit,
 ) {
-
     when (uiState) {
         is UiState.Loading -> {
             ShowLoading()
@@ -65,114 +116,65 @@ fun ShowHomeChildScreen(
         }
 
         is UiState.Success -> {
-            Column {
-                Text("${viewModel?.navKey?.slug}")
-
+            Column(modifier = Modifier.fillMaxSize()) {
                 ExploreContentChild(
                     uiState.data,
-                    { },
-                    { }
-                    , viewModel?.navKey?.slug?.slug ?: ""
+                    onNewsClicked,
+                    viewModel?.navKey?.slug?.slug ?: ""
                 )
             }
-
-
         }
     }
-
 }
 
 @Composable
 fun ExploreContentChild(
     allEventCategories: ShowHomeDataModel,
-    onEventClick: (News) -> Unit,
-    onEventClickSiteName: (AppSite) -> Unit,
+    onNewsClick: (News) -> Unit,
     appSite: String
 ) {
-    LazyColumn {
-        item {
-            AutoAdvancePager(allEventCategories.CategoryViewModel.LstNewsHeader ?: emptyList(), onEventClickNewsItem = onEventClick)
+    Column(modifier = Modifier.fillMaxSize()) {
+        AutoAdvancePager(
+            pageItems = allEventCategories.CategoryViewModel.LstNewsHeader ?: emptyList(),
+            onEventClickNewsItem = onNewsClick,
+            modifier = Modifier.fillMaxWidth().height(250.dp)
+        )
+
+        Box(modifier = Modifier.weight(1f)) {
+            DynamicTabLayoutScreen(
+                appSiteCateByGroup = allEventCategories.CategoryViewModel.AppSiteCateByGroup,
+                appSite = appSite,
+                onNewsClick = onNewsClick
+            )
         }
-
-//        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { (catId, catName, zz, yy,catSlug,catKey) ->
-//            EventItem(catId, catName, catSlug,yy ?: emptyList(), onEventClick,onEventClickSiteName,{})
-//        }
     }
-
-    DynamicTabLayoutScreen(allEventCategories.CategoryViewModel.AppSiteCateByGroup, appSite)
 }
 
 @Composable
-fun DynamicTabLayoutScreen(AppSiteCateByGroup: ArrayList<AppSiteCateByGroup>?, appSite: String) {
-
-    val initialArrayList = arrayListOf<TabItem>()
-
-    AppSiteCateByGroup?.size?.let {
-        if (it > 1) {
-            val appSite = ItemDetailSite(
-                AppSite(
-                    0,
-                    "", appSite, "All", "", "", "", ""
-                )
-            )
-            val viewModel =
-                hiltViewModel<ShowHomeChildPagingViewModel, ShowHomeChildPagingViewModel.Factory>(
-                    key = "all",
-                    creationCallback = { factory -> factory.create(appSite) }
-                )
-            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-            initialArrayList.add(
-                TabItem(
-                    title = "All",
-                    screen = {
-                        ShowHomeChildCateScreen(lazyPagingItems = viewModel.items.collectAsLazyPagingItems(),
-                            uiState = uiState,
-                            onRetry = {}
-                        )
-                    })
-            )
+fun DynamicTabLayoutScreen(
+    appSiteCateByGroup: ArrayList<AppSiteCateByGroup>?,
+    appSite: String,
+    onNewsClick: (News) -> Unit
+) {
+    val tabDefinitions = remember(appSiteCateByGroup) {
+        val list = mutableListOf<Triple<String, String, String>>() // Name, Slug, Key
+        if ((appSiteCateByGroup?.size ?: 0) > 1) {
+            list.add(Triple("All_" + appSite, "", ""))
         }
-    }
-    AppSiteCateByGroup?.forEach {
-        val appSite = ItemDetailSite(
-            AppSite(
-                it.Id,
-                it.Slug, appSite, it.Name, "", "", "", ""
-            )
-        )
-        val viewModel =
-            hiltViewModel<ShowHomeChildPagingViewModel, ShowHomeChildPagingViewModel.Factory>(
-                key = it.Slug,
-                creationCallback = { factory -> factory.create(appSite) }
-            )
-        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-        initialArrayList.add(
-            TabItem(
-                title = it.Name,
-                screen = {
-                    ShowHomeChildCateScreen(lazyPagingItems = viewModel.items.collectAsLazyPagingItems(),
-                        uiState = uiState,
-                        onRetry = {},
-                        siteSlug = it.Slug
-                    )
-                })
-        )
+        appSiteCateByGroup?.forEach {
+            list.add(Triple(it.Name, it.Slug, it.Key))
+        }
+        list
     }
 
-    // Dynamic list of tabs
-    val tabs = remember {
-        initialArrayList
-    }
+    if (tabDefinitions.isEmpty()) return
 
-    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val pagerState = rememberPagerState(pageCount = { tabDefinitions.size })
     val scope = rememberCoroutineScope()
 
-    Column {
-        // Tab Row implementation
-        TabRow(selectedTabIndex = pagerState.currentPage) {
-            tabs.forEachIndexed { index, tab ->
+    Column(modifier = Modifier.fillMaxSize()) {
+        ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
+            tabDefinitions.forEachIndexed { index, tab ->
                 Tab(
                     selected = pagerState.currentPage == index,
                     onClick = {
@@ -180,24 +182,58 @@ fun DynamicTabLayoutScreen(AppSiteCateByGroup: ArrayList<AppSiteCateByGroup>?, a
                             pagerState.animateScrollToPage(index)
                         }
                     },
-                    text = { Text(text = tab.title) }
+                    text = { Text(text = tab.first, maxLines = 1) }
                 )
             }
         }
 
-        // Horizontal Pager implementation (The ViewPager equivalent)
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.weight(1f),
+            key = { index ->
+                val tabKey = tabDefinitions.getOrNull(index)?.third
+                if (tabKey.isNullOrEmpty()) "tab_$index" else tabKey
+            }
         ) { page ->
-            // Display the content (screen composable) for the current page/tab
-            tabs[page].screen()
+            val tabDef = tabDefinitions[page]
+            ShowHomeChildTabPage(
+                tabName = tabDef.first,
+                tabSlug = tabDef.second,
+                tabKey = tabDef.third,
+                parentAppSite = appSite,
+                onNewsClick = onNewsClick
+            )
         }
     }
+}
 
-    // Synchronize pager swipes with the TabRow indicator
-    LaunchedEffect(pagerState.currentPage) {
-        // No explicit synchronization is needed here because `selectedTabIndex`
-        // in `TabRow` is already observing `pagerState.currentPage`
+@Composable
+fun ShowHomeChildTabPage(
+    tabName: String,
+    tabSlug: String,
+    tabKey: String,
+    parentAppSite: String,
+    onNewsClick: (News) -> Unit
+) {
+    val appSiteModel = remember(tabSlug, tabKey, parentAppSite, tabName) {
+        ItemDetailSite(
+            AppSite(0, tabSlug, parentAppSite, tabName, "", "", "", "")
+        )
     }
+
+    val viewModel = hiltViewModel<ShowHomeChildPagingViewModel, ShowHomeChildPagingViewModel.Factory>(
+        key = appSiteModel.slug.slug + "_" + appSiteModel.slug.Name,
+        creationCallback = { factory -> factory.create(appSiteModel) }
+    )
+
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lazyPagingItems = viewModel.items.collectAsLazyPagingItems()
+
+    ShowHomeChildCateScreen(
+        lazyPagingItems = lazyPagingItems,
+        uiState = uiState,
+        onRetry = { viewModel.fetchShowHomeChildPaging(1, parentAppSite, tabSlug) },
+        onNewsClick = onNewsClick,
+        siteSlug = tabSlug
+    )
 }

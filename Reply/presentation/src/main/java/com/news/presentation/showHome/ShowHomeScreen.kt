@@ -37,6 +37,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.shapes
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
@@ -53,7 +62,14 @@ import com.news.presentation.base.ShowLoading
 import com.news.presentation.base.UiState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.retain.RetainedValuesStoreRegistry
+import androidx.compose.runtime.retain.retainRetainedValuesStoreRegistry
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +82,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -78,6 +95,7 @@ import com.news.presentation.newsTag.ExtraPaneScreen
 import com.news.presentation.showHomeChild.ShowHomeChildScreen
 import com.news.presentation.showHomeChild.ShowHomeChildViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlin.collections.map
 
@@ -124,102 +142,190 @@ fun ShowHomeScreen(
         }
 
         is UiState.Success -> {
-            ////ShowHomeContent(uiState.data, onNewsClicked)
-            //ExploreContent(uiState.data, {})
 
-            // Manage our back stack
-            val backStack = rememberNavBackStack(ItemsList)
-            // Create the ListDetailSceneStrategy
-            val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
-            Scaffold { paddingValues ->
-                NavDisplay(
-                    entryDecorators = listOf(
-                        // Add the default decorators for managing scenes and saving state
-                        rememberSaveableStateHolderNavEntryDecorator(),
-                        // Then add the view model store decorator
-                        rememberViewModelStoreNavEntryDecorator()
-                    ),
-                    backStack = backStack,
-                    modifier = Modifier
-                        .padding(paddingValues)
-                        .consumeWindowInsets(WindowInsets.statusBars),
-                    // onBack now takes 'count' because the strategy might pop multiple keys
-                    onBack = { backStack.removeLastOrNull()  },
-                    sceneStrategy = listDetailStrategy,
+            // 1. Setup the navigator
+            val navigator = rememberListDetailPaneScaffoldNavigator<News>()
 
-                    entryProvider = entryProvider {
-                        entry<ItemsList>(
-                            // Metadata for the list pane, including a placeholder for the detail pane
-                            metadata = ListDetailSceneStrategy.listPane(
-//                                detailPlaceholder = {
-//                                    Column(
-//                                        modifier = Modifier
-//                                            .fillMaxSize()
-//                                            .background(Color.Yellow.copy(alpha = 0.4f)),
-//                                        verticalArrangement = Arrangement.Center,
-//                                        horizontalAlignment = Alignment.CenterHorizontally
-//                                    ) {
-//                                        Text("Choose an Item from the List ZZ")
-//                                    }
-//                                }
-                            )
-                        ) {
+            // 2. Manual toggle state for the detail full-screen mode
+            var isDetailFullScreen by remember { mutableStateOf(false) }
 
-                            ExploreContent(uiState.data, {backStack.add(ItemDetail(it))},{backStack.add(ItemDetailSite(it))},onNewsClicked)
+            val currentSelectedItem = navigator.currentDestination?.contentKey
 
-                        }
-                        entry<ItemDetail>(
-                            // Metadata for the detail pane
-                            metadata = ListDetailSceneStrategy.detailPane()
-                        ) { product ->
-                            val id = product.id
-                            NewsDetailScreen(
-                                modifier = Modifier.background(Color.Red.copy(alpha = 0.4f)),
-                                name = id.Title, onItemClick = {}, goToEx = {
-                                    backStack.add(com.news.presentation.newsTag.ExtraScreen) // Navigate to an extra pane
-                                },onCloseDetail = {backStack.removeAll(backStack.filter { it != ItemsList }) }
-                            )
+            // 3. We manually define the Scaffold Value to force Full Screen behaviors
+            val manualValue = when {
+                // Case A: Nothing selected -> Force List (Secondary) to fill screen
+                currentSelectedItem == null -> {
+                    ThreePaneScaffoldValue(
+                        primary = PaneAdaptedValue.Hidden,     // Detail
+                        secondary = PaneAdaptedValue.Expanded, // List
+                        tertiary = PaneAdaptedValue.Hidden
+                    )
+                }
+                // Case B: Item selected + Full Screen Toggled -> Force Detail (Primary) to fill screen
+                isDetailFullScreen -> {
+                    ThreePaneScaffoldValue(
+                        primary = PaneAdaptedValue.Expanded, // Detail
+                        secondary = PaneAdaptedValue.Hidden, // List
+                        tertiary = PaneAdaptedValue.Hidden
+                    )
+                }
+                // Case C: Normal selection -> Use the navigator's adaptive logic (Split-screen on tablets)
+                else -> navigator.scaffoldValue
+            }
+            val scope = rememberCoroutineScope()
+            // 2. The Scaffold handles the actual layout
+            ListDetailPaneScaffold(
+                directive = navigator.scaffoldDirective,
+                value = manualValue,
+                listPane = {
+                    AnimatedPane {
+                        ExploreContent(uiState.data
+                            , {
+                                scope.launch {
+                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, it)
 
-                        }
-                        entry<ItemDetailSite>(
-                            // Metadata for the detail pane
-                            metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = {})
-                        ) { product ->
-                            val id = product.slug
-                            val viewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(
-                                // Note: We need a new ViewModel for every new RouteB instance. Usually
-                                // we would need to supply a `key` String that is unique to the
-                                // instance, however, the ViewModelStoreNavEntryDecorator (supplied
-                                // above) does this for us, using `NavEntry.contentKey` to uniquely
-                                // identify the viewModel.
-                                //
-                                // tl;dr: Make sure you use rememberViewModelStoreNavEntryDecorator()
-                                // if you want a new ViewModel for each new navigation key instance.
-                                creationCallback = { factory ->
-                                    factory.create(product)
                                 }
-                            )
-
-                            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-                            ShowHomeChildScreen(
-                                viewModel = viewModel,
-                                uiState = uiState
-                            ) {
-                                backStack.add(com.news.presentation.newsTag.ExtraScreen) // Navigate to an extra pane
                             }
-                        }
-                        entry<ExtraScreen>(
-                            // Metadata for an optional extra pane
-                            metadata = ListDetailSceneStrategy.extraPane()
-                        ) {
-                            ExtraPaneScreen(
-                                modifier = Modifier.background(Color.LightGray)
+                            ,{}
+                            ,onNewsClicked)
+//                        ListContent(onItemClick = { id ->
+//                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, id)
+//
+//                        })
+                    }
+                },
+                detailPane = {
+                    AnimatedPane {
+                        val selectedId = navigator.currentDestination?.contentKey
+                        if (selectedId != null) {
+                                                        NewsDetailScreen(
+                                news = selectedId,
+                                onBack = {
+                                    if (isDetailFullScreen) isDetailFullScreen = false
+                                    scope.launch {
+                                        navigator.navigateBack()
+
+                                    }
+                                },
+                                onExpand = {
+                                    isDetailFullScreen = !isDetailFullScreen
+                                    }
                             )
+//                            DetailContent(
+//                                id = selectedId,
+//                                isFullScreen = isDetailFullScreen,
+//                                onBack = {
+//                                    if (isDetailFullScreen) isDetailFullScreen = false
+//                                    navigator.navigateBack()
+//                                },
+//                                onToggleFullScreen = { isDetailFullScreen = !isDetailFullScreen }
+//                            )
+                        } else {
+                            //EmptyDetailView()
                         }
                     }
-                )
-            }
+                }
+            )
+
+
+//            // Manage our back stack
+//            //val backStack = rememberNavBackStack(ItemsList)
+//            val backStack = remember { mutableStateListOf<NavKey>(ItemsList) }
+//
+//            // 1. Track if the user requested "Full Screen" for the detail
+//            var isDetailFullScreen by remember { mutableStateOf(false) }
+//
+//            val standardDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+//
+//            // 2. The strategy automatically hides the detail area when backStack.size == 1
+//            // because we force maxHorizontalPartitions = 1
+//            val listDetailStrategy = rememberListDetailSceneStrategy<Any>(
+//                directive = if (backStack.size == 1 || isDetailFullScreen) {
+//                    standardDirective.copy(maxHorizontalPartitions = 1)
+//                } else {
+//                    standardDirective
+//                }
+//            )
+
+//            // 1. Wrap your List content in movableContentOf to preserve scroll state
+//            val movableList = remember(uiState.data) {
+//                movableContentOf {
+//                    ExploreContent(uiState.data, {backStack.add(ItemDetail(it))},{backStack.add(ItemDetailSite(it))},onNewsClicked)
+//
+//                }
+//            }
+//            Scaffold { paddingValues ->
+//                NavDisplay(
+//
+//                    entryDecorators = listOf(
+//                        // Add the default decorators for managing scenes and saving state
+//                        rememberSaveableStateHolderNavEntryDecorator(),
+//                        // Then add the view model store decorator
+//                        rememberViewModelStoreNavEntryDecorator(),
+//                    ),
+//                    backStack = backStack,
+//                    modifier = Modifier
+//                        .padding(paddingValues)
+//                        .consumeWindowInsets(WindowInsets.statusBars),
+//                    // onBack now takes 'count' because the strategy might pop multiple keys
+//                    onBack = { backStack.removeLastOrNull()  },
+//                    sceneStrategies = listOf(listDetailStrategy),
+//
+//                    entryProvider = entryProvider {
+//                        entry<ItemsList>(
+//                            // Metadata for the list pane, including a placeholder for the detail pane
+//                            metadata = ListDetailSceneStrategy.listPane()
+//                        ) {
+//                            //movableList()
+//                            ExploreContent(uiState.data, {backStack.add(ItemDetail(it))},{backStack.add(ItemDetailSite(it))},onNewsClicked)
+//                        }
+//                        entry<ItemDetail>(
+//                            // Metadata for the detail pane
+//                            metadata = ListDetailSceneStrategy.detailPane()
+//                        ) { product ->
+//                            NewsDetailScreen(
+//                                news = product.id,
+//                                onBack = {
+//                                    //isDetailFullScreen = false
+//                                    //backStack.removeLastOrNull()
+//                                    backStack.removeAll { it is ItemDetail }
+//                                },
+//                                onExpand = {
+//                                    isDetailFullScreen = !isDetailFullScreen
+//                                    }
+//                            )
+//
+//                        }
+//                        entry<ItemDetailSite>(
+//                            // Metadata for the detail pane
+//                            metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = {})
+//                        ) { product ->
+//                            val viewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(
+//                                creationCallback = { factory ->
+//                                    factory.create(product)
+//                                }
+//                            )
+//
+//                            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+//
+//                            ShowHomeChildScreen(
+//                                viewModel = viewModel,
+//                                uiState = uiState
+//                            ) { news ->
+//                                backStack.add(ItemDetail(news))
+//                            }
+//                        }
+//                        entry<ExtraScreen>(
+//                            // Metadata for an optional extra pane
+//                            metadata = ListDetailSceneStrategy.extraPane()
+//                        ) {
+//                            ExtraPaneScreen(
+//                                modifier = Modifier.background(Color.LightGray)
+//                            )
+//                        }
+//                    }
+//                )
+//            }
 
 
         }
@@ -247,9 +353,13 @@ fun CategoryHeader(x0: ArrayList<AppSiteCateByGroup>?) {
 
 @Composable
 fun ExploreContent(allEventCategories: ShowHomeDataModel, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit,onNewsClicked: (Int) -> Unit) {
-    LazyColumn {
+    LazyColumn(Modifier.fillMaxSize()) {
         item {
-            AutoAdvancePager(allEventCategories.LstNewsHeader ?: emptyList(), onEventClickNewsItem = onEventClick)
+            AutoAdvancePager(
+                allEventCategories.LstNewsHeader ?: emptyList(), 
+                onEventClickNewsItem = onEventClick,
+                modifier = Modifier.fillMaxWidth().height(300.dp)
+            )
         }
         allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { (catId, catName, zz, yy,catSlug,catKey) ->
             EventItem(catId, catName, catSlug,yy ?: emptyList(), onEventClick,onEventClickSiteName, onNewsClicked)
@@ -296,7 +406,9 @@ fun ExploreHeaderItem(title: String) {
 ///
 @Composable
 fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier, onEventClickNewsItem: (News) -> Unit) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    if (pageItems.isEmpty()) return
+
+    Box(modifier = modifier) {
         val pagerState = rememberPagerState(pageCount = { pageItems.size })
         val pagerIsDragged by pagerState.interactionSource.collectIsDraggedAsState()
 
@@ -306,49 +418,45 @@ fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier, onEve
         // Stop auto-advancing when pager is dragged or one of the pages is pressed
         val autoAdvance = !pagerIsDragged && !pageIsPressed
 
-        if (autoAdvance && pageItems.isNotEmpty()) {
-            LaunchedEffect(pagerState, pageInteractionSource) {
+        LaunchedEffect(pagerState, pageInteractionSource, autoAdvance, pageItems.size) {
+            if (autoAdvance && pageItems.isNotEmpty()) {
                 while (true) {
-                    delay(2000)
-                    val nextPage = (pagerState.currentPage + 1) % pageItems.size
-                    pagerState.animateScrollToPage(nextPage)
+                    delay(3000)
+                    if (pagerState.pageCount > 0) {
+                        val nextPage = (pagerState.currentPage + 1) % pagerState.pageCount
+                        pagerState.animateScrollToPage(nextPage)
+                    }
                 }
             }
         }
 
         HorizontalPager(
-            state = pagerState
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
         ) { page ->
-            Box(Modifier.clickable{
-                onEventClickNewsItem(pageItems[page])
+            val newsItem = pageItems[page]
+            Box(Modifier.fillMaxSize().clickable {
+                onEventClickNewsItem(newsItem)
             }) {
                 AsyncImage(
-                    model = pageItems[page].Image,
-                    contentDescription = pageItems[page].Title,
+                    model = newsItem.Image,
+                    contentDescription = newsItem.Title,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .height(300.dp)
-                        .padding(8.dp)
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .height(180.dp)
-                        .padding(8.dp)
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    MaterialTheme.colorScheme.primary
+                                    Color.Black.copy(alpha = 0.7f)
                                 )
                             )
                         )
-                        .align(Alignment.BottomStart)
-                ) {
-
-                }
+                )
 
                 Column(
                     modifier = Modifier
@@ -356,83 +464,97 @@ fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier, onEve
                         .padding(16.dp)
                         .fillMaxWidth()
                 ) {
-
-                    Box(
-                        modifier = Modifier
-                            .padding(bottom = 8.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Text(
-                            text = pageItems[page].Source,
-                            fontSize = MaterialTheme.typography.titleSmall.fontSize,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = modifier
-                                .clickable(
-                                    interactionSource = pageInteractionSource,
-                                    indication = LocalIndication.current
-                                ) {
-                                    println(pageItems[page].Source)
-                                }
-                        )
-                    }
-
-//                    Text(
-//                        text = pageItems[page].ShortDes,
-//                        fontSize = MaterialTheme.typography.titleSmall.fontSize,
-//                        maxLines = 1,
-//                        overflow = TextOverflow.Ellipsis,
-//                    )
                     Text(
-                        text = pageItems[page].Title,
-                        fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = modifier
-                            .fillMaxSize()
-                            .clickable(
-                                interactionSource = pageInteractionSource,
-                                indication = LocalIndication.current
-                            ) {
-                                onEventClickNewsItem(pageItems[page])
-                            }
-                            .wrapContentSize(align = Alignment.Center)
+                        text = newsItem.Source,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
 
+                    Spacer(modifier = Modifier.height(8.dp))
 
-
+                    Text(
+                        text = newsItem.Title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-
-
             }
-
         }
 
-        PagerIndicator(pageItems.size, pagerState.currentPage)
+        PagerIndicator(
+            pageCount = pageItems.size, 
+            currentPageIndex = pagerState.currentPage,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+        )
     }
 }
 
 @Composable
 fun PagerIndicator(pageCount: Int, currentPageIndex: Int, modifier: Modifier = Modifier) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .wrapContentHeight()
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            repeat(pageCount) { iteration ->
-                val color = if (currentPageIndex == iteration) Color.DarkGray else Color.LightGray
-                Box(
-                    modifier = modifier
-                        .padding(2.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                        .size(8.dp)
-                )
-            }
+    Row(
+        modifier = modifier
+            .wrapContentHeight()
+            .wrapContentSize(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(pageCount) { iteration ->
+            val color = if (currentPageIndex == iteration) Color.White else Color.White.copy(alpha = 0.5f)
+            Box(
+                modifier = Modifier
+                    .padding(4.dp)
+                    .clip(CircleShape)
+                    .background(color)
+                    .size(8.dp)
+            )
         }
     }
 }
+
+/**
+ * Returns a [RetainedValuesStoreNavEntryDecorator] that is remembered across recompositions backed
+ * by [registry].
+ *
+ * The underlying storage is controlled by the provided [registry]. By default, a new
+ * [RetainedValuesStoreRegistry] is retained at this point in the composition hierarchy and will be
+ * destroyed when the composition is permanently discarded or when the returned decorator is removed
+ * from the composition hierarchy. If you need the backing storage of this decorator to have a
+ * different lifespan, you can manually manage and provide a [RetainedValuesStoreRegistry] with the
+ * intended lifespan.
+ *
+ * @param registry The underlying [RetainedValuesStoreRegistry] used to provide
+ *   [RetainedValuesStore] instances to [NavEntries][NavEntry]. This instance should be retained to
+ *   properly survive destruction and recreation scenarios.
+ */
+@Composable
+fun <T : Any> rememberRetainedValuesStoreNavEntryDecorator(
+    registry: RetainedValuesStoreRegistry = retainRetainedValuesStoreRegistry()
+): RetainedValuesStoreNavEntryDecorator<T> {
+    return remember(registry) {
+        RetainedValuesStoreNavEntryDecorator(registry)
+    }
+}
+
+/**
+ * Provides the content of each [NavEntry] with a dedicated [RetainedValuesStore] so that each nav
+ * entry may retain its own values.
+ *
+ * @param registry The underlying [RetainedValuesStoreRegistry] used to provide
+ *   [RetainedValuesStore] instances to [NavEntries][NavEntry]. This instance should be retained to
+ *   properly survive destruction and recreation scenarios.
+ */
+class RetainedValuesStoreNavEntryDecorator<T : Any>(
+    registry: RetainedValuesStoreRegistry,
+) : NavEntryDecorator<T>(
+    onPop = { key ->
+        registry.clearChild(key)
+    },
+    decorate = { entry ->
+        registry.LocalRetainedValuesStoreProvider(entry.contentKey) { entry.Content() }
+    },
+)
