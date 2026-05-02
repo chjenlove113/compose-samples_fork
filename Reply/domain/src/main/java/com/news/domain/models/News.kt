@@ -11,6 +11,7 @@ data class News(
     val Id : Int,
     val Title : String,
     val Image : String? = "",
+    val Slug: String? = "",
     val ShortDes : String? = "",
     val Date : String? = "",
     val Source : String = "",

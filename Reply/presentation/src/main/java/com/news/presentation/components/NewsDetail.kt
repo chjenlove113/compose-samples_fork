@@ -1,5 +1,13 @@
 package com.news.presentation.components
 
+import android.graphics.Bitmap
+import android.util.Log
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,18 +27,32 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import coil3.compose.AsyncImage
 import com.news.domain.models.News
 import com.news.presentation.R
+import com.news.presentation.base.UiState
 import com.news.presentation.base.rememberNavigationState
 import com.news.presentation.showHome.ItemDetail
 import com.news.presentation.showHome.ItemsList
@@ -40,13 +63,72 @@ fun NewsDetailScreen(
     news: News,
     onBack: () -> Unit,
     onExpand: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: NewsDetailViewModel = hiltViewModel()
 ) {
+    val htmlState by viewModel.htmlState.collectAsStateWithLifecycle()
+    val density = LocalDensity.current
+
+    // Lưu trữ tham chiếu WebView để gọi JS sau này
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+
+    // Optimize M3 config by remembering it
+    val colorScheme = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
+    val m3Config = remember(colorScheme) {
+        """
+        {
+            "colorPrimary": "#${Integer.toHexString(colorScheme.primary.toArgb()).substring(2)}",
+            "colorSurface": "#${Integer.toHexString(colorScheme.surfaceVariant.toArgb()).substring(2)}",
+            "fontSizeScale": 2
+        }
+        """.trimIndent()
+    }
+
+    // Tạo đối tượng config chứa màu sắc từ Material 3
+    val configJson = remember(colorScheme, isDark) {
+        """
+        {
+            "colorBg": "${colorScheme.background.toHtmlHex()}",
+            "colorText": "${colorScheme.onBackground.toHtmlHex()}",
+            "colorSurface": "${colorScheme.surfaceVariant.toHtmlHex()}",
+            "colorPrimary": "${colorScheme.primary.toHtmlHex()}",
+            "darkMode": "${if (isDark) "dark" else "light"}"
+        }
+        """.trimIndent()
+    }
+
+    val fontSizeState = remember { mutableStateOf(30) }
+
+
+    val currentConfig = WebConfig(
+        fontSize = fontSizeState.value,
+        paddingH = 5,
+        paddingV = 5,
+        darkMode = if (isDark) "dark" else "light"
+    )
+
+    // Theo dõi sự thay đổi của config để cập nhật JS tức thì
+    LaunchedEffect(currentConfig) {
+        webViewRef?.evaluateJavascript("setupWebView(${currentConfig.toJson()})", null)
+    }
+
+    // Single LaunchedEffect to handle initial data or ID changes
+    LaunchedEffect(news.Id) {
+        viewModel.fetchHtml(
+            link = news.Link ?: "",
+            cat = news.SubCat ?: "",
+            id = news.Id,
+            html = "",
+            slug = news.Slug ?: ""
+        )
+        if (news.Html.isNullOrEmpty()) {
+
+        }
+    }
+
     Scaffold(
-
         topBar = {
-            val backStackBackup = rememberNavBackStack()
-
             TopAppBar(
                 title = { Text(text = news.Source) },
                 navigationIcon = {
@@ -106,6 +188,95 @@ fun NewsDetailScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Handle htmlState more efficiently
+                when (val state = htmlState) {
+                    is UiState.Loading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is UiState.Success -> {
+                        AndroidView(
+                            factory = { context ->
+                                WebView(context).apply {
+                                    webViewClient = object : WebViewClient() {
+                                        override fun onPageFinished(view: WebView?, url: String?) {
+                                            super.onPageFinished(view, url)
+
+                                            // Gọi setup lần đầu ngay khi trang load xong
+                                            view?.evaluateJavascript("setupWebView(${currentConfig.toJson()})", null)
+
+                                            // Gọi setup lần đầu ngay khi trang load xong
+                                            //view?.evaluateJavascript("setupM3Expressive(${m3Config})", null)
+                                            view?.evaluateJavascript("updateM3Colors(${configJson})", null)
+
+                                            // Inject styling
+                                            view?.evaluateJavascript(
+                                                "(function() { document.documentElement.style.setProperty('--m3-background', '#fef7ff');document.documentElement.style.backgroundColor = '#fef7ff'; })();",
+                                                null
+                                            )
+                                        }
+
+                                        override fun onPageStarted(
+                                            view: WebView?,
+                                            url: String?,
+                                            favicon: Bitmap?
+                                        ) {
+
+                                            super.onPageStarted(view, url, favicon)
+
+                                        }
+
+
+                                    }
+
+                                    webViewRef = this
+
+                                    settings.apply {
+                                        javaScriptEnabled = true
+                                        domStorageEnabled = true
+                                        loadWithOverviewMode = true
+                                        useWideViewPort = true
+                                        // Performance optimizations
+                                        setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                                    }
+                                    isVerticalScrollBarEnabled = false
+                                    isHorizontalScrollBarEnabled = false
+                                    overScrollMode = View.OVER_SCROLL_NEVER
+                                    setBackgroundColor(0) // Avoid white flash
+
+                                    layoutParams = ViewGroup.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.WRAP_CONTENT
+                                    )
+                                }
+                            },
+                            update = { webView ->
+                                // Only load if data actually changed
+                                if (webView.tag != state.data) {
+                                    webView.loadDataWithBaseURL(null, state.data, "text/html", "UTF-8", null)
+                                    webView.tag = state.data
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    is UiState.Error -> {
+                        Text(
+                            text = "Error loading content: ${state.message}",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // If there's more content in news.Html or news.NewsItemChilds, display it here
                 news.NewsItemChilds.forEach { child ->
                     if ((child.Title?.toString() ?: "").isNotEmpty()) {
@@ -137,5 +308,27 @@ fun NewsDetailScreen(
                 }
             }
         }
+    }
+}
+
+private fun Color.toHtmlHex(): String {
+    return String.format("#%06X", (0xFFFFFF and this.toArgb()))
+}
+
+data class WebConfig(
+    val fontSize: Int,
+    val paddingH: Int,
+    val paddingV: Int,
+    val darkMode: String // "dark", "light", hoặc "auto"
+) {
+    fun toJson(): String {
+        return """
+            {
+                "fontSize": $fontSize,
+                "paddingH": $paddingH,
+                "paddingV": $paddingV,
+                "darkMode": "$darkMode"
+            }
+        """.trimIndent()
     }
 }

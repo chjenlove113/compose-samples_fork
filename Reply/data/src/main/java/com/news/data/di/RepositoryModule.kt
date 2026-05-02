@@ -1,12 +1,15 @@
 package com.news.data.di
 
+import com.news.data.api.NewsDetailService
 import com.news.data.api.NewsSiteService
 import com.news.data.api.NewsTagService
 import com.news.data.api.ShowHomeService
 import com.news.data.local.IAppDbService
+import com.news.data.repository.NewsDetailRepositoryImpl
 import com.news.data.repository.NewsSiteRepository
 import com.news.data.repository.NewsTagRepository
 import com.news.data.repository.ShowHomeRepository
+import com.news.domain.repository.INewsDetailRepository
 import com.news.domain.repository.INewsSiteRepository
 import com.news.domain.repository.INewsTagRepository
 import com.news.domain.repository.IShowHomeRepository
@@ -42,5 +45,11 @@ class RepositoryModule {
     @Singleton
     fun provideShowHomeRepository(showHomeService: ShowHomeService): IShowHomeRepository {
         return ShowHomeRepository(showHomeService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNewsDetailRepository(newsDetailService: NewsDetailService): INewsDetailRepository {
+        return NewsDetailRepositoryImpl(newsDetailService)
     }
 }

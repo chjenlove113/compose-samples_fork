@@ -1,6 +1,7 @@
 package com.news.data.di
 
 import android.content.Context
+import com.news.data.api.NewsDetailService
 import com.news.data.api.NewsTagService
 import com.news.data.api.ShowHomeService
 import com.news.data.networks.HeaderInterceptor
@@ -92,5 +93,11 @@ class NetworkModule {
     @Singleton
     fun provideShowHomeService(retrofit: Retrofit): ShowHomeService {
         return retrofit.create(ShowHomeService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNewsDetailService(retrofit: Retrofit): NewsDetailService {
+        return retrofit.create(NewsDetailService::class.java)
     }
 }

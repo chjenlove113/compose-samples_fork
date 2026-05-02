@@ -5,8 +5,10 @@ import com.news.data.api.NewsTagService
 import com.news.data.local.IAppDbService
 import com.news.data.mappers.toNewsTagEntity
 import com.news.data.mappers.toNewsTagModel
+import com.news.data.models.NewsByTagRequest
 import com.news.data.models.PostBaseModel
 import com.news.domain.mappers.toNewsTag
+import com.news.domain.models.News
 import com.news.domain.models.NewsTag
 import com.news.domain.repository.INewsTagRepository
 import com.news.utils.AppContants
@@ -30,5 +32,12 @@ class NewsTagRepository @Inject constructor(
             .flatMapConcat { newsTagList -> flow {
                 emit(appDbService.deleteAllAndInsertAllNewsTag((newsTagList.map { it.toNewsTagEntity() }))) } }
             .flatMapConcat { appDbService.getNewsTag().map { it.map { it.toNewsTagModel() } }}
+    }
+
+    override fun getNewsByTag(tagSlug: String, pageNumber: Int, rowsOfPage: Int): Flow<List<News>> {
+        return flow {
+            val response = newsTagService.fetchNewsByTag(NewsByTagRequest(tagSlug, "", pageNumber, rowsOfPage))
+            emit(response.body() ?: emptyList())
+        }
     }
 }

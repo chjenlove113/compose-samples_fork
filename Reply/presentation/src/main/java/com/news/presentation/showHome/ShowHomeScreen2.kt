@@ -305,7 +305,6 @@ fun ShowHomeScreen2(
                         }
                     }
 
-
                 }
 
 
