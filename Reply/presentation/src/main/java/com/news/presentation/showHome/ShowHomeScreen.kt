@@ -91,6 +91,8 @@ import androidx.navigation3.ui.NavDisplay
 import coil3.compose.AsyncImage
 import com.news.domain.models.AppSite
 import com.news.presentation.components.NewsDetailScreen
+import com.news.presentation.newsByTagId.NewsByTagIdScreen
+import com.news.presentation.newsByTagId.NewsByTagViewModel
 import com.news.presentation.newsTag.ExtraPaneScreen
 import com.news.presentation.showHomeChild.ShowHomeChildScreen
 import com.news.presentation.showHomeChild.ShowHomeChildViewModel
@@ -144,12 +146,25 @@ fun ShowHomeScreen(
         is UiState.Success -> {
 
             // 1. Setup the navigator
-            val navigator = rememberListDetailPaneScaffoldNavigator<News>()
+            val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
 
             // 2. Manual toggle state for the detail full-screen mode
             var isDetailFullScreen by remember { mutableStateOf(false) }
 
-            val currentSelectedItem = navigator.currentDestination?.contentKey
+            val currentDestination = navigator.currentDestination
+            val currentSelectedItem = currentDestination?.contentKey
+
+            // Keep track of the last selected items for each pane
+            var lastSelectedNews by remember { mutableStateOf<News?>(null) }
+            var lastSelectedTag by remember { mutableStateOf<String?>(null) }
+
+            LaunchedEffect(currentDestination) {
+                when (currentDestination?.pane) {
+                    ListDetailPaneScaffoldRole.Detail -> lastSelectedNews = currentDestination.contentKey as? News
+                    ListDetailPaneScaffoldRole.Extra -> lastSelectedTag = currentDestination.contentKey as? String
+                    else -> {}
+                }
+            }
 
             // 3. We manually define the Scaffold Value to force Full Screen behaviors
             val manualValue = when {
@@ -196,32 +211,48 @@ fun ShowHomeScreen(
                 },
                 detailPane = {
                     AnimatedPane {
-                        val selectedId = navigator.currentDestination?.contentKey
-                        if (selectedId != null) {
-                                                        NewsDetailScreen(
-                                news = selectedId,
+                        if (lastSelectedNews != null) {
+                            NewsDetailScreen(
+                                news = lastSelectedNews!!,
                                 onBack = {
                                     if (isDetailFullScreen) isDetailFullScreen = false
                                     scope.launch {
                                         navigator.navigateBack()
-
                                     }
                                 },
                                 onExpand = {
                                     isDetailFullScreen = !isDetailFullScreen
+                                },
+                                onTagClick = { tagSlug ->
+                                    scope.launch {
+                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Extra, tagSlug)
                                     }
+                                }
                             )
-//                            DetailContent(
-//                                id = selectedId,
-//                                isFullScreen = isDetailFullScreen,
-//                                onBack = {
-//                                    if (isDetailFullScreen) isDetailFullScreen = false
-//                                    navigator.navigateBack()
-//                                },
-//                                onToggleFullScreen = { isDetailFullScreen = !isDetailFullScreen }
-//                            )
-                        } else {
-                            //EmptyDetailView()
+                        }
+                    }
+                },
+                extraPane = {
+                    AnimatedPane {
+                        if (lastSelectedTag != null) {
+                            val tagViewModel = hiltViewModel<NewsByTagViewModel, NewsByTagViewModel.Factory>(
+                                key = lastSelectedTag,
+                                creationCallback = { factory -> factory.create(lastSelectedTag!!) }
+                            )
+                            NewsByTagIdScreen(
+                                tagSlug = lastSelectedTag!!,
+                                viewModel = tagViewModel,
+                                onBack = {
+                                    scope.launch {
+                                        navigator.navigateBack()
+                                    }
+                                },
+                                onNewsClick = { news ->
+                                    scope.launch {
+                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
+                                    }
+                                }
+                            )
                         }
                     }
                 }

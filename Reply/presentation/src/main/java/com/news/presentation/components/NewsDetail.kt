@@ -6,9 +6,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,26 +24,37 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
@@ -56,6 +73,7 @@ import com.news.presentation.base.UiState
 import com.news.presentation.base.rememberNavigationState
 import com.news.presentation.showHome.ItemDetail
 import com.news.presentation.showHome.ItemsList
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,10 +81,12 @@ fun NewsDetailScreen(
     news: News,
     onBack: () -> Unit,
     onExpand: () -> Unit,
+    onTagClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: NewsDetailViewModel = hiltViewModel()
 ) {
     val htmlState by viewModel.htmlState.collectAsStateWithLifecycle()
+    val tagsState by viewModel.tagsState.collectAsStateWithLifecycle()
     val density = LocalDensity.current
 
     // Lưu trữ tham chiếu WebView để gọi JS sau này
@@ -115,6 +135,7 @@ fun NewsDetailScreen(
 
     // Single LaunchedEffect to handle initial data or ID changes
     LaunchedEffect(news.Id) {
+        viewModel.fetchTags(news.Id)
         viewModel.fetchHtml(
             link = news.Link ?: "",
             cat = news.SubCat ?: "",
@@ -126,6 +147,25 @@ fun NewsDetailScreen(
 
         }
     }
+
+    // 1. Create and remember the scroll behavior
+    var scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    //val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
+
+    var expanded by remember { mutableStateOf(false) }
+
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+    val showFab by remember {
+        derivedStateOf {
+            scrollState.value > 0
+        }
+    }
+
+    if(scrollState.value == 0){
+        scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior (rememberTopAppBarState())
+    }
+
 
     Scaffold(
         topBar = {
@@ -141,15 +181,56 @@ fun NewsDetailScreen(
                         Icon(imageVector = ImageVector.vectorResource(id = R.drawable.open_in_full_24px), contentDescription = "Expand",
                         )
                     }
-                }
+                    IconButton(onClick = { expanded = !expanded }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Option 1") },
+                            onClick = { /* Do something... */ }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Option 2") },
+                            onClick = { /* Do something... */ }
+                        )
+                    }
+                },
+                // 3. Pass the behavior to the TopAppBar
+                scrollBehavior = scrollBehavior
             )
         },
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = showFab,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                FloatingActionButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            scrollState.animateScrollTo(0)
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Scroll to top"
+                    )
+                }
+            }
+        },
+        // 2. Apply modifier to the Scaffold
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+//                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             news.Image?.let { imageUrl ->
                 AsyncImage(
@@ -176,6 +257,31 @@ fun NewsDetailScreen(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.outline
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                when (val state = tagsState) {
+                    is UiState.Success -> {
+                        val data = state.data as List<*>?
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            data?.forEach { tagItem ->
+                                val tag = tagItem as? com.news.domain.models.NewsTag
+                                if (tag != null) {
+                                    AssistChip(
+                                        onClick = { onTagClick(tag.Slug) },
+                                        label = { Text(tag.Title) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    else -> {}
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -250,6 +356,11 @@ fun NewsDetailScreen(
                                     overScrollMode = View.OVER_SCROLL_NEVER
                                     setBackgroundColor(0) // Avoid white flash
 
+                                    // Fix: Disable internal scrolling to prevent conflict with parent verticalScroll
+                                    isNestedScrollingEnabled = false
+                                    isFocusable = false
+                                    isFocusableInTouchMode = false
+
                                     layoutParams = ViewGroup.LayoutParams(
                                         ViewGroup.LayoutParams.MATCH_PARENT,
                                         ViewGroup.LayoutParams.WRAP_CONTENT
@@ -278,7 +389,7 @@ fun NewsDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // If there's more content in news.Html or news.NewsItemChilds, display it here
-                news.NewsItemChilds.forEach { child ->
+                (news.NewsItemChilds as ArrayList<com.news.domain.models.NewsChildItem>?)?.forEach { child ->
                     if ((child.Title?.toString() ?: "").isNotEmpty()) {
                         Text(
                             text = child.Title?.toString() ?: "",

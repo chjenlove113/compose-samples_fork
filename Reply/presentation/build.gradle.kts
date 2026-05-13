@@ -43,9 +43,11 @@ android {
 dependencies {
     implementation(project(":data"))
     implementation(project(":domain"))
+    implementation(libs.androidx.compose.material.icons.core.android)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.material3)
     implementation(libs.material)
     implementation(libs.androidx.lifecycle.viewmodel.android)
     implementation(libs.androidx.compose.adaptive.navigation)

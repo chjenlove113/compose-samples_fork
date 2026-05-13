@@ -1,5 +1,6 @@
 package com.news.domain.repository
 
+import com.news.domain.models.NewsTag
 import kotlinx.coroutines.flow.Flow
 
 interface INewsDetailRepository {
@@ -10,4 +11,6 @@ interface INewsDetailRepository {
         html: String,
         slug: String
     ): Flow<Result<String>>
+
+    fun fetchNewsTags(newsId: Int): Flow<Result<List<NewsTag>>>
 }
