@@ -1,5 +1,6 @@
 package com.news.presentation.components
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.util.Log
 import android.view.View
@@ -24,8 +25,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -56,6 +60,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -87,6 +92,8 @@ fun NewsDetailScreen(
 ) {
     val htmlState by viewModel.htmlState.collectAsStateWithLifecycle()
     val tagsState by viewModel.tagsState.collectAsStateWithLifecycle()
+    val isSaved by viewModel.isSaved.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val density = LocalDensity.current
 
     // Lưu trữ tham chiếu WebView để gọi JS sau này
@@ -177,6 +184,22 @@ fun NewsDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.toggleSave(news) }) {
+                        Icon(
+                            imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (isSaved) "Remove from favorites" else "Save to favorites"
+                        )
+                    }
+                    IconButton(onClick = {
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, "${news.Title}\n\n${news.Link}")
+                            type = "text/plain"
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share news via"))
+                    }) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
+                    }
                     IconButton(onClick = onExpand) {
                         Icon(imageVector = ImageVector.vectorResource(id = R.drawable.open_in_full_24px), contentDescription = "Expand",
                         )
