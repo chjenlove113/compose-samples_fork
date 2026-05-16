@@ -1,6 +1,7 @@
 package com.news.data.di
 
 import android.content.Context
+import com.news.data.api.AuthService
 import com.news.data.api.NewsDetailService
 import com.news.data.api.NewsTagService
 import com.news.data.api.ShowHomeService
@@ -99,5 +100,11 @@ class NetworkModule {
     @Singleton
     fun provideNewsDetailService(retrofit: Retrofit): NewsDetailService {
         return retrofit.create(NewsDetailService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthService(retrofit: Retrofit): AuthService {
+        return retrofit.create(AuthService::class.java)
     }
 }

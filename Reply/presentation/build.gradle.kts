@@ -44,6 +44,7 @@ dependencies {
     implementation(project(":data"))
     implementation(project(":domain"))
     implementation(libs.androidx.compose.material.icons.core.android)
+    implementation(libs.androidx.compose.material.iconsExtended)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

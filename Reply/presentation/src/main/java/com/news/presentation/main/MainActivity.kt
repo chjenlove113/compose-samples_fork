@@ -72,6 +72,9 @@ import androidx.navigation.createGraph
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.news.domain.models.News
+import com.news.presentation.account.AccountInfoScreen
+import com.news.presentation.account.LoginScreen
+import com.news.presentation.account.RegisterScreen
 import com.news.presentation.base.BottomNavigationBar
 import com.news.presentation.base.Screen
 import com.news.presentation.base.Destination
@@ -79,6 +82,10 @@ import com.news.presentation.base.bottomNavItems
 import com.news.presentation.components.NewsDetailScreen
 import com.news.presentation.showHome.ShowHomeRoute2
 import com.news.presentation.showHomeChild.ShowHomeChildRoute
+import androidx.compose.material.icons.filled.Person
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.news.presentation.theme.ContrastAwareReplyTheme
+import androidx.activity.viewModels
 
 private sealed interface TopLevelRoute1 {
     val icon: ImageVector
@@ -104,13 +111,18 @@ enum class AppDestinations(
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val mainViewModel: MainViewModel by viewModels()
+
     @SuppressLint("RestrictedApi")
     @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 //        enableEdgeToEdge()
         setContent {
-            val navController = rememberNavController()
+            val nightMode by mainViewModel.nightMode.collectAsStateWithLifecycle()
+
+            ContrastAwareReplyTheme(darkTheme = nightMode) {
+                val navController = rememberNavController()
             val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
             //val topLevelBackStack = remember { TopLevelBackStack<Any>(Home) }
             var topLevelBackStack by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
@@ -162,6 +174,32 @@ class MainActivity : ComponentActivity() {
                         route = "screen3"
                     ) {
                         ShowHomeChildRoute()
+                    }
+
+                    composable(
+                        route = "account"
+                    ) {
+                        AccountInfoScreen(
+                            onNavigateToLogin = { navHost.navigate("login") }
+                        )
+                    }
+
+                    composable(
+                        route = "login"
+                    ) {
+                        LoginScreen(
+                            onNavigateToRegister = { navHost.navigate("register") },
+                            onLoginSuccess = { navHost.popBackStack("account", inclusive = false) }
+                        )
+                    }
+
+                    composable(
+                        route = "register"
+                    ) {
+                        RegisterScreen(
+                            onNavigateToLogin = { navHost.navigate("login") },
+                            onRegisterSuccess = { navHost.popBackStack("account", inclusive = false) }
+                        )
                     }
                 }
 
@@ -252,6 +290,7 @@ class MainActivity : ComponentActivity() {
 //            }
 
 
+            }
         }
     }
 }
@@ -366,6 +405,19 @@ private fun navigationSuiteItems(
         icon = {
             Icon(
                 imageVector = AppDestinations.FAVORITES.icon, contentDescription = "TAG"
+            )
+        },
+    )
+
+    item(
+        selected = currentDestination?.hierarchy?.any { it.route == "account" } == true,
+        onClick = {
+            navigateWithBackStackHandling("account", navHost)
+        },
+        label = { Text("#ACCOUNT") },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Person, contentDescription = "ACCOUNT"
             )
         },
     )
