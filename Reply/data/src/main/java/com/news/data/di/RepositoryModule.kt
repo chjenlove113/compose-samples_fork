@@ -1,5 +1,6 @@
 package com.news.data.di
 
+import com.news.data.api.AppUserSiteService
 import com.news.data.api.AuthService
 import com.news.data.api.NewsDetailService
 import com.news.data.api.NewsSiteService
@@ -7,12 +8,14 @@ import com.news.data.api.NewsTagService
 import com.news.data.api.ShowHomeService
 import com.news.data.local.AppDatabase
 import com.news.data.local.IAppDbService
+import com.news.data.repository.AppUserSiteRepositoryImpl
 import com.news.data.repository.AuthRepositoryImpl
 import com.news.data.repository.NewsDetailRepositoryImpl
 import com.news.data.repository.NewsSiteRepository
 import com.news.data.repository.NewsTagRepository
 import com.news.data.repository.ShowHomeRepository
 import com.news.data.repository.SettingsRepositoryImpl
+import com.news.domain.repository.IAppUserSiteRepository
 import com.news.domain.repository.IAuthRepository
 import com.news.domain.repository.INewsDetailRepository
 import com.news.domain.repository.INewsSiteRepository
@@ -72,5 +75,11 @@ class RepositoryModule {
     @Singleton
     fun provideSettingsRepository(settingsRepositoryImpl: SettingsRepositoryImpl): ISettingsRepository {
         return settingsRepositoryImpl
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppUserSiteRepository(appUserSiteService: AppUserSiteService): IAppUserSiteRepository {
+        return AppUserSiteRepositoryImpl(appUserSiteService)
     }
 }

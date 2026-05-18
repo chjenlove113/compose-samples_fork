@@ -73,6 +73,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.news.domain.models.News
 import com.news.presentation.account.AccountInfoScreen
+import com.news.presentation.account.AppUserSiteScreen
 import com.news.presentation.account.LoginScreen
 import com.news.presentation.account.RegisterScreen
 import com.news.presentation.base.BottomNavigationBar
@@ -182,6 +183,12 @@ class MainActivity : ComponentActivity() {
                         AccountInfoScreen(
                             onNavigateToLogin = { navHost.navigate("login") }
                         )
+                    }
+
+                    composable(
+                        route = "user_sites"
+                    ) {
+                        AppUserSiteScreen()
                     }
 
                     composable(
@@ -405,6 +412,19 @@ private fun navigationSuiteItems(
         icon = {
             Icon(
                 imageVector = AppDestinations.FAVORITES.icon, contentDescription = "TAG"
+            )
+        },
+    )
+
+    item(
+        selected = currentDestination?.hierarchy?.any { it.route == "user_sites" } == true,
+        onClick = {
+            navigateWithBackStackHandling("user_sites", navHost)
+        },
+        label = { Text("#SITES") },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Menu, contentDescription = "SITES"
             )
         },
     )

@@ -19,7 +19,12 @@ data class AuthError(
 
 data class LoginRequest(
     val Username: String,
-    val Password: String
+    val Password: String,
+    val Email: String = "",
+    val Provider: String = "",
+    val IdToken: String = "",
+    val RemoteIpAddress: String = "",
+    val Externalauth: Boolean = false
 )
 
 data class LoginResponse(
@@ -28,5 +33,17 @@ data class LoginResponse(
     val Username: String?,
     val IsLockedOut: Boolean,
     val IsNotAllowed: Boolean,
-    val RequiresTwoFactor: Boolean
+    val RequiresTwoFactor: Boolean,
+
+    val AccessToken: AccessToken,
+    val RefreshToken:String,
+    val Errors: List<AuthError>,
+    val IdentityId:String,
+    val Email:String,
+    val Private_Code: String
+)
+
+data class AccessToken(
+    val Token:String,
+    val  ExpiresIn : Int
 )

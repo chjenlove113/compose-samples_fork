@@ -1,6 +1,7 @@
 package com.news.data.di
 
 import android.content.Context
+import com.news.data.api.AppUserSiteService
 import com.news.data.api.AuthService
 import com.news.data.api.NewsDetailService
 import com.news.data.api.NewsTagService
@@ -106,5 +107,11 @@ class NetworkModule {
     @Singleton
     fun provideAuthService(retrofit: Retrofit): AuthService {
         return retrofit.create(AuthService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppUserSiteService(retrofit: Retrofit): AppUserSiteService {
+        return retrofit.create(AppUserSiteService::class.java)
     }
 }
