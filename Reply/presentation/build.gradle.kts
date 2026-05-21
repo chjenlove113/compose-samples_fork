@@ -12,6 +12,7 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
+        applicationId = "com.news.presentation.main"
         minSdk = 23
         targetSdk = 33
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -50,6 +51,11 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.material3)
     implementation(libs.material)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.facebook.login)
+    implementation(libs.androidx.browser)
     implementation(libs.androidx.lifecycle.viewmodel.android)
     implementation(libs.androidx.compose.adaptive.navigation)
     testImplementation(libs.junit)

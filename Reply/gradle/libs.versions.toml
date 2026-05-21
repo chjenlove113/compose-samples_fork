@@ -24,7 +24,10 @@ androidx-test-ext-truth = "1.6.0"
 androidx-tv-foundation = "1.0.0-alpha11"
 androidx-tv-material = "1.0.0"
 androidx-wear-compose = "1.4.1"
+androidx-credentials = "1.3.0"
 androidx-window = "1.3.0"
+facebook = "17.0.2"
+browser = "1.8.0"
 androidxHiltNavigationCompose = "1.2.0"
 androix-test-uiautomator = "2.3.0"
 coil = "2.7.0"
@@ -33,6 +36,7 @@ datastore = "1.1.2"
 compileSdk = "36"
 coroutines = "1.10.1"
 google-maps = "18.2.0"
+googleid = "1.1.1"
 gradle-versions = "0.52.0"
 hilt = "2.57.1"
 hiltExt = "1.2.0"
@@ -103,6 +107,8 @@ androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling
 androidx-compose-ui-util = { module = "androidx.compose.ui:ui-util" }
 androidx-compose-ui-viewbinding = { module = "androidx.compose.ui:ui-viewbinding" }
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "androidx-constraintlayout" }
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidx-credentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidx-credentials" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-corektx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidx-core-splashscreen" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
@@ -144,6 +150,9 @@ core-jdk-desugaring = { module = "com.android.tools:desugar_jdk_libs", version.r
 dagger-hiltandroidplugin = { module = "com.google.dagger:hilt-android-gradle-plugin", version.ref = "hilt" }
 googlemaps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "maps-compose" }
 googlemaps-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "google-maps" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
+facebook-login = { module = "com.facebook.android:facebook-login", version.ref = "facebook" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-android-testing = { module = "com.google.dagger:hilt-android-testing", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }

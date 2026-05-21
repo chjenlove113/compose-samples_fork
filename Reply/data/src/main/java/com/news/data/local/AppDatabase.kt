@@ -13,7 +13,7 @@ import com.news.data.local.entities.News
 import com.news.data.local.entities.News_Site
 import com.news.data.local.entities.News_Tag
 
-@Database(entities = [News_Tag::class, News_Site::class, News::class, AuthEntity::class], version = 3)
+@Database(entities = [News_Tag::class, News_Site::class, News::class, AuthEntity::class], version = 4)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun newsTagDao(): NewsTagDao

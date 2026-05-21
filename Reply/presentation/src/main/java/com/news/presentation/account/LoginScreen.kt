@@ -17,13 +17,71 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.news.domain.models.LoginRequest
 import com.news.domain.models.RegisterRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.launch
+import androidx.credentials.exceptions.GetCredentialException
+import com.facebook.CallbackManager
+import com.facebook.FacebookCallback
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.facebook.login.LoginResult
+import com.facebook.login.LoginManager
+import com.facebook.FacebookException
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 
 @Composable
 fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
+    githubCode: String? = null,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val credentialManager = CredentialManager.create(context)
+    val callbackManager = remember { CallbackManager.Factory.create() }
+
+    LaunchedEffect(githubCode) {
+        if (githubCode != null) {
+            viewModel.socialLogin(
+                provider = "GitHub",
+                idToken = githubCode,
+                email = "",
+                username = "GitHub User"
+            )
+        }
+    }
+
+    val facebookLauncher = rememberLauncherForActivityResult(
+        contract = LoginManager.getInstance().createLogInActivityResultContract(callbackManager),
+        onResult = {}
+    )
+
+    DisposableEffect(Unit) {
+        LoginManager.getInstance().registerCallback(callbackManager, object : FacebookCallback<LoginResult> {
+            override fun onSuccess(result: LoginResult) {
+                viewModel.socialLogin(
+                    provider = "Facebook",
+                    idToken = result.accessToken.token,
+                    email = "", // You might need Graph API for email
+                    username = "Facebook User"
+                )
+            }
+            override fun onCancel() {}
+            override fun onError(error: FacebookException) {}
+        })
+        onDispose {
+            LoginManager.getInstance().unregisterCallback(callbackManager)
+        }
+    }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -86,6 +144,72 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = it, color = MaterialTheme.colorScheme.error)
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        Text(text = "Or login with", style = MaterialTheme.typography.bodyMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            OutlinedButton(
+                onClick = {
+                    val googleIdOption = GetGoogleIdOption.Builder()
+                        .setFilterByAuthorizedAccounts(false)
+                        .setServerClientId("760271124450-021s80ip4isqho9svsb5924ilookcv93.apps.googleusercontent.com")
+                        .setAutoSelectEnabled(true)
+                        .build()
+
+                    val request = GetCredentialRequest.Builder()
+                        .addCredentialOption(googleIdOption)
+                        .build()
+
+                    scope.launch {
+                        try {
+                            val result = credentialManager.getCredential(
+                                context = context,
+                                request = request
+                            )
+                            val credential = result.credential
+                            if (credential is GoogleIdTokenCredential) {
+                                viewModel.socialLogin(
+                                    provider = "Google",
+                                    idToken = credential.idToken,
+                                    email = credential.id ?: "",
+                                    username = credential.displayName ?: "Google User"
+                                )
+                            }
+                        } catch (e: GetCredentialException) {
+                            // Handle error
+                        }
+                    }
+                }
+            ) {
+                Text("Google")
+            }
+            OutlinedButton(
+                onClick = {
+                    facebookLauncher.launch(listOf("email", "public_profile"))
+                }
+            ) {
+                Text("Facebook")
+            }
+            OutlinedButton(
+                onClick = {
+                    val clientId = "YOUR_GITHUB_CLIENT_ID"
+                    val redirectUri = "reply://github-auth"
+                    val url = "https://github.com/login/oauth/authorize?client_id=$clientId&scope=user:email&redirect_uri=$redirectUri"
+                    val customTabsIntent = CustomTabsIntent.Builder().build()
+                    customTabsIntent.launchUrl(context, Uri.parse(url))
+                }
+            ) {
+                Text("GitHub")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(onClick = onNavigateToRegister) {
             Text("Don't have an account? Register")

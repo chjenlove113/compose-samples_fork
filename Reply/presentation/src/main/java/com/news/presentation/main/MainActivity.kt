@@ -46,6 +46,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
 import com.news.presentation.base.NewsShoHomeNavigation
 import com.news.presentation.base.NewsTagNavigation
 import com.news.presentation.base.TopLevelRoute
@@ -192,11 +193,16 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(
-                        route = "login"
-                    ) {
+                        route = "login",
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = "reply://github-auth?code={code}" }
+                        )
+                    ) { backStackEntry ->
+                        val githubCode = backStackEntry.arguments?.getString("code")
                         LoginScreen(
                             onNavigateToRegister = { navHost.navigate("register") },
-                            onLoginSuccess = { navHost.popBackStack("account", inclusive = false) }
+                            onLoginSuccess = { navHost.popBackStack("account", inclusive = false) },
+                            githubCode = githubCode
                         )
                     }
 

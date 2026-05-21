@@ -33,11 +33,39 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val response = loginUseCase(request)
-                if (response.Result) {
+                // Ensure Externalauth is false for username/password login
+                val loginRequest = request.copy(Externalauth = false)
+                val response = loginUseCase(loginRequest)
+                if (response.Errors.isEmpty()) {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 } else {
-                    _uiState.update { it.copy(isLoading = false, error = "Login failed") }
+                    val errorMsg = response.Errors.firstOrNull()?.Description ?: "Login failed"
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Unknown error") }
+            }
+        }
+    }
+
+    fun socialLogin(provider: String, idToken: String, email: String, username: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val request = LoginRequest(
+                    Username = username,
+                    Password = "", // Password not needed for social login
+                    Email = email,
+                    Provider = provider,
+                    IdToken = idToken,
+                    Externalauth = true
+                )
+                val response = loginUseCase(request)
+                if (response.Errors.isEmpty()) {
+                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+                } else {
+                    val errorMsg = response.Errors.firstOrNull()?.Description ?: "Social login failed"
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Unknown error") }

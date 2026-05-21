@@ -36,4 +36,6 @@
     <string name="search_emails">Search emails</string>
     <string name="no_item_found">No item found</string>
     <string name="no_search_history">No search history</string>
+    <string name="facebook_app_id">1217019803774262</string>
+    <string name="facebook_client_token">4b3b0bb3503ded6150cb88f6c301365f</string>
 </resources>

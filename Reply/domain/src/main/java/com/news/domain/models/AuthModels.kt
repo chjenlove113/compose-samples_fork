@@ -28,12 +28,7 @@ data class LoginRequest(
 )
 
 data class LoginResponse(
-    val Result: Boolean,
-    val Token: String?,
-    val Username: String?,
-    val IsLockedOut: Boolean,
-    val IsNotAllowed: Boolean,
-    val RequiresTwoFactor: Boolean,
+    val Username: String,
 
     val AccessToken: AccessToken,
     val RefreshToken:String,

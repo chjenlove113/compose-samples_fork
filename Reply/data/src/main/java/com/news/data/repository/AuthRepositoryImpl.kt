@@ -3,6 +3,7 @@ package com.news.data.repository
 import com.news.data.api.AuthService
 import com.news.data.local.AppDatabase
 import com.news.data.local.entities.AuthEntity
+import com.news.domain.models.AccessToken
 import com.news.domain.models.LoginRequest
 import com.news.domain.models.LoginResponse
 import com.news.domain.models.RegisterRequest
@@ -22,12 +23,13 @@ class AuthRepositoryImpl @Inject constructor(
         return appDatabase.authDao().getAuthInfo().map { entity ->
             entity?.let {
                 LoginResponse(
-                    Result = true,
-                    Token = it.Token,
                     Username = it.Username,
-                    IsLockedOut = it.IsLockedOut,
-                    IsNotAllowed = it.IsNotAllowed,
-                    RequiresTwoFactor = it.RequiresTwoFactor
+                    AccessToken = AccessToken(it.Token, it.ExpiresIn),
+                    RefreshToken = it.RefreshToken,
+                    Errors = emptyList(),
+                    IdentityId = it.IdentityId,
+                    Email = it.Email,
+                    Private_Code = ""
                 )
             }
         }
@@ -40,23 +42,21 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun register(request: RegisterRequest): RegisterResponse {
         val response = authService.register(request)
         if (response.Errors.isEmpty()) {
-            // If registration successful, automatically login
-            val loginResponse = login(LoginRequest(request.UserName, request.Password))
-            // We can return the register response as requested, 
-            // but the login response is handled internally to store data.
+            login(LoginRequest(request.UserName, request.Password))
         }
         return response
     }
 
     override suspend fun login(request: LoginRequest): LoginResponse {
         val response = authService.login(request)
-        if (response.Result && response.Token != null) {
+        if (response.Errors.isEmpty()) {
             val authEntity = AuthEntity(
-                Username = response.Username ?: request.Username,
-                Token = response.Token,
-                IsLockedOut = response.IsLockedOut,
-                IsNotAllowed = response.IsNotAllowed,
-                RequiresTwoFactor = response.RequiresTwoFactor
+                IdentityId = response.IdentityId,
+                Token = response.AccessToken.Token,
+                ExpiresIn = response.AccessToken.ExpiresIn,
+                Email = response.Email,
+                RefreshToken = response.RefreshToken,
+                Username = response.Username
             )
             appDatabase.authDao().insertAuth(authEntity)
         }

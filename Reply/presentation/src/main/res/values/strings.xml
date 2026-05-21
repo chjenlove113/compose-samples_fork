@@ -17,5 +17,6 @@
     <string name="offline_topheadlines">Offline</string>
     <string name="paging_topheadlines">Paging</string>
 
-
+    <string name="facebook_app_id">1217019803774262</string>
+    <string name="facebook_client_token">4b3b0bb3503ded6150cb88f6c301365f</string>
 </resources>
