@@ -66,11 +66,13 @@ fun AccountInfoScreen(
             onCheckedChange = { viewModel.toggleNightMode(it) }
         )
         
-        SettingItem(
-            icon = Icons.AutoMirrored.Filled.Logout, 
-            title = "Log Out", 
-            onClick = { viewModel.logout() }
-        )
+        if (authInfo != null) {
+            SettingItem(
+                icon = Icons.AutoMirrored.Filled.Logout,
+                title = "Log Out",
+                onClick = { viewModel.logout() }
+            )
+        }
     }
 }
 

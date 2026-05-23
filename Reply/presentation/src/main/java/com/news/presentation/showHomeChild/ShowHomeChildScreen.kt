@@ -1,10 +1,12 @@
 package com.news.presentation.showHomeChild
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ScrollableTabRow
@@ -127,25 +129,36 @@ fun ShowHomeChildScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ExploreContentChild(
     allEventCategories: ShowHomeDataModel,
     onNewsClick: (News) -> Unit,
     appSite: String
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        AutoAdvancePager(
-            pageItems = allEventCategories.CategoryViewModel.LstNewsHeader ?: emptyList(),
-            onEventClickNewsItem = onNewsClick,
-            modifier = Modifier.fillMaxWidth().height(250.dp)
-        )
+    val itemsListHeader = allEventCategories.CategoryViewModel.LstNewsHeader
+    val appSiteCateByGroup = allEventCategories.CategoryViewModel.AppSiteCateByGroup
 
-        Box(modifier = Modifier.weight(1f)) {
-            DynamicTabLayoutScreen(
-                appSiteCateByGroup = allEventCategories.CategoryViewModel.AppSiteCateByGroup,
-                appSite = appSite,
-                onNewsClick = onNewsClick
-            )
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+//        item {
+//            AutoAdvancePager(
+//                pageItems = itemsListHeader ?: emptyList(),
+//                onEventClickNewsItem = onNewsClick,
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(250.dp)
+//            )
+//        }
+
+        item {
+            Box(modifier = Modifier.fillParentMaxSize()) {
+                DynamicTabLayoutScreen(
+                    appSiteCateByGroup = appSiteCateByGroup,
+                    appSite = appSite,
+                    onNewsClick = onNewsClick,
+                    itemsListHeader = itemsListHeader
+                )
+            }
         }
     }
 }
@@ -154,56 +167,76 @@ fun ExploreContentChild(
 fun DynamicTabLayoutScreen(
     appSiteCateByGroup: ArrayList<AppSiteCateByGroup>?,
     appSite: String,
-    onNewsClick: (News) -> Unit
+    onNewsClick: (News) -> Unit,
+    itemsListHeader: List<News>?
 ) {
     val tabDefinitions = remember(appSiteCateByGroup) {
         val list = mutableListOf<Triple<String, String, String>>() // Name, Slug, Key
         if ((appSiteCateByGroup?.size ?: 0) > 1) {
             list.add(Triple("All_" + appSite, "", ""))
         }
-        appSiteCateByGroup?.forEach {
-            list.add(Triple(it.Name, it.Slug, it.Key))
+        // neu appSite là All thì không cần load cate
+        if(appSite != ""){
+            appSiteCateByGroup?.forEach {
+                list.add(Triple(it.Name, it.Slug, it.Key))
+            }
         }
+
         list
     }
 
     if (tabDefinitions.isEmpty()) return
 
-    val pagerState = rememberPagerState(pageCount = { tabDefinitions.size })
-    val scope = rememberCoroutineScope()
+    val showTabs = tabDefinitions.size > 1
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
-            tabDefinitions.forEachIndexed { index, tab ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = {
-                        scope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    },
-                    text = { Text(text = tab.first, maxLines = 1) }
+    if (showTabs) {
+        val pagerState = rememberPagerState(pageCount = { tabDefinitions.size })
+        val scope = rememberCoroutineScope()
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
+                tabDefinitions.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                        text = { Text(text = tab.first, maxLines = 1) }
+                    )
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f),
+                key = { index ->
+                    val tabKey = tabDefinitions.getOrNull(index)?.third
+                    if (tabKey.isNullOrEmpty()) "tab_$index" else tabKey
+                }
+            ) { page ->
+                val tabDef = tabDefinitions[page]
+                ShowHomeChildTabPage(
+                    tabName = tabDef.first,
+                    tabSlug = tabDef.second,
+                    tabKey = tabDef.third,
+                    parentAppSite = appSite,
+                    onNewsClick = onNewsClick,
+                    itemsListHeader = itemsListHeader
                 )
             }
         }
-
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f),
-            key = { index ->
-                val tabKey = tabDefinitions.getOrNull(index)?.third
-                if (tabKey.isNullOrEmpty()) "tab_$index" else tabKey
-            }
-        ) { page ->
-            val tabDef = tabDefinitions[page]
-            ShowHomeChildTabPage(
-                tabName = tabDef.first,
-                tabSlug = tabDef.second,
-                tabKey = tabDef.third,
-                parentAppSite = appSite,
-                onNewsClick = onNewsClick
-            )
-        }
+    } else {
+        val tabDef = tabDefinitions[0]
+        ShowHomeChildTabPage(
+            tabName = tabDef.first,
+            tabSlug = tabDef.second,
+            tabKey = tabDef.third,
+            parentAppSite = appSite,
+            onNewsClick = onNewsClick,
+            itemsListHeader = itemsListHeader
+        )
     }
 }
 
@@ -214,6 +247,7 @@ fun ShowHomeChildTabPage(
     tabKey: String,
     parentAppSite: String,
     onNewsClick: (News) -> Unit
+    ,itemsListHeader: List<News>?
 ) {
     val appSiteModel = remember(tabSlug, tabKey, parentAppSite, tabName) {
         ItemDetailSite(
@@ -234,6 +268,6 @@ fun ShowHomeChildTabPage(
         uiState = uiState,
         onRetry = { viewModel.fetchShowHomeChildPaging(1, parentAppSite, tabSlug) },
         onNewsClick = onNewsClick,
-        siteSlug = tabSlug
+        siteSlug = tabSlug, itemsListHeader = itemsListHeader
     )
 }

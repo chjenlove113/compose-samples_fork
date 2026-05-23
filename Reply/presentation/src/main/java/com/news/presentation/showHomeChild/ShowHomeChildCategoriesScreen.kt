@@ -32,13 +32,16 @@ import com.news.presentation.base.NewsItem
 import com.news.presentation.base.ShowError
 import com.news.presentation.base.ShowLoading
 import com.news.presentation.base.UiState
+import com.news.presentation.showHome.AutoAdvancePager
 import com.news.presentation.showHome.ShowHomeChildPagingViewModel
+import kotlin.collections.List
 
 @Composable
 fun ShowHomeChildCateRoute(
     onNewsClick: (News) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ShowHomeChildPagingViewModel = hiltViewModel()
+    ,itemsListHeader: List<News>?
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lazyPagingItems = viewModel.items.collectAsLazyPagingItems()
@@ -53,7 +56,7 @@ fun ShowHomeChildCateRoute(
             )
         },
         onNewsClick = onNewsClick,
-        modifier = modifier
+        modifier = modifier, itemsListHeader = itemsListHeader
     )
 }
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,7 +67,8 @@ fun ShowHomeChildCateScreen(
     onRetry: () -> Unit,
     onNewsClick: (News) -> Unit,
     modifier: Modifier = Modifier,
-    siteSlug: String = ""
+    siteSlug: String = "",
+    itemsListHeader: List<News>?
 ) {
     val listState = rememberLazyListState()
 
@@ -97,6 +101,13 @@ fun ShowHomeChildCateScreen(
                         state = listState,
                         modifier = Modifier.fillMaxSize() // Ensure LazyColumn fills the space to capture gestures
                     ) {
+                        item(key = "header") {
+                            AutoAdvancePager(
+                                pageItems = itemsListHeader ?: emptyList(),
+                                onEventClickNewsItem = onNewsClick,
+                                modifier = Modifier.fillMaxWidth().height(250.dp)
+                            )
+                        }
                         items(
                             count = lazyPagingItems.itemCount,
                             key = lazyPagingItems.itemKey { it.Id }
