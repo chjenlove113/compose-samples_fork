@@ -25,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.news.domain.models.LoginResponse
 import com.news.presentation.R
+import java.util.Locale
 
 @Composable
 fun AccountInfoScreen(
@@ -33,6 +34,7 @@ fun AccountInfoScreen(
 ) {
     val authInfo by viewModel.authInfo.collectAsStateWithLifecycle()
     val nightMode by viewModel.nightMode.collectAsStateWithLifecycle()
+    val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -64,6 +66,13 @@ fun AccountInfoScreen(
             title = "Night Mode", 
             checked = nightMode,
             onCheckedChange = { viewModel.toggleNightMode(it) }
+        )
+
+        SettingSliderItem(
+            icon = Icons.Default.FormatSize,
+            title = "Font Size",
+            value = fontScale,
+            onValueChange = { viewModel.setFontScale(it) }
         )
         
         if (authInfo != null) {
@@ -237,6 +246,54 @@ fun SettingSwitchItem(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+@Composable
+fun SettingSliderItem(
+    icon: ImageVector,
+    title: String,
+    value: Float,
+    onValueChange: (Float) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = Color.Gray
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                fontSize = 16.sp
+            )
+            Text(
+                text = String.format(Locale.getDefault(), "%.1fx", value),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Slider(
+            value = value,
+            onValueChange = { 
+                // Snap to nearest 0.2 step
+                val snappedValue = Math.round(it * 5) / 5.0f
+                onValueChange(snappedValue)
+            },
+            valueRange = 0.6f..1.4f,
+            steps = 3,
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
     }
 }

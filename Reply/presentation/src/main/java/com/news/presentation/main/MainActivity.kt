@@ -122,8 +122,12 @@ class MainActivity : ComponentActivity() {
 //        enableEdgeToEdge()
         setContent {
             val nightMode by mainViewModel.nightMode.collectAsStateWithLifecycle()
+            val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
 
-            ContrastAwareReplyTheme(darkTheme = nightMode) {
+            ContrastAwareReplyTheme(
+                darkTheme = nightMode,
+                fontScale = fontScale
+            ) {
                 val navController = rememberNavController()
             val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
             //val topLevelBackStack = remember { TopLevelBackStack<Any>(Home) }

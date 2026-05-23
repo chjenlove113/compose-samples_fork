@@ -9,7 +9,13 @@ class SettingsRepositoryImpl @Inject constructor(
     private val settingsManager: SettingsManager
 ) : ISettingsRepository {
     override val nightModeFlow: Flow<Boolean> = settingsManager.nightModeFlow
+    override val fontScaleFlow: Flow<Float> = settingsManager.fontScaleFlow
+
     override suspend fun setNightMode(enabled: Boolean) {
         settingsManager.setNightMode(enabled)
+    }
+
+    override suspend fun setFontScale(scale: Float) {
+        settingsManager.setFontScale(scale)
     }
 }

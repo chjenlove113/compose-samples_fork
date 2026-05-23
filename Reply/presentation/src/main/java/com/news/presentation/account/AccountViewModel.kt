@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.news.domain.models.LoginResponse
 import com.news.domain.usecases.GetAuthInfoUseCase
+import com.news.domain.usecases.GetFontScaleUseCase
 import com.news.domain.usecases.GetNightModeUseCase
 import com.news.domain.usecases.LogoutUseCase
+import com.news.domain.usecases.SetFontScaleUseCase
 import com.news.domain.usecases.SetNightModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +21,9 @@ class AccountViewModel @Inject constructor(
     getAuthInfoUseCase: GetAuthInfoUseCase,
     private val logoutUseCase: LogoutUseCase,
     getNightModeUseCase: GetNightModeUseCase,
-    private val setNightModeUseCase: SetNightModeUseCase
+    private val setNightModeUseCase: SetNightModeUseCase,
+    getFontScaleUseCase: GetFontScaleUseCase,
+    private val setFontScaleUseCase: SetFontScaleUseCase
 ) : ViewModel() {
 
     val authInfo: StateFlow<LoginResponse?> = getAuthInfoUseCase()
@@ -36,9 +40,22 @@ class AccountViewModel @Inject constructor(
             initialValue = false
         )
 
+    val fontScale: StateFlow<Float> = getFontScaleUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 1.0f
+        )
+
     fun toggleNightMode(enabled: Boolean) {
         viewModelScope.launch {
             setNightModeUseCase(enabled)
+        }
+    }
+
+    fun setFontScale(scale: Float) {
+        viewModelScope.launch {
+            setFontScaleUseCase(scale)
         }
     }
 

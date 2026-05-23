@@ -3,6 +3,8 @@ package com.news.presentation.theme
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.isUnspecified
 import androidx.compose.ui.unit.sp
 
 
@@ -81,3 +83,35 @@ val replyTypography = Typography(
         letterSpacing = 0.5.sp
     )
 )
+
+fun Typography.scaled(scale: Float): Typography {
+    return Typography(
+        displayLarge = displayLarge.scaled(scale),
+        displayMedium = displayMedium.scaled(scale),
+        displaySmall = displaySmall.scaled(scale),
+        headlineLarge = headlineLarge.scaled(scale),
+        headlineMedium = headlineMedium.scaled(scale),
+        headlineSmall = headlineSmall.scaled(scale),
+        titleLarge = titleLarge.scaled(scale),
+        titleMedium = titleMedium.scaled(scale),
+        titleSmall = titleSmall.scaled(scale),
+        bodyLarge = bodyLarge.scaled(scale),
+        bodyMedium = bodyMedium.scaled(scale),
+        bodySmall = bodySmall.scaled(scale),
+        labelLarge = labelLarge.scaled(scale),
+        labelMedium = labelMedium.scaled(scale),
+        labelSmall = labelSmall.scaled(scale)
+    )
+}
+
+fun TextStyle.scaled(scale: Float): TextStyle {
+    return this.copy(
+        fontSize = fontSize.scaled(scale),
+        lineHeight = lineHeight.scaled(scale),
+        letterSpacing = letterSpacing.scaled(scale)
+    )
+}
+
+fun androidx.compose.ui.unit.TextUnit.scaled(scale: Float): androidx.compose.ui.unit.TextUnit {
+    return if (isUnspecified) this else this * scale
+}

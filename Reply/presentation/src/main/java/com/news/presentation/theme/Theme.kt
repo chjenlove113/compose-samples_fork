@@ -282,6 +282,7 @@ fun ContrastAwareReplyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false,
+    fontScale: Float = 1.0f,
     content: @Composable() () -> Unit
 ) {
     val replyColorScheme = when {
@@ -303,7 +304,7 @@ fun ContrastAwareReplyTheme(
 
     MaterialTheme(
         colorScheme = replyColorScheme,
-        typography = replyTypography,
+        typography = replyTypography.scaled(fontScale),
         shapes = com.news.presentation.theme.shapes,
         content = content
     )
