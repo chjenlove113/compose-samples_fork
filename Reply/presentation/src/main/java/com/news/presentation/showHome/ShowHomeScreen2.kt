@@ -313,6 +313,7 @@ fun ShowHomeScreen2(
                                 onExpand = {
                                     isDetailFullScreen = !isDetailFullScreen
                                 },
+                                showExpandButton = navigator.scaffoldDirective.maxHorizontalPartitions > 1,
                                 onTagClick = { tagSlug ->
                                     scope.launch {
                                         navigator.navigateTo(ListDetailPaneScaffoldRole.Extra, tagSlug)

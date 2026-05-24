@@ -13,6 +13,8 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
@@ -60,6 +62,8 @@ fun ShowHomeChildRoute(
         // Internal navigation for screen3 when called directly from MainActivity
         val backStack = rememberNavBackStack(ItemsList)
         val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
+        val adaptiveInfo = currentWindowAdaptiveInfo()
+        val directive = calculatePaneScaffoldDirective(adaptiveInfo)
         //backup our back stack
         val backStackBackup = rememberNavBackStack()
         NavDisplay(
@@ -91,7 +95,8 @@ fun ShowHomeChildRoute(
                                 backStackBackup.add(it)
                             }
                             backStack.removeAll { it is ItemsList }
-                        }
+                        },
+                        showExpandButton = directive.maxHorizontalPartitions > 1
                     )
                 }
             }

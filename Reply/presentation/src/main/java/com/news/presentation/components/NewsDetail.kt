@@ -75,9 +75,10 @@ import coil3.compose.AsyncImage
 import com.news.domain.models.News
 import com.news.presentation.R
 import com.news.presentation.base.UiState
-import com.news.presentation.base.rememberNavigationState
+import com.news.presentation.main.MainViewModel
 import com.news.presentation.showHome.ItemDetail
 import com.news.presentation.showHome.ItemsList
+import com.news.utils.AppContants
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,59 +87,21 @@ fun NewsDetailScreen(
     news: News,
     onBack: () -> Unit,
     onExpand: () -> Unit,
+    showExpandButton: Boolean = true,
     onTagClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: NewsDetailViewModel = hiltViewModel()
+    viewModel: NewsDetailViewModel = hiltViewModel(),
+    mainViewModel: MainViewModel = hiltViewModel()
 ) {
     val htmlState by viewModel.htmlState.collectAsStateWithLifecycle()
     val tagsState by viewModel.tagsState.collectAsStateWithLifecycle()
     val isSaved by viewModel.isSaved.collectAsStateWithLifecycle()
+    val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val density = LocalDensity.current
 
-    // Lưu trữ tham chiếu WebView để gọi JS sau này
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
-
-    // Optimize M3 config by remembering it
+    // Optimize M3 colors
     val colorScheme = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
-    val m3Config = remember(colorScheme) {
-        """
-        {
-            "colorPrimary": "#${Integer.toHexString(colorScheme.primary.toArgb()).substring(2)}",
-            "colorSurface": "#${Integer.toHexString(colorScheme.surfaceVariant.toArgb()).substring(2)}",
-            "fontSizeScale": 2
-        }
-        """.trimIndent()
-    }
-
-    // Tạo đối tượng config chứa màu sắc từ Material 3
-    val configJson = remember(colorScheme, isDark) {
-        """
-        {
-            "colorBg": "${colorScheme.background.toHtmlHex()}",
-            "colorText": "${colorScheme.onBackground.toHtmlHex()}",
-            "colorSurface": "${colorScheme.surfaceVariant.toHtmlHex()}",
-            "colorPrimary": "${colorScheme.primary.toHtmlHex()}",
-            "darkMode": "${if (isDark) "dark" else "light"}"
-        }
-        """.trimIndent()
-    }
-
-    val fontSizeState = remember { mutableStateOf(30) }
-
-
-    val currentConfig = WebConfig(
-        fontSize = fontSizeState.value,
-        paddingH = 5,
-        paddingV = 5,
-        darkMode = if (isDark) "dark" else "light"
-    )
-
-    // Theo dõi sự thay đổi của config để cập nhật JS tức thì
-    LaunchedEffect(currentConfig) {
-        webViewRef?.evaluateJavascript("setupWebView(${currentConfig.toJson()})", null)
-    }
 
     // Single LaunchedEffect to handle initial data or ID changes
     LaunchedEffect(news.Id) {
@@ -200,9 +163,13 @@ fun NewsDetailScreen(
                     }) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
                     }
-                    IconButton(onClick = onExpand) {
-                        Icon(imageVector = ImageVector.vectorResource(id = R.drawable.open_in_full_24px), contentDescription = "Expand",
-                        )
+                    if (showExpandButton) {
+                        IconButton(onClick = onExpand) {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(id = R.drawable.open_in_full_24px),
+                                contentDescription = "Expand",
+                            )
+                        }
                     }
                     IconButton(onClick = { expanded = !expanded }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "More options")
@@ -286,36 +253,36 @@ fun NewsDetailScreen(
                 when (val state = tagsState) {
                     is UiState.Success -> {
                         val data = state.data as List<*>?
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            data?.forEach { tagItem ->
-                                val tag = tagItem as? com.news.domain.models.NewsTag
-                                if (tag != null) {
-                                    AssistChip(
-                                        onClick = { onTagClick(tag.Slug) },
-                                        label = { Text(tag.Title) }
-                                    )
+                        if(data != null && data.size > 0){
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                data?.forEach { tagItem ->
+                                    val tag = tagItem as? com.news.domain.models.NewsTag
+                                    if (tag != null) {
+                                        AssistChip(
+                                            onClick = { onTagClick(tag.Slug) },
+                                            label = { Text(tag.Title) }
+                                        )
+                                    }
                                 }
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                     else -> {}
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 news.ShortDes?.let { description ->
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodyLarge
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
 
                 // Handle htmlState more efficiently
                 when (val state = htmlState) {
@@ -330,56 +297,44 @@ fun NewsDetailScreen(
                         }
                     }
                     is UiState.Success -> {
+                        val processedHtml = remember(state.data, colorScheme, isDark, fontScale) {
+                            try {
+                                val baseFontSize = 18 // Base size in px
+                                val scaledFontSize = (baseFontSize * fontScale).toInt()
+                                
+                                context.assets.open("news_template_v0.html").bufferedReader().use { it.readText() }
+                                    .replace("#BG_COLOR", colorScheme.background.toHtmlHex().substring(1))
+                                    .replace("#TEXT_PRIMARY", colorScheme.onBackground.toHtmlHex().substring(1))
+                                    .replace("#TEXT_SECONDARY", colorScheme.onSurfaceVariant.toHtmlHex().substring(1))
+                                    .replace("#SURFACE", colorScheme.surfaceVariant.toHtmlHex().substring(1))
+                                    .replace("#PRIMARY", colorScheme.primary.toHtmlHex().substring(1))
+                                    .replace("#FONT_SIZE", scaledFontSize.toString())
+                                    .replace("#PADDING_H", "8")
+                                    .replace("#PADDING_V", "8")
+                                    .replace("#CONTENT", state.data)
+                            } catch (e: Exception) {
+                                Log.e("NewsDetail", "Error loading template", e)
+                                state.data
+                            }
+                        }
+
                         AndroidView(
                             factory = { context ->
                                 WebView(context).apply {
-                                    webViewClient = object : WebViewClient() {
-                                        override fun onPageFinished(view: WebView?, url: String?) {
-                                            super.onPageFinished(view, url)
-
-                                            // Gọi setup lần đầu ngay khi trang load xong
-                                            view?.evaluateJavascript("setupWebView(${currentConfig.toJson()})", null)
-
-                                            // Gọi setup lần đầu ngay khi trang load xong
-                                            //view?.evaluateJavascript("setupM3Expressive(${m3Config})", null)
-                                            view?.evaluateJavascript("updateM3Colors(${configJson})", null)
-
-                                            // Inject styling
-                                            view?.evaluateJavascript(
-                                                "(function() { document.documentElement.style.setProperty('--m3-background', '#fef7ff');document.documentElement.style.backgroundColor = '#fef7ff'; })();",
-                                                null
-                                            )
-                                        }
-
-                                        override fun onPageStarted(
-                                            view: WebView?,
-                                            url: String?,
-                                            favicon: Bitmap?
-                                        ) {
-
-                                            super.onPageStarted(view, url, favicon)
-
-                                        }
-
-
-                                    }
-
-                                    webViewRef = this
+                                    webViewClient = WebViewClient()
 
                                     settings.apply {
                                         javaScriptEnabled = true
                                         domStorageEnabled = true
                                         loadWithOverviewMode = true
                                         useWideViewPort = true
-                                        // Performance optimizations
                                         setLayerType(View.LAYER_TYPE_HARDWARE, null)
                                     }
                                     isVerticalScrollBarEnabled = false
                                     isHorizontalScrollBarEnabled = false
                                     overScrollMode = View.OVER_SCROLL_NEVER
-                                    setBackgroundColor(0) // Avoid white flash
+                                    setBackgroundColor(0)
 
-                                    // Fix: Disable internal scrolling to prevent conflict with parent verticalScroll
                                     isNestedScrollingEnabled = false
                                     isFocusable = false
                                     isFocusableInTouchMode = false
@@ -391,10 +346,9 @@ fun NewsDetailScreen(
                                 }
                             },
                             update = { webView ->
-                                // Only load if data actually changed
-                                if (webView.tag != state.data) {
-                                    webView.loadDataWithBaseURL("http://192.168.10.200:9002/", state.data, "text/html", "UTF-8", null)
-                                    webView.tag = state.data
+                                if (webView.tag != processedHtml) {
+                                    webView.loadDataWithBaseURL(AppContants.baseUrlUI, processedHtml, "text/html", "UTF-8", null)
+                                    webView.tag = processedHtml
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -447,22 +401,4 @@ fun NewsDetailScreen(
 
 private fun Color.toHtmlHex(): String {
     return String.format("#%06X", (0xFFFFFF and this.toArgb()))
-}
-
-data class WebConfig(
-    val fontSize: Int,
-    val paddingH: Int,
-    val paddingV: Int,
-    val darkMode: String // "dark", "light", hoặc "auto"
-) {
-    fun toJson(): String {
-        return """
-            {
-                "fontSize": $fontSize,
-                "paddingH": $paddingH,
-                "paddingV": $paddingV,
-                "darkMode": "$darkMode"
-            }
-        """.trimIndent()
-    }
 }

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        :root {
+            --bg-color: ##BG_COLOR;
+            --text-primary: ##TEXT_PRIMARY;
+            --text-secondary: ##TEXT_SECONDARY;
+            --surface: ##SURFACE;
+            --primary: ##PRIMARY;
+            --base-font-size: #FONT_SIZEpx;
+            --padding-h: #PADDING_Hpx;
+            --padding-v: #PADDING_Vpx;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: var(--padding-v) var(--padding-h);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Roboto', sans-serif, -apple-system;
+            font-size: var(--base-font-size);
+            line-height: 1.6;
+            word-wrap: break-word;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .content-card {
+            width: 100%;
+        }
+
+        /* News Title styling if present in content */
+        h1, .news-title {
+            font-size: 1.6em;
+            font-weight: 800;
+            line-height: 1.25;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Responsive media */
+        img, video {
+            max-width: 100% !important;
+            height: auto !important;
+            display: block;
+            margin: 24px auto;
+            border-radius: 16px;
+            object-fit: cover;
+        }
+
+        /* M3 Style Blockquotes */
+        blockquote {
+            background-color: var(--surface);
+            margin: 24px 0;
+            padding: 16px 24px;
+            border-radius: 0 16px 16px 0;
+            border-left: 6px solid var(--primary);
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+
+        /* Links */
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* Pager/Spacing */
+        p { margin-bottom: 1.2em; }
+
+        iframe {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: none;
+            border-radius: 12px;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <main class="content-card">
+        #CONTENT
+    </main>
+    <script>
+        // Lazy load images
+        document.addEventListener("DOMContentLoaded", function() {
+            var lazyImages = [].slice.call(document.querySelectorAll("img"));
+            if ("IntersectionObserver" in window) {
+                let lazyImageObserver = new IntersectionObserver(function(entries, observer) {
+                    entries.forEach(function(entry) {
+                        if (entry.isIntersecting) {
+                            let lazyImage = entry.target;
+                            if(lazyImage.dataset.src) lazyImage.src = lazyImage.dataset.src;
+                            lazyImageObserver.unobserve(lazyImage);
+                        }
+                    });
+                });
+                lazyImages.forEach(function(lazyImage) {
+                    lazyImageObserver.observe(lazyImage);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
