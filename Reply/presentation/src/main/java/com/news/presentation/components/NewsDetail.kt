@@ -393,7 +393,7 @@ fun NewsDetailScreen(
                             update = { webView ->
                                 // Only load if data actually changed
                                 if (webView.tag != state.data) {
-                                    webView.loadDataWithBaseURL(null, state.data, "text/html", "UTF-8", null)
+                                    webView.loadDataWithBaseURL("http://192.168.10.200:9002/", state.data, "text/html", "UTF-8", null)
                                     webView.tag = state.data
                                 }
                             },

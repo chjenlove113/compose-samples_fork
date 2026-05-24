@@ -21,6 +21,7 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
     private object PreferencesKeys {
         val NIGHT_MODE = booleanPreferencesKey("night_mode")
         val FONT_SCALE = floatPreferencesKey("font_scale")
+        val VIEW_MODE = androidx.datastore.preferences.core.stringPreferencesKey("view_mode")
     }
 
     val nightModeFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -29,6 +30,10 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
 
     val fontScaleFlow: Flow<Float> = dataStore.data.map { preferences ->
         preferences[PreferencesKeys.FONT_SCALE] ?: 1.0f
+    }
+
+    val viewModeFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.VIEW_MODE] ?: "list"
     }
 
     suspend fun setNightMode(enabled: Boolean) {
@@ -40,6 +45,12 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
     suspend fun setFontScale(scale: Float) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.FONT_SCALE] = scale
+        }
+    }
+
+    suspend fun setViewMode(mode: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.VIEW_MODE] = mode
         }
     }
 }

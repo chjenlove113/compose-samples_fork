@@ -78,9 +78,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.width
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntryDecorator
 import androidx.navigation3.runtime.NavKey
@@ -121,13 +136,15 @@ fun ShowHomeRoute(
     onSiteNameClicked: (Int) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ShowHomeScreen(uiState, viewModel, onSiteNameClicked)
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
+    ShowHomeScreen(uiState, viewMode, viewModel, onSiteNameClicked)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun ShowHomeScreen(
     uiState: UiState<ShowHomeDataModel>,
+    viewMode: String,
     viewModel: ShowHomeViewModel?,
     onNewsClicked: (Int) -> Unit
 ) {
@@ -150,6 +167,9 @@ fun ShowHomeScreen(
 
             // 2. Manual toggle state for the detail full-screen mode
             var isDetailFullScreen by remember { mutableStateOf(false) }
+
+            // 2.5 Pull to refresh state
+            val isRefreshing = uiState is UiState.Loading && navigator.scaffoldValue.secondary != PaneAdaptedValue.Hidden
 
             val currentDestination = navigator.currentDestination
             val currentSelectedItem = currentDestination?.contentKey
@@ -194,19 +214,25 @@ fun ShowHomeScreen(
                 value = manualValue,
                 listPane = {
                     AnimatedPane {
-                        ExploreContent(uiState.data
-                            , {
-                                scope.launch {
-                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, it)
-
-                                }
-                            }
-                            ,{}
-                            ,onNewsClicked)
-//                        ListContent(onItemClick = { id ->
-//                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, id)
-//
-//                        })
+                        PullToRefreshBox(
+                            isRefreshing = uiState is UiState.Loading,
+                            onRefresh = { viewModel?.fetchShowHome() },
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            ExploreContent(
+                                uiState.data,
+                                viewMode = viewMode,
+                                selectedNews = currentSelectedItem as? News,
+                                onViewModeChange = { viewModel?.setViewMode(it) },
+                                onEventClick = {
+                                    scope.launch {
+                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, it)
+                                    }
+                                },
+                                onEventClickSiteName = {},
+                                onNewsClicked = onNewsClicked
+                            )
+                        }
                     }
                 },
                 detailPane = {
@@ -382,53 +408,329 @@ fun CategoryHeader(x0: ArrayList<AppSiteCateByGroup>?) {
     TODO("Not yet implemented")
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ExploreContent(allEventCategories: ShowHomeDataModel, onEventClick: (News) -> Unit, onEventClickSiteName: (AppSite) -> Unit,onNewsClicked: (Int) -> Unit) {
-    LazyColumn(Modifier.fillMaxSize()) {
+fun ExploreContent(
+    allEventCategories: ShowHomeDataModel,
+    viewMode: String,
+    selectedNews: News? = null,
+    onViewModeChange: (String) -> Unit,
+    onEventClick: (News) -> Unit,
+    onEventClickSiteName: (AppSite) -> Unit,
+    onNewsClicked: (Int) -> Unit
+) {
+    LazyColumn(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         item {
-            AutoAdvancePager(
-                allEventCategories.LstNewsHeader ?: emptyList(), 
-                onEventClickNewsItem = onEventClick,
-                modifier = Modifier.fillMaxWidth().height(300.dp)
-            )
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Featured posts",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(bottom = 16.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                
+                AutoAdvancePager(
+                    allEventCategories.LstNewsHeader ?: emptyList(),
+                    onEventClickNewsItem = onEventClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(280.dp)
+                )
+            }
         }
-        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { (catId, catName, zz, yy,catSlug,catKey) ->
-            EventItem(catId, catName, catSlug,yy ?: emptyList(), onEventClick,onEventClickSiteName, onNewsClicked)
+
+        stickyHeader {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Latest posts",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { onViewModeChange("grid") },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = if (viewMode == "grid") MaterialTheme.colorScheme.primary else Color.Transparent,
+                            contentColor = if (viewMode == "grid") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.outline
+                        ),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.GridView, contentDescription = "Grid View", modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = { onViewModeChange("list") },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = if (viewMode == "list") MaterialTheme.colorScheme.primary else Color.Transparent,
+                            contentColor = if (viewMode == "list") MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.outline
+                        ),
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = "List View", modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+
+        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { category ->
+            val categoryNews = category.LstNews ?: emptyList()
+            if (categoryNews.isNotEmpty()) {
+                stickyHeader {
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(horizontal = 16.dp)) {
+                        ExploreHeader(category.Id, category.Name, category.Slug, onEventClickSiteName, onNewsClicked)
+                    }
+                }
+
+                if (viewMode == "grid") {
+                    val chunks = categoryNews.chunked(2)
+                    items(chunks.size) { index ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            val rowItems = chunks[index]
+                            rowItems.forEach { news ->
+                                NewsGridItem(
+                                    news = news,
+                                    selected = news.Id == selectedNews?.Id,
+                                    onClick = { onEventClick(news) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            if (rowItems.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                } else {
+                    items(categoryNews.size) { index ->
+                        val news = categoryNews[index]
+                        NewsListItem(
+                            news = news,
+                            selected = news.Id == selectedNews?.Id,
+                            onClick = { onEventClick(news) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
-// LazyListScope Item
-fun LazyListScope.EventItem(
-    catId: Int,
-    catName: String,
-    catSlug: String?,
-    eventList: List<News>,
-    onEventClick: (News) -> Unit,
-    onEventClickSite: (AppSite) -> Unit,
-    onNewsClicked: (Int) -> Unit
+@Composable
+fun NewsListItem(
+    news: News, 
+    selected: Boolean = false,
+    onClick: () -> Unit, 
+    modifier: Modifier = Modifier
 ) {
-    stickyHeader {
-//        ExploreHeader(catName, slug = catSlug ?: "",onEventClickSite)
-        ExploreHeader(catId,catName, slug = catSlug ?: "",onEventClickSite, onNewsClicked)
-    }
-    items(eventList.size) { index ->
-        Card(onClick = { onEventClick(eventList[index]) }) {
-            Column(modifier = Modifier.padding(horizontal = 9.dp)) {
-                ExploreHeaderItem(eventList[index].Title)
-                Spacer(modifier = Modifier.height(8.dp))
+    Card(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+            contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 2.dp),
+        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth()
+        ) {
+            AsyncImage(
+                model = news.Image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(width = 140.dp, height = 90.dp)
+                    .clip(MaterialTheme.shapes.small)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = news.Date ?: "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+//                    Spacer(modifier = Modifier.weight(1f))
+//                    Icon(
+//                        Icons.Outlined.ChatBubbleOutline,
+//                        null,
+//                        Modifier.size(12.dp),
+//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Text(
+//                        " 10",
+//                        style = MaterialTheme.typography.labelSmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Spacer(modifier = Modifier.width(8.dp))
+//                    Icon(
+//                        Icons.Outlined.FavoriteBorder,
+//                        null,
+//                        Modifier.size(12.dp),
+//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Text(
+//                        " 25",
+//                        style = MaterialTheme.typography.labelSmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = news.Title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AsyncImage(
+                        model = news.Icon ?: news.Image,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = news.Source,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
+        }
+    }
+}
 
+@Composable
+fun NewsGridItem(
+    news: News, 
+    selected: Boolean = false,
+    onClick: () -> Unit, 
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+            contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 2.dp),
+        border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+    ) {
+        Column {
+            AsyncImage(
+                model = news.Image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+            )
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = news.Date ?: "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+//                    Spacer(modifier = Modifier.weight(1f))
+//                    Icon(
+//                        Icons.Outlined.ChatBubbleOutline,
+//                        null,
+//                        Modifier.size(10.dp),
+//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Text(
+//                        " 5",
+//                        style = MaterialTheme.typography.labelSmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Spacer(modifier = Modifier.width(4.dp))
+//                    Icon(
+//                        Icons.Outlined.FavoriteBorder,
+//                        null,
+//                        Modifier.size(10.dp),
+//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                    Text(
+//                        " 12",
+//                        style = MaterialTheme.typography.labelSmall,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = news.Title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    minLines = 3
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+//                    AsyncImage(
+//                        model = news.Icon ?: news.Image,
+//                        contentDescription = null,
+//                        modifier = Modifier
+//                            .size(16.dp)
+//                            .clip(CircleShape)
+//                    )
+//                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = news.Source,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 fun ExploreHeader(id:Int,title: String, slug: String = "", onEventClickSiteName: (AppSite) -> Unit,onNewsClicked: (Int) -> Unit) {
-    Text(text = title, modifier = Modifier.padding(9.dp).clickable(){
-        onNewsClicked(id-7)
-        //onEventClickSiteName(AppSite(0,slug,slug,title,"","","",""))
-    })
+    Text(
+        text = title, 
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(vertical = 12.dp).clickable(){
+            onNewsClicked(id-7)
+        }
+    )
 }
 @Composable
 fun ExploreHeaderItem(title: String) {

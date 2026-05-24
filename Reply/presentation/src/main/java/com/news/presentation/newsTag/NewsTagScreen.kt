@@ -3,27 +3,46 @@ package com.news.presentation.newsTag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Scaffold
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
@@ -31,9 +50,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -78,16 +94,13 @@ fun NewsTagRoute(
     })
 }
 
-@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun NewsTagScreen(
     uiState: UiState<List<NewsTag>>,
     viewModel: NewsTagViewModel?,
     onNewsTagClicked: (NewsTag) -> Unit,
-
-    ) {
-
-
+) {
     when (uiState) {
         is UiState.Loading -> {
             ShowLoading()
@@ -101,137 +114,129 @@ fun NewsTagScreen(
         }
 
         is UiState.Success -> {
-            // Manage our back stack
             val backStack = rememberNavBackStack(ItemsList)
-            // Create the ListDetailSceneStrategy
             val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
-            Scaffold { paddingValues ->
+            
+            androidx.compose.material3.Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Explore Tags", style = MaterialTheme.typography.titleLarge) }
+                    )
+                }
+            ) { paddingValues ->
                 NavDisplay(
                     entryDecorators = listOf(
-                        // Add the default decorators for managing scenes and saving state
                         rememberSaveableStateHolderNavEntryDecorator(),
-                        // Then add the view model store decorator
                         rememberViewModelStoreNavEntryDecorator()
                     ),
                     backStack = backStack,
                     modifier = Modifier
                         .padding(paddingValues)
                         .consumeWindowInsets(WindowInsets.statusBars),
-                    // onBack now takes 'count' because the strategy might pop multiple keys
-                    onBack = { backStack.removeLastOrNull()  },
+                    onBack = { backStack.removeLastOrNull() },
                     sceneStrategies = listOf(listDetailStrategy),
 
                     entryProvider = entryProvider {
                         entry<ItemsList>(
-                            // Metadata for the list pane, including a placeholder for the detail pane
                             metadata = ListDetailSceneStrategy.listPane(
                                 detailPlaceholder = {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.Yellow.copy(alpha = 0.4f)),
-                                        verticalArrangement = Arrangement.Center,
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Text("Choose an Item from the List")
+                                        Text(
+                                            "Select a tag to see related news",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
                             )
                         ) {
-
-                            NewsTagList(uiState.data, {backStack.add(ItemDetail(it))})
-
-                        }
-                        entry<ItemDetail>(
-                            // Metadata for the detail pane
-                            metadata = ListDetailSceneStrategy.detailPane()
-                        ) { product ->
-                            val id = product.id
-                            ItemDetailScreen(
-                                x0 = id,
-                                modifier = Modifier.background(Color.Red.copy(alpha = 0.4f))
-                            ) {
-                                backStack.add(ExtraScreen) // Navigate to an extra pane
+                            NewsTagList(uiState.data) { tag ->
+                                // For now, we'll just show the tag info, 
+                                // but we could navigate to a NewsByTag screen here
+                                backStack.add(ItemDetail(tag))
                             }
                         }
-                        entry<ExtraScreen>(
-                            // Metadata for an optional extra pane
-                            metadata = ListDetailSceneStrategy.extraPane()
-                        ) {
-                            ExtraPaneScreen(
-                                modifier = Modifier.background(Color.LightGray)
+                        entry<ItemDetail>(
+                            metadata = ListDetailSceneStrategy.detailPane()
+                        ) { product ->
+                            ItemDetailScreen(
+                                x0 = product.id,
+                                onBack = { backStack.removeLastOrNull() }
                             )
                         }
                     }
                 )
             }
-
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NewsTagList(x0: List<NewsTag>, x1: (NewsTag) -> Unit) {
-    val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-    Scaffold(
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState)
-        }
-    ) { innerPadding ->
-        LazyColumn(contentPadding = PaddingValues(bottom = calculateBottomNavigationBarHeight())) {
-            items(count = x0.size, itemContent = { NewsTagItem(x0[it], x1) })
-        }
-    }
-
-}
-
-@Composable
-fun NewsTagItem(x0: NewsTag, x1: (NewsTag) -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+fun NewsTagList(tags: List<NewsTag>, onTagClick: (NewsTag) -> Unit) {
+    Column(
         modifier = Modifier
-            .size(width = 240.dp, height = 100.dp)
-            .clickable{
-                x1.invoke(x0)
-            }
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         Text(
-            text = x0.Title,
-            modifier = Modifier
-                .padding(16.dp),
-            textAlign = TextAlign.Center,
+            text = "Popular Tags",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(bottom = 16.dp)
         )
+        
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            tags.forEach { tag ->
+                SuggestionChip(
+                    onClick = { onTagClick(tag) },
+                    label = { Text(tag.Title) },
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
+        }
     }
 }
 
 @Composable
 fun ItemDetailScreen(
-    modifier: Modifier = Modifier,
-    title: String = "Detail",
     x0: NewsTag,
-    goToEx: () -> Unit = {}
-){
+    onBack: () -> Unit
+) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .safeDrawingPadding()
-            .clip(RoundedCornerShape(48.dp))
+            .padding(16.dp)
     ) {
-        Text(title)
-        Column(
-            modifier = Modifier
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+        Text(
+            text = x0.Title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Explore more news with this tag.",
+            style = MaterialTheme.typography.bodyLarge
+        )
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Item Detail Id: ${x0.Title}")
-            Button(onClick = goToEx) {
-                Text("Go To Extra Screen")
-            }
+            Text("Back to Tags")
         }
     }
 }
