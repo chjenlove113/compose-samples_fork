@@ -2,11 +2,13 @@ package com.news.presentation.components
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,7 +29,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
@@ -39,10 +43,13 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +72,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -80,6 +88,7 @@ import com.news.presentation.showHome.ItemDetail
 import com.news.presentation.showHome.ItemsList
 import com.news.utils.AppContants
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,6 +132,8 @@ fun NewsDetailScreen(
     //val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
 
     var expanded by remember { mutableStateOf(false) }
+    var showFontScaleSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
 
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
@@ -162,6 +173,21 @@ fun NewsDetailScreen(
                         context.startActivity(Intent.createChooser(shareIntent, "Share news via"))
                     }) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
+                    }
+                    IconButton(onClick = {
+                        news.Link?.let { url ->
+                            try {
+                                val customTabsIntent = CustomTabsIntent.Builder().build()
+                                customTabsIntent.launchUrl(context, Uri.parse(url))
+                            } catch (e: Exception) {
+                                Log.e("NewsDetail", "Error opening link", e)
+                            }
+                        }
+                    }) {
+                        Icon(imageVector = Icons.Default.Language, contentDescription = "Go to Website")
+                    }
+                    IconButton(onClick = { showFontScaleSheet = true }) {
+                        Icon(imageVector = Icons.Default.FormatSize, contentDescription = "Change Font Scale")
                     }
                     if (showExpandButton) {
                         IconButton(onClick = onExpand) {
@@ -215,6 +241,58 @@ fun NewsDetailScreen(
         // 2. Apply modifier to the Scaffold
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
+        if (showFontScaleSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showFontScaleSheet = false },
+                sheetState = sheetState
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp, start = 24.dp, end = 24.dp, top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Font Size",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = String.format(Locale.getDefault(), "%.1fx", fontScale),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Slider(
+                        value = fontScale,
+                        onValueChange = { 
+                            // Snap to nearest 0.2 step
+                            val snappedValue = Math.round(it * 5) / 5.0f
+                            mainViewModel.setFontScale(snappedValue)
+                        },
+                        valueRange = 0.6f..1.4f,
+                        steps = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("A", fontSize = 12.sp)
+                        Text("A", fontSize = 20.sp)
+                    }
+                }
+            }
+        }
         Column(
             modifier = Modifier
                 .padding(paddingValues)

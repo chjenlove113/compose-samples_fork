@@ -286,17 +286,12 @@ fun ShowHomeScreen2(
                             }
                         }
 
-//                    // Synchronize external changes to selectedTabIndex00 with pager
-//                    LaunchedEffect(selectedTabIndex00) {
-//                        if (pagerState.currentPage != selectedTabIndex00) {
-//                            pagerState.animateScrollToPage(selectedTabIndex00)
-//                        }
-//                    }
-//
-//                    // Synchronize pager swipes back to selectedTabIndex00 safely
-//                    LaunchedEffect(pagerState.currentPage) {
-//                        selectedTabIndex00 = pagerState.currentPage
-//                    }
+                        // Synchronize external changes to selectedTabIndex00 with pager
+                        LaunchedEffect(selectedTabIndex00) {
+                            if (pagerState.currentPage != selectedTabIndex00) {
+                                pagerState.animateScrollToPage(selectedTabIndex00)
+                            }
+                        }
                     }
 
                 }, detailPane = {

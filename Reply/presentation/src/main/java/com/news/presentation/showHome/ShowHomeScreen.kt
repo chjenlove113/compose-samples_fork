@@ -79,6 +79,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -490,7 +491,7 @@ fun ExploreContent(
             }
         }
 
-        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { category ->
+        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEachIndexed { index, category ->
             val categoryNews = category.LstNews ?: emptyList()
             if (categoryNews.isNotEmpty()) {
                 stickyHeader {
@@ -498,7 +499,7 @@ fun ExploreContent(
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.background)
                         .padding(horizontal = 16.dp)) {
-                        ExploreHeader(category.Id, category.Name, category.Slug, onEventClickSiteName, onNewsClicked)
+                        ExploreHeader(index + 2, category.Name, category.Slug, onEventClickSiteName, onNewsClicked)
                     }
                 }
 
@@ -723,15 +724,30 @@ fun NewsGridItem(
 
 @Composable
 fun ExploreHeader(id:Int,title: String, slug: String = "", onEventClickSiteName: (AppSite) -> Unit,onNewsClicked: (Int) -> Unit) {
-    Text(
-        text = title, 
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 12.dp).clickable(){
-            onNewsClicked(id-7)
-        }
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.small)
+            .clickable { onNewsClicked(id) }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(
+                textDecoration = TextDecoration.Underline
+            ),
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = "See more",
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+    }
 }
 @Composable
 fun ExploreHeaderItem(title: String) {
