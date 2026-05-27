@@ -29,6 +29,7 @@ import androidx.paging.compose.itemKey
 import com.news.domain.models.News
 import com.news.presentation.R
 import com.news.presentation.base.NewsItem
+import com.news.presentation.base.NewsItemAdv
 import com.news.presentation.base.ShowError
 import com.news.presentation.base.ShowLoading
 import com.news.presentation.base.UiState
@@ -114,10 +115,18 @@ fun ShowHomeChildCateScreen(
                         ) { index ->
                             val news = lazyPagingItems[index]
                             if (news != null) {
-                                NewsItem(
-                                    news = news,
-                                    onNewsClick = onNewsClick
-                                )
+                                if(siteSlug == ""){
+                                    NewsItemAdv(
+                                        news = news,
+                                        onNewsClick = onNewsClick
+                                    )
+                                }else{
+                                    NewsItem(
+                                        news = news,
+                                        onNewsClick = onNewsClick
+                                    )
+                                }
+
                             } else {
                                 Text(
                                     text = stringResource(R.string.loading),
