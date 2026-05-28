@@ -134,11 +134,11 @@ data object ExtraScreen : NavKey
 @Composable
 fun ShowHomeRoute(
     viewModel: ShowHomeViewModel = hiltViewModel(),
-    onSiteNameClicked: (Int) -> Unit
+    onTabSelected: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
-    ShowHomeScreen(uiState, viewMode, viewModel, onSiteNameClicked)
+    ShowHomeScreen(uiState, viewMode, viewModel, onTabSelected)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -147,7 +147,7 @@ fun ShowHomeScreen(
     uiState: UiState<ShowHomeDataModel>,
     viewMode: String,
     viewModel: ShowHomeViewModel?,
-    onNewsClicked: (Int) -> Unit
+    onTabSelected: (String) -> Unit
 ) {
     when (uiState) {
         is UiState.Loading -> {
@@ -231,7 +231,7 @@ fun ShowHomeScreen(
                                     }
                                 },
                                 onEventClickSiteName = {},
-                                onNewsClicked = onNewsClicked
+                                onTabSelected = onTabSelected
                             )
                         }
                     }
@@ -419,7 +419,7 @@ fun ExploreContent(
     onViewModeChange: (String) -> Unit,
     onEventClick: (News) -> Unit,
     onEventClickSiteName: (AppSite) -> Unit,
-    onNewsClicked: (Int) -> Unit
+    onTabSelected: (String) -> Unit
 ) {
     LazyColumn(
         Modifier
@@ -499,7 +499,7 @@ fun ExploreContent(
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.background)
                         .padding(horizontal = 16.dp)) {
-                        ExploreHeader(index + 2, category.Name, category.Slug, onEventClickSiteName, onNewsClicked)
+                        ExploreHeader(category.Key, category.Name, category.Slug, onEventClickSiteName, onTabSelected)
                     }
                 }
 
@@ -723,12 +723,12 @@ fun NewsGridItem(
 }
 
 @Composable
-fun ExploreHeader(id:Int,title: String, slug: String = "", onEventClickSiteName: (AppSite) -> Unit,onNewsClicked: (Int) -> Unit) {
+fun ExploreHeader(key: String, title: String, slug: String = "", onEventClickSiteName: (AppSite) -> Unit, onTabSelected: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.small)
-            .clickable { onNewsClicked(id) }
+            .clickable { onTabSelected(key) }
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween

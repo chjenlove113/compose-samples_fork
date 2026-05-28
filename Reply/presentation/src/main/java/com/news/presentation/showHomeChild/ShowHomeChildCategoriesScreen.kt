@@ -41,8 +41,9 @@ import kotlin.collections.List
 fun ShowHomeChildCateRoute(
     onNewsClick: (News) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ShowHomeChildPagingViewModel = hiltViewModel()
-    ,itemsListHeader: List<News>?
+    onTabSelected: (String) -> Unit = {},
+    viewModel: ShowHomeChildPagingViewModel = hiltViewModel(),
+    itemsListHeader: List<News>?
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lazyPagingItems = viewModel.items.collectAsLazyPagingItems()
@@ -57,6 +58,7 @@ fun ShowHomeChildCateRoute(
             )
         },
         onNewsClick = onNewsClick,
+        onTabSelected = onTabSelected,
         modifier = modifier, itemsListHeader = itemsListHeader
     )
 }
@@ -68,6 +70,7 @@ fun ShowHomeChildCateScreen(
     onRetry: () -> Unit,
     onNewsClick: (News) -> Unit,
     modifier: Modifier = Modifier,
+    onTabSelected: (String) -> Unit = {},
     siteSlug: String = "",
     itemsListHeader: List<News>?
 ) {
@@ -118,7 +121,8 @@ fun ShowHomeChildCateScreen(
                                 if(siteSlug == ""){
                                     NewsItemAdv(
                                         news = news,
-                                        onNewsClick = onNewsClick
+                                        onNewsClick = onNewsClick,
+                                        onTabSelected = onTabSelected
                                     )
                                 }else{
                                     NewsItem(

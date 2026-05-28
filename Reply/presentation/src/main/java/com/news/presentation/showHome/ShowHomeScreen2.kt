@@ -125,7 +125,7 @@ fun ShowHomeRoute2(
     viewModel: ShowHomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ShowHomeScreen2(uiState, viewModel, {0})
+    ShowHomeScreen2(uiState, viewModel)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -133,7 +133,7 @@ fun ShowHomeRoute2(
 fun ShowHomeScreen2(
     uiState: UiState<ShowHomeDataModel>,
     viewModel: ShowHomeViewModel?,
-    onSiteNameClicked: () -> Int
+    onTabSelected: (String) -> Unit = {}
 ) {
     when (uiState) {
         is UiState.Loading -> {
@@ -198,24 +198,21 @@ fun ShowHomeScreen2(
                 value = manualValue,
                 listPane = {
                     AnimatedPane{
-                        var selectedTabIndex00 by rememberSaveable { mutableIntStateOf(2) }
-
-                        val updateResult: (Int) -> Unit = { newValue ->
-                            selectedTabIndex00 = newValue
-                        }
+                        var selectedTabKey00 by rememberSaveable { mutableStateOf("home") }
 
                         val tabs = remember(uiState.data) {
                             val tabsItem = arrayListOf<TabItem>()
-                            tabsItem.add(TabItem(title = "Home", screen = {
-                                ShowHomeRoute(onSiteNameClicked = updateResult)
+                            tabsItem.add(TabItem(key = "home", title = "Home", screen = {
+                                ShowHomeRoute(onTabSelected = { key ->
+                                    selectedTabKey00 = key
+                                })
                             }))
 
-                            val appSiteAll = ItemDetailSite(
-                                AppSite(0, "", "", "All", "", "", "", "")
-                            )
-
                             tabsItem.add(
-                                TabItem(title = "All", screen = {
+                                TabItem(key = "all", title = "All", screen = {
+                                    val appSiteAll = ItemDetailSite(
+                                        AppSite(0, "", "", "All", "", "", "", "")
+                                    )
                                     val childViewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(
                                         key = "all",
                                         creationCallback = { factory -> factory.create(appSiteAll) }
@@ -223,13 +220,17 @@ fun ShowHomeScreen2(
                                     val childUiState by childViewModel.uiState.collectAsStateWithLifecycle()
                                     ShowHomeChildScreen(
                                         viewModel = childViewModel,
-                                        uiState = childUiState
-                                    ) { news ->
-                                        scope.launch {
-                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
+                                        uiState = childUiState,
+                                        onNewsClicked = { news ->
+                                            scope.launch {
+                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
 
+                                            }
+                                        },
+                                        onTabSelected = { key ->
+                                            selectedTabKey00 = key
                                         }
-                                    }
+                                    )
                                 })
                             )
 
@@ -239,21 +240,25 @@ fun ShowHomeScreen2(
                                 )
 
                                 tabsItem.add(
-                                    TabItem(title = it.Name, screen = {
+                                    TabItem(key = it.Slug, title = it.Name, screen = {
                                         val childViewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(
-                                            key = it.Key,
+                                            key = it.Slug,
                                             creationCallback = { factory -> factory.create(appSite) }
                                         )
                                         val childUiState by childViewModel.uiState.collectAsStateWithLifecycle()
                                         ShowHomeChildScreen(
                                             viewModel = childViewModel,
-                                            uiState = childUiState
-                                        ) { news ->
-                                            scope.launch {
-                                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
+                                            uiState = childUiState,
+                                            onNewsClicked = { news ->
+                                                scope.launch {
+                                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
 
+                                                }
+                                            },
+                                            onTabSelected = { key ->
+                                                selectedTabKey00 = key
                                             }
-                                        }
+                                        )
                                     })
                                 )
                             }
@@ -261,7 +266,11 @@ fun ShowHomeScreen2(
                         }
 
                         val scope = rememberCoroutineScope()
-                        val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = selectedTabIndex00)
+                        val initialPageIndex = remember(tabs) {
+                            val index = tabs.indexOfFirst { it.key == selectedTabKey00 }
+                            if (index >= 0) index else 0
+                        }
+                        val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = initialPageIndex)
 
                         Column {
                             // Tab Row implementation - Use pagerState.currentPage directly to avoid feedback loops
@@ -270,7 +279,6 @@ fun ShowHomeScreen2(
                                     Tab(
                                         selected = pagerState.currentPage == index,
                                         onClick = {
-                                            //selectedTabIndex00 = index
                                             scope.launch { pagerState.animateScrollToPage(index) }
                                         },
                                         text = { Text(text = tab.title, maxLines = 1) }
@@ -287,16 +295,20 @@ fun ShowHomeScreen2(
                             }
                         }
 
-                        // Synchronize external changes to selectedTabIndex00 with pager
-                        LaunchedEffect(selectedTabIndex00) {
-                            if (pagerState.currentPage != selectedTabIndex00) {
-                                pagerState.animateScrollToPage(selectedTabIndex00)
+                        // Synchronize external changes to selectedTabKey00 with pager
+                        LaunchedEffect(selectedTabKey00) {
+                            val targetIndex = tabs.indexOfFirst { it.key == selectedTabKey00 }
+                            if (targetIndex >= 0 && pagerState.currentPage != targetIndex) {
+                                pagerState.animateScrollToPage(targetIndex)
                             }
                         }
 
-                        // Synchronize pager swipes back to selectedTabIndex00
+                        // Synchronize pager swipes back to selectedTabKey00
                         LaunchedEffect(pagerState.currentPage) {
-                            selectedTabIndex00 = pagerState.currentPage
+                            val currentKey = tabs.getOrNull(pagerState.currentPage)?.key
+                            if (currentKey != null) {
+                                selectedTabKey00 = currentKey
+                            }
                         }
                     }
 

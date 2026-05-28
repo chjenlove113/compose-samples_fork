@@ -1,6 +1,8 @@
 package com.news.presentation.base
 
+import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -243,7 +245,8 @@ fun NewsItem(
 fun NewsItemAdv(
     news: News,
     onNewsClick: (News) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onTabSelected: (String) -> Unit = {}
 ) {
     ElevatedCard(
         onClick = { onNewsClick(news) },
@@ -348,6 +351,10 @@ fun NewsItemAdv(
                             color = MaterialTheme.colorScheme.onSecondary,
                             modifier = Modifier
                                 .background(MaterialTheme.colorScheme.secondary, shape = CircleShape)
+                                .clip(CircleShape)
+                                .clickable { news.App_Site_Slug?.let { onTabSelected(it)
+                                Log.d("news.App_Site_Slug?.let { onTabSelected(it)",it.toString())
+                                } }
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                         if(news.Source != ""){
