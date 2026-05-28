@@ -72,6 +72,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -197,7 +198,7 @@ fun ShowHomeScreen2(
                 value = manualValue,
                 listPane = {
                     AnimatedPane{
-                        var selectedTabIndex00 by remember { mutableIntStateOf(2) }
+                        var selectedTabIndex00 by rememberSaveable { mutableIntStateOf(2) }
 
                         val updateResult: (Int) -> Unit = { newValue ->
                             selectedTabIndex00 = newValue
@@ -291,6 +292,11 @@ fun ShowHomeScreen2(
                             if (pagerState.currentPage != selectedTabIndex00) {
                                 pagerState.animateScrollToPage(selectedTabIndex00)
                             }
+                        }
+
+                        // Synchronize pager swipes back to selectedTabIndex00
+                        LaunchedEffect(pagerState.currentPage) {
+                            selectedTabIndex00 = pagerState.currentPage
                         }
                     }
 

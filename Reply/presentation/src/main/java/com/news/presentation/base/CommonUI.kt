@@ -11,9 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -127,26 +131,51 @@ fun NewsItem(
         Column {
             news.Image?.let { imageUrl ->
                 if(imageUrl != ""){
-                    if (!isValidUrl(imageUrl)){
-                        AsyncImage(
-                            model = AppContants.baseUrlUI + imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(MaterialTheme.shapes.extraLarge),
-                            contentScale = ContentScale.Crop
-                        )
-                    }else{
-                        AsyncImage(
-                            model = imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(MaterialTheme.shapes.extraLarge),
-                            contentScale = ContentScale.Crop
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    ) {
+                        if (!isValidUrl(imageUrl)){
+                            AsyncImage(
+                                model = AppContants.baseUrlUI + imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(MaterialTheme.shapes.extraLarge),
+                                contentScale = ContentScale.Crop
+                            )
+                        }else{
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(MaterialTheme.shapes.extraLarge),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+
+                        // Icon overlay in bottom-right
+                        if (news.Is_Video || news.Is_Album) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(12.dp)
+                                    .background(
+                                        Color.Black.copy(alpha = 0.3f),
+                                        shape = CircleShape
+                                    )
+                                    .padding(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (news.Is_Video) Icons.Default.PlayCircle else Icons.Default.Collections,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -230,26 +259,51 @@ fun NewsItemAdv(
             news.Image?.let { imageUrl ->
 
                 if(imageUrl != ""){
-                    if (!isValidUrl(imageUrl)){
-                        AsyncImage(
-                            model = AppContants.baseUrlUI + imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(MaterialTheme.shapes.extraLarge),
-                            contentScale = ContentScale.Crop
-                        )
-                    }else{
-                        AsyncImage(
-                            model = imageUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(MaterialTheme.shapes.extraLarge),
-                            contentScale = ContentScale.Crop
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    ) {
+                        if (!isValidUrl(imageUrl)){
+                            AsyncImage(
+                                model = AppContants.baseUrlUI + imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(MaterialTheme.shapes.extraLarge),
+                                contentScale = ContentScale.Crop
+                            )
+                        }else{
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(MaterialTheme.shapes.extraLarge),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+
+                        // Icon overlay in bottom-right
+                        if (news.Is_Video || news.Is_Album) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(12.dp)
+                                    .background(
+                                        Color.Black.copy(alpha = 0.3f),
+                                        shape = CircleShape
+                                    )
+                                    .padding(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (news.Is_Video) Icons.Default.PlayCircle else Icons.Default.Collections,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
