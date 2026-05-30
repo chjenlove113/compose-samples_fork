@@ -14,17 +14,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.news.domain.models.LoginResponse
-import com.news.presentation.R
 import java.util.Locale
 
 @Composable
@@ -160,7 +157,7 @@ fun UserInfoBanner(authInfo: LoginResponse) {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = authInfo.Username?.take(1)?.uppercase() ?: "U",
+                        text = authInfo.UserName?.take(1)?.uppercase() ?: "U",
                         style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -171,7 +168,7 @@ fun UserInfoBanner(authInfo: LoginResponse) {
             
             Column {
                 Text(
-                    text = authInfo.Username ?: "User",
+                    text = authInfo.UserName ?: "User",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )

@@ -110,7 +110,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = username,
             onValueChange = { username = it },
-            label = { Text("Username") },
+            label = { Text("UserName") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -264,7 +264,7 @@ fun RegisterScreen(
         OutlinedTextField(
             value = username,
             onValueChange = { username = it },
-            label = { Text("Username") },
+            label = { Text("UserName") },
             modifier = Modifier.fillMaxWidth()
         )
 

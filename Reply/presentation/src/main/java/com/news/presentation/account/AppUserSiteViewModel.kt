@@ -6,6 +6,8 @@ import com.news.domain.models.AppUserSite
 import com.news.domain.models.AppUserSiteRequest
 import com.news.domain.usecases.GetAppUserSiteListUseCase
 import com.news.domain.usecases.UpdateAppUserSiteUseCase
+import com.news.domain.usecases.GetAuthInfoUseCase
+import com.news.utils.AppContants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,15 +25,21 @@ data class AppUserSiteUiState(
 @HiltViewModel
 class AppUserSiteViewModel @Inject constructor(
     private val getAppUserSiteListUseCase: GetAppUserSiteListUseCase,
-    private val updateAppUserSiteUseCase: UpdateAppUserSiteUseCase
+    private val updateAppUserSiteUseCase: UpdateAppUserSiteUseCase,
+    private val getAuthInfoUseCase: GetAuthInfoUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUserSiteUiState())
     val uiState: StateFlow<AppUserSiteUiState> = _uiState.asStateFlow()
 
     init {
-        // Initial load with some default parameters for example
-        loadSites(AppUserSiteRequest("identity", "userId", "appId"))
+        viewModelScope.launch {
+            getAuthInfoUseCase().collect { auth ->
+                auth?.let {
+                    loadSites(AppUserSiteRequest(it.IdentityId, "UserIdEncrypt", AppContants.app_Id))
+                }
+            }
+        }
     }
 
     fun loadSites(request: AppUserSiteRequest) {

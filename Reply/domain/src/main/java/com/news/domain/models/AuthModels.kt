@@ -28,7 +28,7 @@ data class LoginRequest(
 )
 
 data class LoginResponse(
-    val Username: String,
+    val UserName: String,
 
     val AccessToken: AccessToken,
     val RefreshToken:String,

@@ -23,7 +23,7 @@ class AuthRepositoryImpl @Inject constructor(
         return appDatabase.authDao().getAuthInfo().map { entity ->
             entity?.let {
                 LoginResponse(
-                    Username = it.Username,
+                    UserName = it.Username,
                     AccessToken = AccessToken(it.Token, it.ExpiresIn),
                     RefreshToken = it.RefreshToken,
                     Errors = emptyList(),
@@ -56,7 +56,7 @@ class AuthRepositoryImpl @Inject constructor(
                 ExpiresIn = response.AccessToken.ExpiresIn,
                 Email = response.Email,
                 RefreshToken = response.RefreshToken,
-                Username = response.Username
+                Username = response.UserName
             )
             appDatabase.authDao().insertAuth(authEntity)
         }
