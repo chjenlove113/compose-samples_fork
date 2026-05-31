@@ -17,4 +17,7 @@ interface AppUserSiteService {
 
     @POST("api/AppUserSiteCreateOrUpdate")
     suspend fun createOrUpdateAppUserSite(@Body request: AppUserSiteCreateRequest): AppUserSiteCreateResponse
+
+    @POST("api/AppUserSiteDelete")
+    suspend fun deleteAppUserSite(@Body request: AppUserSiteCreateRequest): AppUserSiteCreateResponse
 }

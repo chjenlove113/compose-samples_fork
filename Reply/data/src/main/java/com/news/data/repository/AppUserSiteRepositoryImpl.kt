@@ -27,4 +27,8 @@ class AppUserSiteRepositoryImpl @Inject constructor(
     override suspend fun createOrUpdateAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse {
         return service.createOrUpdateAppUserSite(request)
     }
+
+    override suspend fun deleteAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse {
+        return service.deleteAppUserSite(request)
+    }
 }

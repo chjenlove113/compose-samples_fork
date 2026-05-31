@@ -78,8 +78,12 @@ fun AppUserSiteScreen(
         SiteDialog(
             site = selectedSite,
             onDismiss = { showDialog = false },
-            onConfirm = { id, name, url, icon, kind ->
-                viewModel.createOrUpdateSite(id, name, url, icon, kind)
+            onConfirm = { id, name, url, icon, kind, isActive ->
+                viewModel.createOrUpdateSite(id, name, url, icon, kind, isActive)
+                showDialog = false
+            },
+            onDelete = { id, name, url, icon, kind, isActive ->
+                viewModel.deleteSite(id, name, url, icon, kind, isActive)
                 showDialog = false
             }
         )
@@ -134,13 +138,15 @@ fun SiteListItem(
 fun SiteDialog(
     site: AppUserSite? = null,
     onDismiss: () -> Unit,
-    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String) -> Unit
+    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean) -> Unit,
+    onDelete: (id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean) -> Unit
 ) {
     val isEdit = site != null
     var name by remember { mutableStateOf(site?.Name ?: "") }
     var url by remember { mutableStateOf(site?.Url ?: "") }
-    var icon by remember { mutableStateOf("") } // Default empty as icon not in AppUserSite model
+    var icon by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(site?.Kind ?: "") }
+    var isActive by remember { mutableStateOf(site?.IsActive ?: true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -174,14 +180,41 @@ fun SiteDialog(
                     label = { Text("Kind") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = "Active")
+                    Switch(
+                        checked = isActive,
+                        onCheckedChange = { isActive = it }
+                    )
+                }
             }
         },
         confirmButton = {
-            Button(
-                onClick = { onConfirm(site?.Id ?: 0, name, url, icon, kind) },
-                enabled = name.isNotBlank() && url.isNotBlank()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (isEdit) "Update" else "Add")
+                if (site != null && site.GROUP == "1") {
+                    TextButton(
+                        onClick = { onDelete(site.Id, name, url, icon, kind, isActive) },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Delete")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Button(
+                    onClick = { onConfirm(site?.Id ?: 0, name, url, icon, kind, isActive) },
+                    enabled = name.isNotBlank() && url.isNotBlank()
+                ) {
+                    Text(if (isEdit) "Update" else "Add")
+                }
             }
         },
         dismissButton = {

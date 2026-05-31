@@ -9,4 +9,5 @@ interface IAppUserSiteRepository {
     suspend fun getAppUserSiteList(request: AppUserSiteRequest): List<AppUserSite>
     suspend fun updateAppUserSite(site: AppUserSite): Boolean
     suspend fun createOrUpdateAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse
+    suspend fun deleteAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse
 }

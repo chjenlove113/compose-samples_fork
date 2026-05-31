@@ -9,6 +9,7 @@ import com.news.domain.usecases.GetAppUserSiteListUseCase
 import com.news.domain.usecases.UpdateAppUserSiteUseCase
 import com.news.domain.usecases.GetAuthInfoUseCase
 import com.news.domain.usecases.CreateOrUpdateAppUserSiteUseCase
+import com.news.domain.usecases.DeleteAppUserSiteUseCase
 import com.news.utils.AppContants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +30,8 @@ class AppUserSiteViewModel @Inject constructor(
     private val getAppUserSiteListUseCase: GetAppUserSiteListUseCase,
     private val updateAppUserSiteUseCase: UpdateAppUserSiteUseCase,
     private val getAuthInfoUseCase: GetAuthInfoUseCase,
-    private val createOrUpdateAppUserSiteUseCase: CreateOrUpdateAppUserSiteUseCase
+    private val createOrUpdateAppUserSiteUseCase: CreateOrUpdateAppUserSiteUseCase,
+    private val deleteAppUserSiteUseCase: DeleteAppUserSiteUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUserSiteUiState())
@@ -61,7 +63,7 @@ class AppUserSiteViewModel @Inject constructor(
         }
     }
 
-    fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String) {
+    fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -70,7 +72,7 @@ class AppUserSiteViewModel @Inject constructor(
                     Name = name,
                     Url = url,
                     Icon = icon,
-                    Status = true,
+                    Status = isActive,
                     Kind = kind,
                     IdentityId = currentIdentityId,
                     AppIdEncrypt = AppContants.app_Id
@@ -78,6 +80,32 @@ class AppUserSiteViewModel @Inject constructor(
                 val response = createOrUpdateAppUserSiteUseCase(request)
                 if (response.Id > 0 || response.Mess == "") {
                     // Refresh the list
+                    loadSites(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = response.Mess) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
+            }
+        }
+    }
+
+    fun deleteSite(id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val request = AppUserSiteCreateRequest(
+                    Id = id,
+                    Name = name,
+                    Url = url,
+                    Icon = icon,
+                    Status = isActive,
+                    Kind = kind,
+                    IdentityId = currentIdentityId,
+                    AppIdEncrypt = AppContants.app_Id
+                )
+                val response = deleteAppUserSiteUseCase(request)
+                if (response.Id > 0 || response.Mess == "") {
                     loadSites(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = response.Mess) }
