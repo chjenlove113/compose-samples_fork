@@ -12,7 +12,7 @@ interface AppUserSiteService {
     suspend fun getAppUserSiteList(@Body request: AppUserSiteRequest): List<AppUserSite>
 
     // Assuming an update endpoint exists based on requirements
-    @POST("api/UpdateAppUserSite")
+    @POST("api/AppUserSiteBlockOrUnBlock")
     suspend fun updateAppUserSite(@Body site: AppUserSite): Any
 
     @POST("api/AppUserSiteCreateOrUpdate")

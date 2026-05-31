@@ -118,7 +118,10 @@ class AppUserSiteViewModel @Inject constructor(
 
     fun toggleActive(site: AppUserSite) {
         viewModelScope.launch {
+            site.IdentityId = currentIdentityId
+            site.AppIdEncrypt = AppContants.app_Id
             val updatedSite = site.copy(IsActive = !site.IsActive)
+
             val success = updateAppUserSiteUseCase(updatedSite)
             if (success) {
                 // Refresh local state

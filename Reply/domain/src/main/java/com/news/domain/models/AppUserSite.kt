@@ -18,7 +18,10 @@ data class AppUserSite(
     val GROUP: String,
     val Stt: Int,
     val LimitEdit: Boolean,
-    val AllowEdit: Boolean
+    val AllowEdit: Boolean,
+
+    var IdentityId: String,
+    var AppIdEncrypt: String
 )
 
 data class AppUserSiteCreateRequest(
