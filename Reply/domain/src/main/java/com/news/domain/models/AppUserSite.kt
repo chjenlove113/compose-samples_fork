@@ -20,3 +20,19 @@ data class AppUserSite(
     val LimitEdit: Boolean,
     val AllowEdit: Boolean
 )
+
+data class AppUserSiteCreateRequest(
+    val Id: Int,
+    val Name: String,
+    val Url: String,
+    val Icon: String,
+    val Status: Boolean,
+    val Kind: String,
+    val IdentityId: String,
+    val AppIdEncrypt: String
+)
+
+data class AppUserSiteCreateResponse(
+    val Id: Int,
+    val Mess: String
+)

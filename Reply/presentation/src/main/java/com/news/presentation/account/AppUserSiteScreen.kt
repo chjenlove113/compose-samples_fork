@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.news.domain.models.AppUserSite
@@ -24,11 +24,22 @@ fun AppUserSiteScreen(
     viewModel: AppUserSiteViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var editingSite by remember { mutableStateOf<AppUserSite?>(null) }
+    var showDialog by remember { mutableStateOf(false) }
+    var selectedSite by remember { mutableStateOf<AppUserSite?>(null) }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("User Sites") })
+            TopAppBar(
+                title = { Text("User Sites") },
+                actions = {
+                    IconButton(onClick = { 
+                        selectedSite = null
+                        showDialog = true 
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Site")
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
@@ -50,7 +61,10 @@ fun AppUserSiteScreen(
                             SiteListItem(
                                 site = site,
                                 onToggleActive = { viewModel.toggleActive(site) },
-                                onEdit = { editingSite = site }
+                                onEdit = { 
+                                    selectedSite = site
+                                    showDialog = true 
+                                }
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
@@ -60,13 +74,13 @@ fun AppUserSiteScreen(
         }
     }
 
-    if (editingSite != null) {
-        EditSiteDialog(
-            site = editingSite!!,
-            onDismiss = { editingSite = null },
-            onConfirm = { updatedSite ->
-                viewModel.updateSite(updatedSite)
-                editingSite = null
+    if (showDialog) {
+        SiteDialog(
+            site = selectedSite,
+            onDismiss = { showDialog = false },
+            onConfirm = { id, name, url, icon, kind ->
+                viewModel.createOrUpdateSite(id, name, url, icon, kind)
+                showDialog = false
             }
         )
     }
@@ -117,17 +131,20 @@ fun SiteListItem(
 }
 
 @Composable
-fun EditSiteDialog(
-    site: AppUserSite,
+fun SiteDialog(
+    site: AppUserSite? = null,
     onDismiss: () -> Unit,
-    onConfirm: (AppUserSite) -> Unit
+    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String) -> Unit
 ) {
-    var name by remember { mutableStateOf(site.Name) }
-    var url by remember { mutableStateOf(site.Url) }
+    val isEdit = site != null
+    var name by remember { mutableStateOf(site?.Name ?: "") }
+    var url by remember { mutableStateOf(site?.Url ?: "") }
+    var icon by remember { mutableStateOf("") } // Default empty as icon not in AppUserSite model
+    var kind by remember { mutableStateOf(site?.Kind ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Site") },
+        title = { Text(if (isEdit) "Update Site" else "Add New Site") },
         text = {
             Column {
                 OutlinedTextField(
@@ -143,11 +160,28 @@ fun EditSiteDialog(
                     label = { Text("URL") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = icon,
+                    onValueChange = { icon = it },
+                    label = { Text("Icon") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = kind,
+                    onValueChange = { kind = it },
+                    label = { Text("Kind") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(site.copy(Name = name, Url = url)) }) {
-                Text("Update")
+            Button(
+                onClick = { onConfirm(site?.Id ?: 0, name, url, icon, kind) },
+                enabled = name.isNotBlank() && url.isNotBlank()
+            ) {
+                Text(if (isEdit) "Update" else "Add")
             }
         },
         dismissButton = {

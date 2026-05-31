@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.news.domain.models.AppUserSite
 import com.news.domain.models.AppUserSiteRequest
+import com.news.domain.models.AppUserSiteCreateRequest
 import com.news.domain.usecases.GetAppUserSiteListUseCase
 import com.news.domain.usecases.UpdateAppUserSiteUseCase
 import com.news.domain.usecases.GetAuthInfoUseCase
+import com.news.domain.usecases.CreateOrUpdateAppUserSiteUseCase
 import com.news.utils.AppContants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,16 +28,20 @@ data class AppUserSiteUiState(
 class AppUserSiteViewModel @Inject constructor(
     private val getAppUserSiteListUseCase: GetAppUserSiteListUseCase,
     private val updateAppUserSiteUseCase: UpdateAppUserSiteUseCase,
-    private val getAuthInfoUseCase: GetAuthInfoUseCase
+    private val getAuthInfoUseCase: GetAuthInfoUseCase,
+    private val createOrUpdateAppUserSiteUseCase: CreateOrUpdateAppUserSiteUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUserSiteUiState())
     val uiState: StateFlow<AppUserSiteUiState> = _uiState.asStateFlow()
 
+    private var currentIdentityId: String = ""
+
     init {
         viewModelScope.launch {
             getAuthInfoUseCase().collect { auth ->
                 auth?.let {
+                    currentIdentityId = it.IdentityId
                     loadSites(AppUserSiteRequest(it.IdentityId, "UserIdEncrypt", AppContants.app_Id))
                 }
             }
@@ -49,6 +55,33 @@ class AppUserSiteViewModel @Inject constructor(
                 val list = getAppUserSiteListUseCase(request)
                 val grouped = list.groupBy { it.Kind }
                 _uiState.update { it.copy(isLoading = false, sites = grouped) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
+            }
+        }
+    }
+
+    fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val request = AppUserSiteCreateRequest(
+                    Id = id,
+                    Name = name,
+                    Url = url,
+                    Icon = icon,
+                    Status = true,
+                    Kind = kind,
+                    IdentityId = currentIdentityId,
+                    AppIdEncrypt = AppContants.app_Id
+                )
+                val response = createOrUpdateAppUserSiteUseCase(request)
+                if (response.Id > 0 || response.Mess == "") {
+                    // Refresh the list
+                    loadSites(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = response.Mess) }
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
             }
