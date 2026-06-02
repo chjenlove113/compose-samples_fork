@@ -57,7 +57,7 @@ fun AppUserSiteScreen(
                         stickyHeader {
                             HeaderItem(kind)
                         }
-                        items(sites, key = { it.Id }) { site ->
+                        items(sites, key = { "${kind}_${it.GROUP}_${it.Id}" }) { site ->
                             SiteListItem(
                                 site = site,
                                 onToggleActive = { viewModel.toggleActive(site) },
@@ -78,12 +78,12 @@ fun AppUserSiteScreen(
         SiteDialog(
             site = selectedSite,
             onDismiss = { showDialog = false },
-            onConfirm = { id, name, url, icon, kind, isActive ->
-                viewModel.createOrUpdateSite(id, name, url, icon, kind, isActive)
+            onConfirm = { id, name, url, icon, kind, isActive, otherCanSee ->
+                viewModel.createOrUpdateSite(id, name, url, icon, kind, isActive, otherCanSee)
                 showDialog = false
             },
-            onDelete = { id, name, url, icon, kind, isActive ->
-                viewModel.deleteSite(id, name, url, icon, kind, isActive)
+            onDelete = { id, name, url, icon, kind, isActive, otherCanSee ->
+                viewModel.deleteSite(id, name, url, icon, kind, isActive, otherCanSee)
                 showDialog = false
             }
         )
@@ -138,8 +138,8 @@ fun SiteListItem(
 fun SiteDialog(
     site: AppUserSite? = null,
     onDismiss: () -> Unit,
-    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean) -> Unit,
-    onDelete: (id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean) -> Unit
+    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean, otherCanSee: Boolean) -> Unit,
+    onDelete: (id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean, otherCanSee: Boolean) -> Unit
 ) {
     val isEdit = site != null
     var name by remember { mutableStateOf(site?.Name ?: "") }
@@ -147,12 +147,13 @@ fun SiteDialog(
     var icon by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(site?.Kind ?: "") }
     var isActive by remember { mutableStateOf(site?.IsActive ?: true) }
+    var otherCanSee by remember { mutableStateOf(site?.OtherCanSee ?: false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isEdit) "Update Site" else "Add New Site") },
         text = {
-            Column {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -180,17 +181,61 @@ fun SiteDialog(
                     label = { Text("Kind") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(text = "Active")
-                    Switch(
-                        checked = isActive,
-                        onCheckedChange = { isActive = it }
+                
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                     )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Active Status",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Enable or disable this site",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Switch(
+                                checked = isActive,
+                                onCheckedChange = { isActive = it }
+                            )
+                        }
+                        
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Visibility",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Allow others to see this site",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Switch(
+                                checked = otherCanSee,
+                                onCheckedChange = { otherCanSee = it }
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -202,7 +247,7 @@ fun SiteDialog(
             ) {
                 if (site != null && site.GROUP == "1") {
                     TextButton(
-                        onClick = { onDelete(site.Id, name, url, icon, kind, isActive) },
+                        onClick = { onDelete(site.Id, name, url, icon, kind, isActive, otherCanSee) },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
                         Text("Delete")
@@ -210,7 +255,7 @@ fun SiteDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 Button(
-                    onClick = { onConfirm(site?.Id ?: 0, name, url, icon, kind, isActive) },
+                    onClick = { onConfirm(site?.Id ?: 0, name, url, icon, kind, isActive, otherCanSee) },
                     enabled = name.isNotBlank() && url.isNotBlank()
                 ) {
                     Text(if (isEdit) "Update" else "Add")

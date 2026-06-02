@@ -19,6 +19,7 @@ data class AppUserSite(
     val Stt: Int,
     val LimitEdit: Boolean,
     val AllowEdit: Boolean,
+    val OtherCanSee: Boolean,
 
     var IdentityId: String,
     var AppIdEncrypt: String
@@ -30,6 +31,7 @@ data class AppUserSiteCreateRequest(
     val Url: String,
     val Icon: String,
     val Status: Boolean,
+    val OtherCanSee: Boolean,
     val Kind: String,
     val IdentityId: String,
     val AppIdEncrypt: String

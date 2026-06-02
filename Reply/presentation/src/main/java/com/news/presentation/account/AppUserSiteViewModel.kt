@@ -55,7 +55,9 @@ class AppUserSiteViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val list = getAppUserSiteListUseCase(request)
-                val grouped = list.groupBy { it.Kind }
+                // Filter out duplicates that could cause key collisions in LazyColumn
+                val uniqueList = list.distinctBy { "${it.Kind}_${it.GROUP}_${it.Id}" }
+                val grouped = uniqueList.groupBy { it.Kind }
                 _uiState.update { it.copy(isLoading = false, sites = grouped) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
@@ -63,7 +65,7 @@ class AppUserSiteViewModel @Inject constructor(
         }
     }
 
-    fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean) {
+    fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean, otherCanSee: Boolean) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -73,6 +75,7 @@ class AppUserSiteViewModel @Inject constructor(
                     Url = url,
                     Icon = icon,
                     Status = isActive,
+                    OtherCanSee = otherCanSee,
                     Kind = kind,
                     IdentityId = currentIdentityId,
                     AppIdEncrypt = AppContants.app_Id
@@ -90,7 +93,7 @@ class AppUserSiteViewModel @Inject constructor(
         }
     }
 
-    fun deleteSite(id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean) {
+    fun deleteSite(id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean, otherCanSee: Boolean) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -100,6 +103,7 @@ class AppUserSiteViewModel @Inject constructor(
                     Url = url,
                     Icon = icon,
                     Status = isActive,
+                    OtherCanSee = otherCanSee,
                     Kind = kind,
                     IdentityId = currentIdentityId,
                     AppIdEncrypt = AppContants.app_Id
@@ -127,7 +131,7 @@ class AppUserSiteViewModel @Inject constructor(
                 // Refresh local state
                 _uiState.update { state ->
                     val newMap = state.sites.mapValues { entry ->
-                        entry.value.map { if (it.Id == site.Id) updatedSite else it }
+                        entry.value.map { if (it.Id == site.Id && it.GROUP == site.GROUP) updatedSite else it }
                     }
                     state.copy(sites = newMap)
                 }
@@ -141,7 +145,7 @@ class AppUserSiteViewModel @Inject constructor(
             if (success) {
                 _uiState.update { state ->
                     val newMap = state.sites.mapValues { entry ->
-                        entry.value.map { if (it.Id == site.Id) site else it }
+                        entry.value.map { if (it.Id == site.Id && it.GROUP == site.GROUP) site else it }
                     }
                     state.copy(sites = newMap)
                 }
