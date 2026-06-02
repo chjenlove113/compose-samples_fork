@@ -1,6 +1,5 @@
 package com.news.presentation.newsTag
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,15 +22,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Scaffold
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -47,9 +50,12 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -62,12 +68,16 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.news.domain.models.News
 import com.news.domain.models.NewsTag
 import com.news.presentation.R
 import com.news.presentation.base.ShowError
 import com.news.presentation.base.ShowLoading
 import com.news.presentation.base.UiState
 import com.news.presentation.base.calculateBottomNavigationBarHeight
+import com.news.presentation.components.NewsDetailScreen
+import com.news.presentation.newsByTagId.NewsByTagIdScreen
+import com.news.presentation.newsByTagId.NewsByTagViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
@@ -78,10 +88,10 @@ import java.util.Map.entry
 data object ItemsList : NavKey
 
 @Serializable
-data class ItemDetail(val id: NewsTag) : NavKey
+data class ItemDetail(val tagSlug: String) : NavKey
 
 @Serializable
-data object ExtraScreen : NavKey
+data class NewsDetailKey(val news: News) : NavKey
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
@@ -90,16 +100,14 @@ fun NewsTagRoute(
 ){
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    NewsTagScreen(uiState, viewModel, {
-    })
+    NewsTagScreen(uiState, viewModel)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun NewsTagScreen(
     uiState: UiState<List<NewsTag>>,
-    viewModel: NewsTagViewModel?,
-    onNewsTagClicked: (NewsTag) -> Unit,
+    viewModel: NewsTagViewModel?
 ) {
     when (uiState) {
         is UiState.Loading -> {
@@ -117,7 +125,20 @@ fun NewsTagScreen(
             val backStack = rememberNavBackStack(ItemsList)
             val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
             
-            androidx.compose.material3.Scaffold(
+            // Derive the currently selected tag slug from the backstack source of truth
+            val selectedTagSlug by remember(backStack) {
+                derivedStateOf {
+                    var lastTag: String? = null
+                    for (navKey in backStack) {
+                        if (navKey is ItemDetail) {
+                            lastTag = navKey.tagSlug
+                        }
+                    }
+                    lastTag
+                }
+            }
+            
+            Scaffold(
                 topBar = {
                     TopAppBar(
                         title = { Text("Explore Tags", style = MaterialTheme.typography.titleLarge) }
@@ -133,7 +154,9 @@ fun NewsTagScreen(
                     modifier = Modifier
                         .padding(paddingValues)
                         .consumeWindowInsets(WindowInsets.statusBars),
-                    onBack = { backStack.removeLastOrNull() },
+                    onBack = { 
+                        backStack.removeLastOrNull() 
+                    },
                     sceneStrategies = listOf(listDetailStrategy),
 
                     entryProvider = entryProvider {
@@ -153,18 +176,45 @@ fun NewsTagScreen(
                                 }
                             )
                         ) {
-                            NewsTagList(uiState.data) { tag ->
-                                // For now, we'll just show the tag info, 
-                                // but we could navigate to a NewsByTag screen here
-                                backStack.add(ItemDetail(tag))
+                            NewsTagList(
+                                tags = uiState.data,
+                                selectedTagSlug = selectedTagSlug
+                            ) { tag ->
+                                val slug = tag.Slug.toString()
+                                // Guard against redundant navigation if already selected
+                                if (selectedTagSlug != slug) {
+                                    backStack.add(ItemDetail(slug))
+                                }
                             }
                         }
                         entry<ItemDetail>(
                             metadata = ListDetailSceneStrategy.detailPane()
-                        ) { product ->
-                            ItemDetailScreen(
-                                x0 = product.id,
-                                onBack = { backStack.removeLastOrNull() }
+                        ) { detailKey ->
+                            val tagViewModel = hiltViewModel<NewsByTagViewModel, NewsByTagViewModel.Factory>(
+                                key = detailKey.tagSlug,
+                                creationCallback = { factory -> factory.create(detailKey.tagSlug) }
+                            )
+                            NewsByTagIdScreen(
+                                tagSlug = detailKey.tagSlug,
+                                viewModel = tagViewModel,
+                                onBack = { backStack.removeLastOrNull() },
+                                onNewsClick = { news ->
+                                    backStack.add(NewsDetailKey(news))
+                                }
+                            )
+                        }
+                        entry<NewsDetailKey>(
+                            metadata = ListDetailSceneStrategy.extraPane()
+                        ) { detailKey ->
+                            ExtraPaneScreen(
+                                news = detailKey.news,
+                                onBack = { backStack.removeLastOrNull() },
+                                onTagClick = { tagSlug ->
+                                    // Guard against redundant navigation
+                                    if (selectedTagSlug != tagSlug) {
+                                        backStack.add(ItemDetail(tagSlug))
+                                    }
+                                }
                             )
                         }
                     }
@@ -174,9 +224,30 @@ fun NewsTagScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun NewsTagList(tags: List<NewsTag>, onTagClick: (NewsTag) -> Unit) {
+fun ExtraPaneScreen(
+    news: News,
+    onBack: () -> Unit,
+    onTagClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    NewsDetailScreen(
+        news = news,
+        onBack = onBack,
+        onExpand = { /* Handle expand if needed */ },
+        showExpandButton = false,
+        onTagClick = onTagClick,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun NewsTagList(
+    tags: List<NewsTag>,
+    selectedTagSlug: String?,
+    onTagClick: (NewsTag) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -196,72 +267,15 @@ fun NewsTagList(tags: List<NewsTag>, onTagClick: (NewsTag) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             tags.forEach { tag ->
-                SuggestionChip(
+                val isSelected = tag.Slug.toString() == selectedTagSlug
+                
+                FilterChip(
+                    selected = isSelected,
                     onClick = { onTagClick(tag) },
                     label = { Text(tag.Title) },
                     shape = RoundedCornerShape(16.dp)
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun ItemDetailScreen(
-    x0: NewsTag,
-    onBack: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = x0.Title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        HorizontalDivider()
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Explore more news with this tag.",
-            style = MaterialTheme.typography.bodyLarge
-        )
-        
-        Spacer(modifier = Modifier.weight(1f))
-        
-        Button(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Back to Tags")
-        }
-    }
-}
-
-//Extra pane
-@Composable
-fun ExtraPaneScreen(
-    modifier: Modifier = Modifier,
-    title: String = "Extra Pane Screen",
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .clip(RoundedCornerShape(48.dp))
-    ) {
-        Text(title)
-        Column(
-            modifier = Modifier
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("Extra Pane Content")
         }
     }
 }
