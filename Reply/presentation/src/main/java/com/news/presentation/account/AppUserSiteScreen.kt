@@ -68,7 +68,13 @@ fun AppUserSiteScreen(
                         items(sites, key = { "${kind}_${it.GROUP}_${it.Id}" }) { site ->
                             SiteListItem(
                                 site = site,
-                                onToggleActive = { viewModel.toggleActive(site) },
+                                onToggleActive = {
+                                    if (uiState.isLoggedIn) {
+                                        viewModel.toggleActive(site)
+                                    } else {
+                                        showLoginRequiredDialog = true
+                                    }
+                                },
                                 onEdit = {
                                     if (uiState.isLoggedIn) {
                                         selectedSite = site
