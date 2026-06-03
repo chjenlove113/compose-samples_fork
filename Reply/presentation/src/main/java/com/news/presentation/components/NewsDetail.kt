@@ -49,8 +49,11 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -90,7 +93,7 @@ import com.news.utils.AppContants
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun NewsDetailScreen(
     news: News,
@@ -107,6 +110,9 @@ fun NewsDetailScreen(
     val isSaved by viewModel.isSaved.collectAsStateWithLifecycle()
     val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
 
     // Optimize M3 colors
     val colorScheme = MaterialTheme.colorScheme
@@ -158,43 +164,45 @@ fun NewsDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.toggleSave(news) }) {
-                        Icon(
-                            imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (isSaved) "Remove from favorites" else "Save to favorites"
-                        )
-                    }
-                    IconButton(onClick = {
-                        val shareIntent = Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, "${news.Title}\n\n${news.Link}")
-                            type = "text/plain"
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share news via"))
-                    }) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
-                    }
-                    IconButton(onClick = {
-                        news.Link?.let { url ->
-                            try {
-                                val customTabsIntent = CustomTabsIntent.Builder().build()
-                                customTabsIntent.launchUrl(context, Uri.parse(url))
-                            } catch (e: Exception) {
-                                Log.e("NewsDetail", "Error opening link", e)
-                            }
-                        }
-                    }) {
-                        Icon(imageVector = Icons.Default.Language, contentDescription = "Go to Website")
-                    }
-                    IconButton(onClick = { showFontScaleSheet = true }) {
-                        Icon(imageVector = Icons.Default.FormatSize, contentDescription = "Change Font Scale")
-                    }
-                    if (showExpandButton) {
-                        IconButton(onClick = onExpand) {
+                    if (!isCompact) {
+                        IconButton(onClick = { viewModel.toggleSave(news) }) {
                             Icon(
-                                imageVector = ImageVector.vectorResource(id = R.drawable.open_in_full_24px),
-                                contentDescription = "Expand",
+                                imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = if (isSaved) "Remove from favorites" else "Save to favorites"
                             )
+                        }
+                        IconButton(onClick = {
+                            val shareIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, "${news.Title}\n\n${news.Link}")
+                                type = "text/plain"
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share news via"))
+                        }) {
+                            Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
+                        }
+                        IconButton(onClick = {
+                            news.Link?.let { url ->
+                                try {
+                                    val customTabsIntent = CustomTabsIntent.Builder().build()
+                                    customTabsIntent.launchUrl(context, Uri.parse(url))
+                                } catch (e: Exception) {
+                                    Log.e("NewsDetail", "Error opening link", e)
+                                }
+                            }
+                        }) {
+                            Icon(imageVector = Icons.Default.Language, contentDescription = "Go to Website")
+                        }
+                        IconButton(onClick = { showFontScaleSheet = true }) {
+                            Icon(imageVector = Icons.Default.FormatSize, contentDescription = "Change Font Scale")
+                        }
+                        if (showExpandButton) {
+                            IconButton(onClick = onExpand) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = R.drawable.open_in_full_24px),
+                                    contentDescription = "Expand",
+                                )
+                            }
                         }
                     }
                     IconButton(onClick = { expanded = !expanded }) {
@@ -204,13 +212,79 @@ fun NewsDetailScreen(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
                     ) {
+                        if (isCompact) {
+                            DropdownMenuItem(
+                                text = { Text(if (isSaved) "Remove from favorites" else "Save to favorites") },
+                                onClick = {
+                                    viewModel.toggleSave(news)
+                                    expanded = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Share") },
+                                onClick = {
+                                    val shareIntent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(Intent.EXTRA_TEXT, "${news.Title}\n\n${news.Link}")
+                                        type = "text/plain"
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Share news via"))
+                                    expanded = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.Share, null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Go to Website") },
+                                onClick = {
+                                    news.Link?.let { url ->
+                                        try {
+                                            val customTabsIntent = CustomTabsIntent.Builder().build()
+                                            customTabsIntent.launchUrl(context, Uri.parse(url))
+                                        } catch (e: Exception) {
+                                            Log.e("NewsDetail", "Error opening link", e)
+                                        }
+                                    }
+                                    expanded = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.Language, null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Change Font Scale") },
+                                onClick = {
+                                    showFontScaleSheet = true
+                                    expanded = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.FormatSize, null) }
+                            )
+                            if (showExpandButton) {
+                                DropdownMenuItem(
+                                    text = { Text("Expand") },
+                                    onClick = {
+                                        onExpand()
+                                        expanded = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = ImageVector.vectorResource(id = R.drawable.open_in_full_24px),
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                            }
+                        }
                         DropdownMenuItem(
                             text = { Text("Option 1") },
-                            onClick = { /* Do something... */ }
+                            onClick = { expanded = false }
                         )
                         DropdownMenuItem(
                             text = { Text("Option 2") },
-                            onClick = { /* Do something... */ }
+                            onClick = { expanded = false }
                         )
                     }
                 },
