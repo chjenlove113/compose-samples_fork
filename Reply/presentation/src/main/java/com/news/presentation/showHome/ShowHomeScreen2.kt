@@ -203,9 +203,16 @@ fun ShowHomeScreen2(
                         val tabs = remember(uiState.data) {
                             val tabsItem = arrayListOf<TabItem>()
                             tabsItem.add(TabItem(key = "home", title = "Home", screen = {
-                                ShowHomeRoute(onTabSelected = { key ->
-                                    selectedTabKey00 = key
-                                })
+                                ShowHomeRoute(
+                                    onNewsClicked = { news ->
+                                        scope.launch {
+                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
+                                        }
+                                    },
+                                    onTabSelected = { key ->
+                                        selectedTabKey00 = key
+                                    }
+                                )
                             }))
 
                             tabsItem.add(

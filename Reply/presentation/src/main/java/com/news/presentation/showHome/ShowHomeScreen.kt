@@ -134,11 +134,12 @@ data object ExtraScreen : NavKey
 @Composable
 fun ShowHomeRoute(
     viewModel: ShowHomeViewModel = hiltViewModel(),
+    onNewsClicked: ((News) -> Unit)? = null,
     onTabSelected: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
-    ShowHomeScreen(uiState, viewMode, viewModel, onTabSelected)
+    ShowHomeScreen(uiState, viewMode, viewModel, onNewsClicked, onTabSelected)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -147,6 +148,7 @@ fun ShowHomeScreen(
     uiState: UiState<ShowHomeDataModel>,
     viewMode: String,
     viewModel: ShowHomeViewModel?,
+    onNewsClicked: ((News) -> Unit)? = null,
     onTabSelected: (String) -> Unit
 ) {
     when (uiState) {
@@ -162,234 +164,154 @@ fun ShowHomeScreen(
         }
 
         is UiState.Success -> {
-
-            // 1. Setup the navigator
-            val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
-
-            // 2. Manual toggle state for the detail full-screen mode
-            var isDetailFullScreen by remember { mutableStateOf(false) }
-
-            // 2.5 Pull to refresh state
-            val isRefreshing = uiState is UiState.Loading && navigator.scaffoldValue.secondary != PaneAdaptedValue.Hidden
-
-            val currentDestination = navigator.currentDestination
-            val currentSelectedItem = currentDestination?.contentKey
-
-            // Keep track of the last selected items for each pane
-            var lastSelectedNews by remember { mutableStateOf<News?>(null) }
-            var lastSelectedTag by remember { mutableStateOf<String?>(null) }
-
-            LaunchedEffect(currentDestination) {
-                when (currentDestination?.pane) {
-                    ListDetailPaneScaffoldRole.Detail -> lastSelectedNews = currentDestination.contentKey as? News
-                    ListDetailPaneScaffoldRole.Extra -> lastSelectedTag = currentDestination.contentKey as? String
-                    else -> {}
-                }
-            }
-
-            // 3. We manually define the Scaffold Value to force Full Screen behaviors
-            val manualValue = when {
-                // Case A: Nothing selected -> Force List (Secondary) to fill screen
-                currentSelectedItem == null -> {
-                    ThreePaneScaffoldValue(
-                        primary = PaneAdaptedValue.Hidden,     // Detail
-                        secondary = PaneAdaptedValue.Expanded, // List
-                        tertiary = PaneAdaptedValue.Hidden
+            if (onNewsClicked != null) {
+                PullToRefreshBox(
+                    isRefreshing = false,
+                    onRefresh = { viewModel?.fetchShowHome() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    ExploreContent(
+                        uiState.data,
+                        viewMode = viewMode,
+                        selectedNews = null,
+                        onViewModeChange = { viewModel?.setViewMode(it) },
+                        onEventClick = onNewsClicked,
+                        onEventClickSiteName = {},
+                        onTabSelected = onTabSelected
                     )
                 }
-                // Case B: Item selected + Full Screen Toggled -> Force Detail (Primary) to fill screen
-                isDetailFullScreen -> {
-                    ThreePaneScaffoldValue(
-                        primary = PaneAdaptedValue.Expanded, // Detail
-                        secondary = PaneAdaptedValue.Hidden, // List
-                        tertiary = PaneAdaptedValue.Hidden
-                    )
+            } else {
+                // 1. Setup the navigator
+                val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
+
+                // 2. Manual toggle state for the detail full-screen mode
+                var isDetailFullScreen by remember { mutableStateOf(false) }
+
+                // 2.5 Pull to refresh state
+                val isRefreshing = uiState is UiState.Loading && navigator.scaffoldValue.secondary != PaneAdaptedValue.Hidden
+
+                val currentDestination = navigator.currentDestination
+                val currentSelectedItem = currentDestination?.contentKey
+
+                // Keep track of the last selected items for each pane
+                var lastSelectedNews by remember { mutableStateOf<News?>(null) }
+                var lastSelectedTag by remember { mutableStateOf<String?>(null) }
+
+                LaunchedEffect(currentDestination) {
+                    when (currentDestination?.pane) {
+                        ListDetailPaneScaffoldRole.Detail -> lastSelectedNews = currentDestination.contentKey as? News
+                        ListDetailPaneScaffoldRole.Extra -> lastSelectedTag = currentDestination.contentKey as? String
+                        else -> {}
+                    }
                 }
-                // Case C: Normal selection -> Use the navigator's adaptive logic (Split-screen on tablets)
-                else -> navigator.scaffoldValue
+
+                // 3. We manually define the Scaffold Value to force Full Screen behaviors
+                val manualValue = when {
+                    // Case A: Nothing selected -> Force List (Secondary) to fill screen
+                    currentSelectedItem == null -> {
+                        ThreePaneScaffoldValue(
+                            primary = PaneAdaptedValue.Hidden,     // Detail
+                            secondary = PaneAdaptedValue.Expanded, // List
+                            tertiary = PaneAdaptedValue.Hidden
+                        )
+                    }
+                    // Case B: Item selected + Full Screen Toggled -> Force Detail (Primary) to fill screen
+                    isDetailFullScreen -> {
+                        ThreePaneScaffoldValue(
+                            primary = PaneAdaptedValue.Expanded, // Detail
+                            secondary = PaneAdaptedValue.Hidden, // List
+                            tertiary = PaneAdaptedValue.Hidden
+                        )
+                    }
+                    // Case C: Normal selection -> Use the navigator's adaptive logic (Split-screen on tablets)
+                    else -> navigator.scaffoldValue
+                }
+                val scope = rememberCoroutineScope()
+                // 2. The Scaffold handles the actual layout
+                ListDetailPaneScaffold(
+                    directive = navigator.scaffoldDirective,
+                    value = manualValue,
+                    listPane = {
+                        AnimatedPane {
+                            PullToRefreshBox(
+                                isRefreshing = uiState is UiState.Loading,
+                                onRefresh = { viewModel?.fetchShowHome() },
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                ExploreContent(
+                                    uiState.data,
+                                    viewMode = viewMode,
+                                    selectedNews = currentSelectedItem as? News,
+                                    onViewModeChange = { viewModel?.setViewMode(it) },
+                                    onEventClick = {
+                                        scope.launch {
+                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, it)
+                                        }
+                                    },
+                                    onEventClickSiteName = {},
+                                    onTabSelected = onTabSelected
+                                )
+                            }
+                        }
+                    },
+                    detailPane = {
+                        AnimatedPane {
+                            if (lastSelectedNews != null) {
+                                NewsDetailScreen(
+                                    news = lastSelectedNews!!,
+                                    onBack = {
+                                        if (isDetailFullScreen) isDetailFullScreen = false
+                                        scope.launch {
+                                            navigator.navigateBack()
+                                        }
+                                    },
+                                    onExpand = {
+                                        isDetailFullScreen = !isDetailFullScreen
+                                    },
+                                    showExpandButton = navigator.scaffoldDirective.maxHorizontalPartitions > 1,
+                                    onTagClick = { tagSlug ->
+                                        scope.launch {
+                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Extra, tagSlug)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    extraPane = {
+                        AnimatedPane {
+                            if (lastSelectedTag != null) {
+                                val tagViewModel = hiltViewModel<NewsByTagViewModel, NewsByTagViewModel.Factory>(
+                                    key = lastSelectedTag,
+                                    creationCallback = { factory -> factory.create(lastSelectedTag!!) }
+                                )
+                                NewsByTagIdScreen(
+                                    tagSlug = lastSelectedTag!!,
+                                    viewModel = tagViewModel,
+                                    onBack = {
+                                        scope.launch {
+                                            navigator.navigateBack()
+                                        }
+                                    },
+                                    onNewsClick = { news ->
+                                        scope.launch {
+                                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                )
             }
-            val scope = rememberCoroutineScope()
-            // 2. The Scaffold handles the actual layout
-            ListDetailPaneScaffold(
-                directive = navigator.scaffoldDirective,
-                value = manualValue,
-                listPane = {
-                    AnimatedPane {
-                        PullToRefreshBox(
-                            isRefreshing = uiState is UiState.Loading,
-                            onRefresh = { viewModel?.fetchShowHome() },
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            ExploreContent(
-                                uiState.data,
-                                viewMode = viewMode,
-                                selectedNews = currentSelectedItem as? News,
-                                onViewModeChange = { viewModel?.setViewMode(it) },
-                                onEventClick = {
-                                    scope.launch {
-                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, it)
-                                    }
-                                },
-                                onEventClickSiteName = {},
-                                onTabSelected = onTabSelected
-                            )
-                        }
-                    }
-                },
-                detailPane = {
-                    AnimatedPane {
-                        if (lastSelectedNews != null) {
-                            NewsDetailScreen(
-                                news = lastSelectedNews!!,
-                                onBack = {
-                                    if (isDetailFullScreen) isDetailFullScreen = false
-                                    scope.launch {
-                                        navigator.navigateBack()
-                                    }
-                                },
-                                onExpand = {
-                                    isDetailFullScreen = !isDetailFullScreen
-                                },
-                                showExpandButton = navigator.scaffoldDirective.maxHorizontalPartitions > 1,
-                                onTagClick = { tagSlug ->
-                                    scope.launch {
-                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Extra, tagSlug)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                },
-                extraPane = {
-                    AnimatedPane {
-                        if (lastSelectedTag != null) {
-                            val tagViewModel = hiltViewModel<NewsByTagViewModel, NewsByTagViewModel.Factory>(
-                                key = lastSelectedTag,
-                                creationCallback = { factory -> factory.create(lastSelectedTag!!) }
-                            )
-                            NewsByTagIdScreen(
-                                tagSlug = lastSelectedTag!!,
-                                viewModel = tagViewModel,
-                                onBack = {
-                                    scope.launch {
-                                        navigator.navigateBack()
-                                    }
-                                },
-                                onNewsClick = { news ->
-                                    scope.launch {
-                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            )
-
-
-//            // Manage our back stack
-//            //val backStack = rememberNavBackStack(ItemsList)
-//            val backStack = remember { mutableStateListOf<NavKey>(ItemsList) }
-//
-//            // 1. Track if the user requested "Full Screen" for the detail
-//            var isDetailFullScreen by remember { mutableStateOf(false) }
-//
-//            val standardDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
-//
-//            // 2. The strategy automatically hides the detail area when backStack.size == 1
-//            // because we force maxHorizontalPartitions = 1
-//            val listDetailStrategy = rememberListDetailSceneStrategy<Any>(
-//                directive = if (backStack.size == 1 || isDetailFullScreen) {
-//                    standardDirective.copy(maxHorizontalPartitions = 1)
-//                } else {
-//                    standardDirective
-//                }
-//            )
-
-//            // 1. Wrap your List content in movableContentOf to preserve scroll state
-//            val movableList = remember(uiState.data) {
-//                movableContentOf {
-//                    ExploreContent(uiState.data, {backStack.add(ItemDetail(it))},{backStack.add(ItemDetailSite(it))},onNewsClicked)
-//
-//                }
-//            }
-//            Scaffold { paddingValues ->
-//                NavDisplay(
-//
-//                    entryDecorators = listOf(
-//                        // Add the default decorators for managing scenes and saving state
-//                        rememberSaveableStateHolderNavEntryDecorator(),
-//                        // Then add the view model store decorator
-//                        rememberViewModelStoreNavEntryDecorator(),
-//                    ),
-//                    backStack = backStack,
-//                    modifier = Modifier
-//                        .padding(paddingValues)
-//                        .consumeWindowInsets(WindowInsets.statusBars),
-//                    // onBack now takes 'count' because the strategy might pop multiple keys
-//                    onBack = { backStack.removeLastOrNull()  },
-//                    sceneStrategies = listOf(listDetailStrategy),
-//
-//                    entryProvider = entryProvider {
-//                        entry<ItemsList>(
-//                            // Metadata for the list pane, including a placeholder for the detail pane
-//                            metadata = ListDetailSceneStrategy.listPane()
-//                        ) {
-//                            //movableList()
-//                            ExploreContent(uiState.data, {backStack.add(ItemDetail(it))},{backStack.add(ItemDetailSite(it))},onNewsClicked)
-//                        }
-//                        entry<ItemDetail>(
-//                            // Metadata for the detail pane
-//                            metadata = ListDetailSceneStrategy.detailPane()
-//                        ) { product ->
-//                            NewsDetailScreen(
-//                                news = product.id,
-//                                onBack = {
-//                                    //isDetailFullScreen = false
-//                                    //backStack.removeLastOrNull()
-//                                    backStack.removeAll { it is ItemDetail }
-//                                },
-//                                onExpand = {
-//                                    isDetailFullScreen = !isDetailFullScreen
-//                                    }
-//                            )
-//
-//                        }
-//                        entry<ItemDetailSite>(
-//                            // Metadata for the detail pane
-//                            metadata = ListDetailSceneStrategy.listPane(detailPlaceholder = {})
-//                        ) { product ->
-//                            val viewModel = hiltViewModel<ShowHomeChildViewModel, ShowHomeChildViewModel.Factory>(
-//                                creationCallback = { factory ->
-//                                    factory.create(product)
-//                                }
-//                            )
-//
-//                            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-//
-//                            ShowHomeChildScreen(
-//                                viewModel = viewModel,
-//                                uiState = uiState
-//                            ) { news ->
-//                                backStack.add(ItemDetail(news))
-//                            }
-//                        }
-//                        entry<ExtraScreen>(
-//                            // Metadata for an optional extra pane
-//                            metadata = ListDetailSceneStrategy.extraPane()
-//                        ) {
-//                            ExtraPaneScreen(
-//                                modifier = Modifier.background(Color.LightGray)
-//                            )
-//                        }
-//                    }
-//                )
-//            }
-
-
         }
     }
 }
+
+
+//        }
+//    }
+//}
 
 @Composable
 fun ShowHomeContent(x0: ShowHomeDataModel, x1: (News) -> Unit) {
