@@ -3,6 +3,7 @@ package com.news.data.local
 import com.news.data.local.entities.News
 import com.news.data.local.entities.News_Site
 import com.news.data.local.entities.News_Tag
+import com.news.data.local.entities.SavedTagSlug
 import kotlinx.coroutines.flow.Flow
 
 class AppDbService(private val appDatabase: AppDatabase) : IAppDbService {
@@ -32,5 +33,17 @@ class AppDbService(private val appDatabase: AppDatabase) : IAppDbService {
 
     override suspend fun deleteNews(news: News) {
         appDatabase.newsDao().delete(news)
+    }
+
+    override fun isTagSaved(slug: String): Flow<Boolean> {
+        return appDatabase.newsTagDao().isTagSaved(slug)
+    }
+
+    override suspend fun saveTagSlug(slug: String) {
+        appDatabase.newsTagDao().insertSavedTag(SavedTagSlug(slug))
+    }
+
+    override suspend fun deleteTagSlug(slug: String) {
+        appDatabase.newsTagDao().deleteSavedTag(SavedTagSlug(slug))
     }
 }

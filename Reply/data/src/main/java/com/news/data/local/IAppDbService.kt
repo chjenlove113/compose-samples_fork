@@ -15,4 +15,8 @@ interface IAppDbService {
     fun isNewsSaved(id: Int): Flow<Boolean>
     suspend fun saveNews(news: News)
     suspend fun deleteNews(news: News)
+
+    fun isTagSaved(slug: String): Flow<Boolean>
+    suspend fun saveTagSlug(slug: String)
+    suspend fun deleteTagSlug(slug: String)
 }

@@ -1,10 +1,13 @@
 package com.news.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.news.data.local.entities.News_Tag
+import com.news.data.local.entities.SavedTagSlug
 import kotlinx.coroutines.flow.Flow
 @Dao
 interface NewsTagDao {
@@ -22,4 +25,13 @@ interface NewsTagDao {
         deleteAll()
         return insertAll(articles)
     }
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSavedTag(savedTag: SavedTagSlug)
+
+    @Delete
+    suspend fun deleteSavedTag(savedTag: SavedTagSlug)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM saved_tag_slugs WHERE slug = :slug)")
+    fun isTagSaved(slug: String): Flow<Boolean>
 }

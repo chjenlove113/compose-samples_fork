@@ -2,6 +2,7 @@ package com.news.presentation.newsByTagId
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.news.data.local.IAppDbService
 import com.news.domain.models.News
 import com.news.domain.usecases.GetNewsByTagUseCase
 import com.news.domain.util.DispatcherProvider
@@ -11,20 +12,26 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel(assistedFactory = NewsByTagViewModel.Factory::class)
 class NewsByTagViewModel @AssistedInject constructor(
     @Assisted val tagSlug: String,
     private val getNewsByTagUseCase: GetNewsByTagUseCase,
+    private val appDbService: IAppDbService,
     private val dispatcherProvider: DispatcherProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState<List<News>>>(UiState.Loading)
     val uiState: StateFlow<UiState<List<News>>> = _uiState
+
+    val isSaved: StateFlow<Boolean> = appDbService.isTagSaved(tagSlug)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     init {
         fetchNewsByTag()
@@ -37,6 +44,16 @@ class NewsByTagViewModel @AssistedInject constructor(
                 .flowOn(dispatcherProvider.io)
                 .catch { e -> _uiState.value = UiState.Error(e.toString()) }
                 .collect { _uiState.value = UiState.Success(it) }
+        }
+    }
+
+    fun toggleSaveTag() {
+        viewModelScope.launch(dispatcherProvider.io) {
+            if (isSaved.value) {
+                appDbService.deleteTagSlug(tagSlug)
+            } else {
+                appDbService.saveTagSlug(tagSlug)
+            }
         }
     }
 
