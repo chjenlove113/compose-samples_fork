@@ -108,7 +108,7 @@ fun ShowHomeChildCateScreen(
                         item(key = "header") {
                             AutoAdvancePager(
                                 pageItems = itemsListHeader ?: emptyList(),
-                                onEventClickNewsItem = onNewsClick,
+                                onEventClickNewsItem = onNewsClick, onTabSelected = {},
                                 modifier = Modifier.fillMaxWidth().height(250.dp)
                             )
                         }

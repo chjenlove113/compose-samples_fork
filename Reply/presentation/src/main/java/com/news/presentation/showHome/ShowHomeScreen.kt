@@ -443,6 +443,7 @@ fun ExploreContent(
                 AutoAdvancePager(
                     allEventCategories.LstNewsHeader ?: emptyList(),
                     onEventClickNewsItem = onEventClick,
+                    onTabSelected = onTabSelected,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(280.dp)
@@ -755,7 +756,12 @@ fun ExploreHeaderItem(title: String) {
 }
 ///
 @Composable
-fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier, onEventClickNewsItem: (News) -> Unit) {
+fun AutoAdvancePager(
+    pageItems: List<News>,
+    modifier: Modifier = Modifier,
+    onEventClickNewsItem: (News) -> Unit,
+    onTabSelected: (String) -> Unit
+) {
     if (pageItems.isEmpty()) return
 
     Box(modifier = modifier) {
@@ -814,14 +820,22 @@ fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier, onEve
                         .padding(16.dp)
                         .fillMaxWidth()
                 ) {
-                    Text(
-                        text = newsItem.Source,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    newsItem.App_Site_Name?.let { siteName ->
+                        Text(
+                            text = siteName,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.primary, shape = CircleShape)
+                                .clip(CircleShape)
+                                .clickable {
+                                    newsItem.App_Site_Slug?.let { slug ->
+                                        onTabSelected(slug)
+                                    }
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -839,7 +853,7 @@ fun AutoAdvancePager(pageItems: List<News>, modifier: Modifier = Modifier, onEve
         PagerIndicator(
             pageCount = pageItems.size, 
             currentPageIndex = pagerState.currentPage,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)
         )
     }
 }
