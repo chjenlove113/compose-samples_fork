@@ -22,7 +22,8 @@ import javax.inject.Inject
 data class AppUserSiteUiState(
     val isLoading: Boolean = false,
     val sites: Map<String, List<AppUserSite>> = emptyMap(),
-    val error: String? = null
+    val error: String? = null,
+    val isLoggedIn: Boolean = false
 )
 
 @HiltViewModel
@@ -42,9 +43,12 @@ class AppUserSiteViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             getAuthInfoUseCase().collect { auth ->
+                _uiState.update { it.copy(isLoggedIn = auth != null) }
                 auth?.let {
                     currentIdentityId = it.IdentityId
                     loadSites(AppUserSiteRequest(it.IdentityId, "UserIdEncrypt", AppContants.app_Id))
+                } ?: run {
+                    _uiState.update { it.copy(sites = emptyMap()) }
                 }
             }
         }

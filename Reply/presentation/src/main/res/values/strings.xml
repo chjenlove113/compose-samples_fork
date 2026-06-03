@@ -17,6 +17,34 @@
     <string name="offline_topheadlines">Offline</string>
     <string name="paging_topheadlines">Paging</string>
 
+    <string name="tag_title_format">Tag: %1$s</string>
+    <string name="back_button_content_description">Back</string>
+    <string name="unsave_tag_content_description">Unsave Tag</string>
+    <string name="save_tag_content_description">Save Tag</string>
+
     <string name="facebook_app_id">1217019803774262</string>
     <string name="facebook_client_token">4b3b0bb3503ded6150cb88f6c301365f</string>
+
+    <string name="user_sites">User Sites</string>
+    <string name="add_site">Add Site</string>
+    <string name="kind_format">Kind: %1$s</string>
+    <string name="edit">Edit</string>
+    <string name="update_site">Update Site</string>
+    <string name="add_new_site">Add New Site</string>
+    <string name="name">Name</string>
+    <string name="url">URL</string>
+    <string name="icon">Icon</string>
+    <string name="kind">Kind</string>
+    <string name="active_status">Active Status</string>
+    <string name="enable_disable_site">Enable or disable this site</string>
+    <string name="visibility">Visibility</string>
+    <string name="allow_others_visibility">Allow others to see this site</string>
+    <string name="delete">Delete</string>
+    <string name="update">Update</string>
+    <string name="add">Add</string>
+    <string name="cancel">Cancel</string>
+    <string name="login_required">Login Required</string>
+    <string name="login_required_message">You need to log in to perform this action. Do you want to go to the login screen?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
 </resources>

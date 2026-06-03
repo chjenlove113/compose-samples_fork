@@ -12,31 +12,39 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.news.domain.models.AppUserSite
+import com.news.presentation.R
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AppUserSiteScreen(
-    viewModel: AppUserSiteViewModel = hiltViewModel()
+    viewModel: AppUserSiteViewModel = hiltViewModel(),
+    onNavigateToLogin: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
+    var showLoginRequiredDialog by remember { mutableStateOf(false) }
     var selectedSite by remember { mutableStateOf<AppUserSite?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("User Sites") },
+                title = { Text(stringResource(R.string.user_sites)) },
                 actions = {
-                    IconButton(onClick = { 
-                        selectedSite = null
-                        showDialog = true 
+                    IconButton(onClick = {
+                        if (uiState.isLoggedIn) {
+                            selectedSite = null
+                            showDialog = true
+                        } else {
+                            showLoginRequiredDialog = true
+                        }
                     }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Site")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_site))
                     }
                 }
             )
@@ -61,9 +69,13 @@ fun AppUserSiteScreen(
                             SiteListItem(
                                 site = site,
                                 onToggleActive = { viewModel.toggleActive(site) },
-                                onEdit = { 
-                                    selectedSite = site
-                                    showDialog = true 
+                                onEdit = {
+                                    if (uiState.isLoggedIn) {
+                                        selectedSite = site
+                                        showDialog = true
+                                    } else {
+                                        showLoginRequiredDialog = true
+                                    }
                                 }
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -72,6 +84,27 @@ fun AppUserSiteScreen(
                 }
             }
         }
+    }
+
+    if (showLoginRequiredDialog) {
+        AlertDialog(
+            onDismissRequest = { showLoginRequiredDialog = false },
+            title = { Text(stringResource(R.string.login_required)) },
+            text = { Text(stringResource(R.string.login_required_message)) },
+            confirmButton = {
+                Button(onClick = {
+                    showLoginRequiredDialog = false
+                    onNavigateToLogin()
+                }) {
+                    Text(stringResource(R.string.yes))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLoginRequiredDialog = false }) {
+                    Text(stringResource(R.string.no))
+                }
+            }
+        )
     }
 
     if (showDialog) {
@@ -99,7 +132,7 @@ fun HeaderItem(kind: String) {
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(
-            text = "Kind: $kind",
+            text = stringResource(R.string.kind_format, kind),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -127,7 +160,7 @@ fun SiteListItem(
                     onClick = onEdit,
                     enabled = site.AllowEdit
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
                 }
             }
         }
@@ -151,34 +184,34 @@ fun SiteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEdit) "Update Site" else "Add New Site") },
+        title = { Text(if (isEdit) stringResource(R.string.update_site) else stringResource(R.string.add_new_site)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.name)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("URL") },
+                    label = { Text(stringResource(R.string.url)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = icon,
                     onValueChange = { icon = it },
-                    label = { Text("Icon") },
+                    label = { Text(stringResource(R.string.icon)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = kind,
                     onValueChange = { kind = it },
-                    label = { Text("Kind") },
+                    label = { Text(stringResource(R.string.kind)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 
@@ -197,12 +230,12 @@ fun SiteDialog(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Active Status",
+                                    text = stringResource(R.string.active_status),
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Enable or disable this site",
+                                    text = stringResource(R.string.enable_disable_site),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -221,12 +254,12 @@ fun SiteDialog(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Visibility",
+                                    text = stringResource(R.string.visibility),
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Allow others to see this site",
+                                    text = stringResource(R.string.allow_others_visibility),
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -250,7 +283,7 @@ fun SiteDialog(
                         onClick = { onDelete(site.Id, name, url, icon, kind, isActive, otherCanSee) },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("Delete")
+                        Text(stringResource(R.string.delete))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -258,13 +291,13 @@ fun SiteDialog(
                     onClick = { onConfirm(site?.Id ?: 0, name, url, icon, kind, isActive, otherCanSee) },
                     enabled = name.isNotBlank() && url.isNotBlank()
                 ) {
-                    Text(if (isEdit) "Update" else "Add")
+                    Text(if (isEdit) stringResource(R.string.update) else stringResource(R.string.add))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

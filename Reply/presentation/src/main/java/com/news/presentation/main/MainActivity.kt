@@ -193,7 +193,9 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = "user_sites"
                     ) {
-                        AppUserSiteScreen()
+                        AppUserSiteScreen(
+                            onNavigateToLogin = { navHost.navigate("login") }
+                        )
                     }
 
                     composable(
@@ -205,7 +207,7 @@ class MainActivity : ComponentActivity() {
                         val githubCode = backStackEntry.arguments?.getString("code")
                         LoginScreen(
                             onNavigateToRegister = { navHost.navigate("register") },
-                            onLoginSuccess = { navHost.popBackStack("account", inclusive = false) },
+                            onLoginSuccess = { navHost.popBackStack() },
                             githubCode = githubCode
                         )
                     }
@@ -215,7 +217,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         RegisterScreen(
                             onNavigateToLogin = { navHost.navigate("login") },
-                            onRegisterSuccess = { navHost.popBackStack("account", inclusive = false) }
+                            onRegisterSuccess = { navHost.popBackStack() }
                         )
                     }
                 }
