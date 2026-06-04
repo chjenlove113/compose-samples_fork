@@ -10,8 +10,10 @@ import com.news.domain.usecases.UpdateAppUserSiteUseCase
 import com.news.domain.usecases.GetAuthInfoUseCase
 import com.news.domain.usecases.CreateOrUpdateAppUserSiteUseCase
 import com.news.domain.usecases.DeleteAppUserSiteUseCase
+import com.news.domain.usecases.RefreshAppUserSiteListUseCase
 import com.news.utils.AppContants
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,7 @@ data class AppUserSiteUiState(
 @HiltViewModel
 class AppUserSiteViewModel @Inject constructor(
     private val getAppUserSiteListUseCase: GetAppUserSiteListUseCase,
+    private val refreshAppUserSiteListUseCase: RefreshAppUserSiteListUseCase,
     private val updateAppUserSiteUseCase: UpdateAppUserSiteUseCase,
     private val getAuthInfoUseCase: GetAuthInfoUseCase,
     private val createOrUpdateAppUserSiteUseCase: CreateOrUpdateAppUserSiteUseCase,
@@ -39,6 +42,7 @@ class AppUserSiteViewModel @Inject constructor(
     val uiState: StateFlow<AppUserSiteUiState> = _uiState.asStateFlow()
 
     private var currentIdentityId: String = ""
+    private var dataCollectionJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -46,26 +50,46 @@ class AppUserSiteViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoggedIn = auth != null) }
                 auth?.let {
                     currentIdentityId = it.IdentityId
-                    loadSites(AppUserSiteRequest(it.IdentityId, "UserIdEncrypt", AppContants.app_Id))
+                    val request = AppUserSiteRequest(it.IdentityId, "UserIdEncrypt", AppContants.app_Id)
+                    observeSites(request)
+                    loadSites(request)
                 } ?: run {
                     _uiState.update { it.copy(sites = emptyMap()) }
+                    dataCollectionJob?.cancel()
                 }
+            }
+        }
+    }
+
+    private fun observeSites(request: AppUserSiteRequest) {
+        dataCollectionJob?.cancel()
+        dataCollectionJob = viewModelScope.launch {
+            getAppUserSiteListUseCase(request).collect { list ->
+                // Filter out duplicates that could cause key collisions in LazyColumn
+                val uniqueList = list.distinctBy { "${it.Kind}_${it.GROUP}_${it.Id}" }
+                val grouped = uniqueList.groupBy { it.Kind }
+                _uiState.update { it.copy(sites = grouped) }
             }
         }
     }
 
     fun loadSites(request: AppUserSiteRequest) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            if (_uiState.value.sites.isEmpty()) {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+            }
             try {
-                val list = getAppUserSiteListUseCase(request)
-                // Filter out duplicates that could cause key collisions in LazyColumn
-                val uniqueList = list.distinctBy { "${it.Kind}_${it.GROUP}_${it.Id}" }
-                val grouped = uniqueList.groupBy { it.Kind }
-                _uiState.update { it.copy(isLoading = false, sites = grouped) }
+                refreshAppUserSiteListUseCase(request)
+                _uiState.update { it.copy(isLoading = false, error = null) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
             }
+        }
+    }
+
+    fun retryLoad() {
+        if (currentIdentityId.isNotEmpty()) {
+            loadSites(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
         }
     }
 
@@ -129,31 +153,13 @@ class AppUserSiteViewModel @Inject constructor(
             site.IdentityId = currentIdentityId
             site.AppIdEncrypt = AppContants.app_Id
             val updatedSite = site.copy(IsActive = !site.IsActive)
-
-            val success = updateAppUserSiteUseCase(updatedSite)
-            if (success) {
-                // Refresh local state
-                _uiState.update { state ->
-                    val newMap = state.sites.mapValues { entry ->
-                        entry.value.map { if (it.Id == site.Id && it.GROUP == site.GROUP) updatedSite else it }
-                    }
-                    state.copy(sites = newMap)
-                }
-            }
+            updateAppUserSiteUseCase(updatedSite)
         }
     }
     
     fun updateSite(site: AppUserSite) {
         viewModelScope.launch {
-            val success = updateAppUserSiteUseCase(site)
-            if (success) {
-                _uiState.update { state ->
-                    val newMap = state.sites.mapValues { entry ->
-                        entry.value.map { if (it.Id == site.Id && it.GROUP == site.GROUP) site else it }
-                    }
-                    state.copy(sites = newMap)
-                }
-            }
+            updateAppUserSiteUseCase(site)
         }
     }
 }

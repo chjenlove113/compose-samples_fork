@@ -47,4 +47,5 @@
     <string name="login_required_message">You need to log in to perform this action. Do you want to go to the login screen?</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
+    <string name="no_sites_found">No sites found.</string>
 </resources>

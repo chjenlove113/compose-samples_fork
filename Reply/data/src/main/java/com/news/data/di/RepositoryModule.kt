@@ -79,7 +79,10 @@ class RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideAppUserSiteRepository(appUserSiteService: AppUserSiteService): IAppUserSiteRepository {
-        return AppUserSiteRepositoryImpl(appUserSiteService)
+    fun provideAppUserSiteRepository(
+        appUserSiteService: AppUserSiteService,
+        appDatabase: AppDatabase
+    ): IAppUserSiteRepository {
+        return AppUserSiteRepositoryImpl(appUserSiteService, appDatabase)
     }
 }
