@@ -27,15 +27,18 @@ class AppUserSiteRepositoryImpl @Inject constructor(
     }
 
     override suspend fun refreshAppUserSiteList(request: AppUserSiteRequest) {
-        val list = service.getAppUserSiteList(request)
-        dao.refreshSites(
-            request.IdentityId,
-            request.AppIdEncrypt,
-            list.map { it.apply { 
-                IdentityId = request.IdentityId
-                AppIdEncrypt = request.AppIdEncrypt
-            }.toEntity() }
-        )
+        val remoteList = service.getAppUserSiteList(request)
+        val localList = dao.getAppUserSitesList(request.IdentityId, request.AppIdEncrypt)
+        
+        remoteList.forEach { remoteSite ->
+            val exists = localList.any { it.Id == remoteSite.Id && it.GROUP == remoteSite.GROUP }
+            if (!exists) {
+                dao.insert(remoteSite.apply {
+                    IdentityId = request.IdentityId
+                    AppIdEncrypt = request.AppIdEncrypt
+                }.toEntity())
+            }
+        }
     }
 
     override suspend fun updateAppUserSite(site: AppUserSite): Boolean {

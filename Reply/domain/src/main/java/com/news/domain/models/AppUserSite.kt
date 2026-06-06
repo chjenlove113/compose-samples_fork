@@ -22,7 +22,10 @@ data class AppUserSite(
     val OtherCanSee: Boolean,
 
     var IdentityId: String,
-    var AppIdEncrypt: String
+    var AppIdEncrypt: String,
+    val lastRefreshTime: Long? = null,
+    val nextRefreshTime: Long? = null,
+    val itemCount: Int = 0
 )
 
 data class AppUserSiteCreateRequest(

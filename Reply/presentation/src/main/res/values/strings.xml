@@ -48,4 +48,7 @@
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="no_sites_found">No sites found.</string>
+    <string name="last_refresh">Last refresh: %1$s</string>
+    <string name="next_refresh">Next refresh: %1$s</string>
+    <string name="items_count">Last refresh: %1$d item(s)</string>
 </resources>

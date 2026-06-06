@@ -19,6 +19,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.news.domain.models.AppUserSite
 import com.news.presentation.R
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -173,7 +175,36 @@ fun SiteListItem(
 ) {
     ListItem(
         headlineContent = { Text(site.Name) },
-        supportingContent = { Text(site.Url) },
+        supportingContent = {
+            Column {
+                Text(site.Url)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (site.itemCount > 0) {
+                        Text(
+                            text = stringResource(R.string.items_count, site.itemCount),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (site.lastRefreshTime != null) {
+                        Text(
+                            text = stringResource(R.string.last_refresh, formatTime(site.lastRefreshTime!!)),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                if (site.nextRefreshTime != null) {
+                    Text(
+                        text = stringResource(R.string.next_refresh, formatTime(site.nextRefreshTime!!)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+        },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(
@@ -190,6 +221,11 @@ fun SiteListItem(
             }
         }
     )
+}
+
+private fun formatTime(timestamp: Long): String {
+    val sdf = SimpleDateFormat("HH:mm dd/MM/yy", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }
 
 @Composable

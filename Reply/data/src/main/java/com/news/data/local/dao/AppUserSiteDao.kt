@@ -9,6 +9,9 @@ interface AppUserSiteDao {
     @Query("SELECT * FROM app_user_sites WHERE IdentityId = :identityId AND AppIdEncrypt = :appId")
     fun getAppUserSites(identityId: String, appId: String): Flow<List<AppUserSiteEntity>>
 
+    @Query("SELECT * FROM app_user_sites WHERE IdentityId = :identityId AND AppIdEncrypt = :appId")
+    suspend fun getAppUserSitesList(identityId: String, appId: String): List<AppUserSiteEntity>
+
     @Query("SELECT * FROM app_user_sites")
     suspend fun getAllSites(): List<AppUserSiteEntity>
 
@@ -18,12 +21,9 @@ interface AppUserSiteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(site: AppUserSiteEntity)
 
+    @Update
+    suspend fun update(site: AppUserSiteEntity)
+
     @Query("DELETE FROM app_user_sites WHERE IdentityId = :identityId AND AppIdEncrypt = :appId")
     suspend fun deleteSites(identityId: String, appId: String)
-
-    @Transaction
-    suspend fun refreshSites(identityId: String, appId: String, sites: List<AppUserSiteEntity>) {
-        deleteSites(identityId, appId)
-        insertAll(sites)
-    }
 }

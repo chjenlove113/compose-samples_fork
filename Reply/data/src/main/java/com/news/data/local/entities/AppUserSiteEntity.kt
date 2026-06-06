@@ -19,7 +19,10 @@ data class AppUserSiteEntity(
     val AllowEdit: Boolean,
     val OtherCanSee: Boolean,
     val IdentityId: String,
-    val AppIdEncrypt: String
+    val AppIdEncrypt: String,
+    val lastRefreshTime: Long? = null,
+    val nextRefreshTime: Long? = null,
+    val itemCount: Int = 0
 )
 
 fun AppUserSiteEntity.toDomain() = AppUserSite(
@@ -37,7 +40,10 @@ fun AppUserSiteEntity.toDomain() = AppUserSite(
     AllowEdit = AllowEdit,
     OtherCanSee = OtherCanSee,
     IdentityId = IdentityId,
-    AppIdEncrypt = AppIdEncrypt
+    AppIdEncrypt = AppIdEncrypt,
+    lastRefreshTime = lastRefreshTime,
+    nextRefreshTime = nextRefreshTime,
+    itemCount = itemCount
 )
 
 fun AppUserSite.toEntity() = AppUserSiteEntity(
@@ -55,5 +61,8 @@ fun AppUserSite.toEntity() = AppUserSiteEntity(
     AllowEdit = AllowEdit,
     OtherCanSee = OtherCanSee,
     IdentityId = IdentityId,
-    AppIdEncrypt = AppIdEncrypt
+    AppIdEncrypt = AppIdEncrypt,
+    lastRefreshTime = lastRefreshTime,
+    nextRefreshTime = nextRefreshTime,
+    itemCount = itemCount
 )
