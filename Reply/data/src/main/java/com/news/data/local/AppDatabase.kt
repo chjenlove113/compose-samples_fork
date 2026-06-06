@@ -9,14 +9,16 @@ import com.news.data.local.dao.NewsSiteDao
 import com.news.data.local.dao.NewsTagDao
 import com.news.data.local.dao.AuthDao
 import com.news.data.local.dao.AppUserSiteDao
+import com.news.data.local.dao.RssItemDao
 import com.news.data.local.entities.AuthEntity
 import com.news.data.local.entities.News
 import com.news.data.local.entities.News_Site
 import com.news.data.local.entities.News_Tag
 import com.news.data.local.entities.SavedTagSlug
 import com.news.data.local.entities.AppUserSiteEntity
+import com.news.data.local.entities.RssItemEntity
 
-@Database(entities = [News_Tag::class, News_Site::class, News::class, AuthEntity::class, SavedTagSlug::class, AppUserSiteEntity::class], version = 6)
+@Database(entities = [News_Tag::class, News_Site::class, News::class, AuthEntity::class, SavedTagSlug::class, AppUserSiteEntity::class, RssItemEntity::class], version = 8)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun newsTagDao(): NewsTagDao
@@ -24,4 +26,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun newsDao(): NewsDao
     abstract fun authDao(): AuthDao
     abstract fun appUserSiteDao(): AppUserSiteDao
+    abstract fun rssItemDao(): RssItemDao
 }

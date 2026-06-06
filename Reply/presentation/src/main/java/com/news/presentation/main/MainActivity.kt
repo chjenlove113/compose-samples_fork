@@ -53,6 +53,7 @@ import com.news.presentation.base.TopLevelRoute
 import com.news.presentation.newsTag.NewsTagRoute
 import com.news.presentation.newsTag.NewsTagScreen
 import com.news.presentation.showHome.ShowHomeScreen
+import com.news.presentation.showHomeRSS.ShowHomeRSSFeedScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 import androidx.compose.runtime.getValue
@@ -180,6 +181,12 @@ class MainActivity : ComponentActivity() {
                         route = "screen3"
                     ) {
                         ShowHomeChildRoute()
+                    }
+
+                    composable(
+                        route = "screen_rss"
+                    ) {
+                        ShowHomeRSSFeedScreen()
                     }
 
                     composable(
@@ -403,9 +410,9 @@ private fun navigationSuiteItems(
     )
 
     item(
-        selected = currentDestination?.hierarchy?.any { it.route == "screen3" } == true,
+        selected = currentDestination?.hierarchy?.any { it.route == "screen_rss" } == true,
         onClick = {
-            navigateWithBackStackHandling("screen3", navHost)
+            navigateWithBackStackHandling("screen_rss", navHost)
         },
         label = { Text("#ALL NEWS") },
         icon = {

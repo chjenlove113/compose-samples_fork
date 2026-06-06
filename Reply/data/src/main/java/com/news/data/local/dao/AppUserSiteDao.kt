@@ -9,6 +9,9 @@ interface AppUserSiteDao {
     @Query("SELECT * FROM app_user_sites WHERE IdentityId = :identityId AND AppIdEncrypt = :appId")
     fun getAppUserSites(identityId: String, appId: String): Flow<List<AppUserSiteEntity>>
 
+    @Query("SELECT * FROM app_user_sites")
+    suspend fun getAllSites(): List<AppUserSiteEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(sites: List<AppUserSiteEntity>)
 

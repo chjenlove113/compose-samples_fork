@@ -75,8 +75,17 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    // ksp(libs.androidx.room.compiler) // Removed because :presentation has no DAOs or @Database
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.hilt.ext.work)
+    ksp(libs.hilt.ext.compiler)
+    implementation(libs.rometools.rome)
+    implementation(libs.okhttp3)
 
     implementation("androidx.activity:activity-compose:1.10.0")
 
