@@ -51,17 +51,31 @@ fun ShowHomeRSSFeedScreen(
                     rssJump = rssJump,
                     onJumpHandled = { mainViewModel.clearRssJump() },
                     onRssItemClick = { item ->
-                        // In a real app, we might navigate to a WebView detail
-                        // scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item) }
+                        scope.launch {
+                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+                        }
                     }
                 )
             }
         },
         detailPane = {
             AnimatedPane {
-                // Placeholder for RSS content detail
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Select an RSS item to view details")
+                val selectedItem = navigator.currentDestination?.contentKey as? RssItemEntity
+                if (selectedItem != null) {
+                    ShowHomeRSSFeedDetailScreen(
+                        item = selectedItem,
+                        onBack = {
+                            scope.launch {
+                                if (navigator.canNavigateBack()) {
+                                    navigator.navigateBack()
+                                }
+                            }
+                        }
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Select an RSS item to view details")
+                    }
                 }
             }
         }

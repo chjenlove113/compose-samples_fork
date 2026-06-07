@@ -25,5 +25,6 @@ data class RssItemEntity(
     val siteId: Int,
     val siteGroup: String,
     val siteKind: String,
-    val updDate: Long? = null
+    val updDate: Long? = null,
+    val content: String? = null
 )
