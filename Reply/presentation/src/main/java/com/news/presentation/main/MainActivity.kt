@@ -201,7 +201,11 @@ class MainActivity : ComponentActivity() {
                         route = "user_sites"
                     ) {
                         AppUserSiteScreen(
-                            onNavigateToLogin = { navHost.navigate("login") }
+                            onNavigateToLogin = { navHost.navigate("login") },
+                            onNavigateToRss = { id, group ->
+                                mainViewModel.setRssJump(id, group)
+                                navigateWithBackStackHandling("screen_rss", navHost)
+                            }
                         )
                     }
 
@@ -410,14 +414,14 @@ private fun navigationSuiteItems(
     )
 
     item(
-        selected = currentDestination?.hierarchy?.any { it.route == "screen_rss" } == true,
+        selected = currentDestination?.hierarchy?.any { it.route?.split("?")?.firstOrNull() == "screen_rss" } == true,
         onClick = {
             navigateWithBackStackHandling("screen_rss", navHost)
         },
-        label = { Text("#ALL NEWS") },
+        label = { Text("#RSS NEWS") },
         icon = {
             Icon(
-                imageVector = AppDestinations.SHOPPING.icon, contentDescription = "SHOPPING"
+                imageVector = AppDestinations.SHOPPING.icon, contentDescription = "RSS NEWS"
             )
         },
     )

@@ -1,5 +1,6 @@
 package com.news.presentation.showHomeRSS
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -24,14 +26,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.news.data.local.entities.RssItemEntity
 import com.news.domain.models.AppUserSite
+import com.news.presentation.main.MainViewModel
+import com.news.presentation.main.RssJump
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun ShowHomeRSSFeedScreen(
-    viewModel: ShowHomeRssViewModel = hiltViewModel()
+    viewModel: ShowHomeRssViewModel = hiltViewModel(),
+    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val rssJump by mainViewModel.rssJump.collectAsStateWithLifecycle()
     val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
     val scope = rememberCoroutineScope()
 
@@ -42,6 +48,8 @@ fun ShowHomeRSSFeedScreen(
             AnimatedPane {
                 RSSListPane(
                     sites = uiState.sites,
+                    rssJump = rssJump,
+                    onJumpHandled = { mainViewModel.clearRssJump() },
                     onRssItemClick = { item ->
                         // In a real app, we might navigate to a WebView detail
                         // scope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item) }
@@ -64,6 +72,8 @@ fun ShowHomeRSSFeedScreen(
 @Composable
 fun RSSListPane(
     sites: List<AppUserSite>,
+    rssJump: RssJump? = null,
+    onJumpHandled: () -> Unit = {},
     onRssItemClick: (RssItemEntity) -> Unit
 ) {
     if (sites.isEmpty()) {
@@ -73,9 +83,24 @@ fun RSSListPane(
         return
     }
 
-    var selectedTabKey by rememberSaveable { mutableStateOf(sites.firstOrNull()?.Key ?: "") }
-    val pagerState = rememberPagerState(pageCount = { sites.size })
+    val pagerState = rememberPagerState(
+        initialPage = 0,
+        pageCount = { sites.size }
+    )
     val scope = rememberCoroutineScope()
+
+    // Sync pager state only if a specific site is requested via parameters
+    LaunchedEffect(rssJump, sites) {
+        if (rssJump != null && sites.isNotEmpty()) {
+            val index = sites.indexOfFirst { it.Id == rssJump.siteId && it.GROUP == rssJump.siteGroup }
+            if (index != -1) {
+                if (pagerState.currentPage != index) {
+                    pagerState.scrollToPage(index)
+                }
+                onJumpHandled()
+            }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {

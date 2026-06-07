@@ -50,5 +50,6 @@
     <string name="no_sites_found">No sites found.</string>
     <string name="last_refresh">Last refresh: %1$s</string>
     <string name="next_refresh">Next refresh: %1$s</string>
-    <string name="items_count">Last refresh: %1$d item(s)</string>
+    <string name="items_count">Items: %1$d</string>
+    <string name="go_to_rss">Go to RSS</string>
 </resources>

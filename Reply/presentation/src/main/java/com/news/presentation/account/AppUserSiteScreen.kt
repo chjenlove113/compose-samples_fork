@@ -2,6 +2,7 @@ package com.news.presentation.account
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,7 +27,8 @@ import java.util.*
 @Composable
 fun AppUserSiteScreen(
     viewModel: AppUserSiteViewModel = hiltViewModel(),
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    onNavigateToRss: (Int, String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
@@ -103,7 +105,8 @@ fun AppUserSiteScreen(
                                     } else {
                                         showLoginRequiredDialog = true
                                     }
-                                }
+                                },
+                                onNavigateToRss = onNavigateToRss
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
@@ -171,9 +174,11 @@ fun HeaderItem(kind: String) {
 fun SiteListItem(
     site: AppUserSite,
     onToggleActive: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onNavigateToRss: (Int, String) -> Unit
 ) {
     ListItem(
+        modifier = Modifier.clickable { onNavigateToRss(site.Id, site.GROUP) },
         headlineContent = { Text(site.Name) },
         supportingContent = {
             Column {
@@ -182,13 +187,11 @@ fun SiteListItem(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (site.itemCount > 0) {
-                        Text(
-                            text = stringResource(R.string.items_count, site.itemCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.items_count, site.itemCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     if (site.lastRefreshTime != null) {
                         Text(
                             text = stringResource(R.string.last_refresh, formatTime(site.lastRefreshTime!!)),
