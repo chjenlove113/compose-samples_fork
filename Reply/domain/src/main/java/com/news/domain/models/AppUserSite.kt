@@ -1,11 +1,15 @@
 package com.news.domain.models
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
 data class AppUserSiteRequest(
     val IdentityId: String,
     val UserIdEncrypt: String,
     val AppIdEncrypt: String
 )
 
+@Parcelize
 data class AppUserSite(
     val Id: Int,
     val Key: String,
@@ -26,7 +30,7 @@ data class AppUserSite(
     val lastRefreshTime: Long? = null,
     val nextRefreshTime: Long? = null,
     val itemCount: Int = 0
-)
+) : Parcelable
 
 data class AppUserSiteCreateRequest(
     val Id: Int,

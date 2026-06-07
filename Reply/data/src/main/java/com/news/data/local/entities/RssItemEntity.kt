@@ -1,9 +1,12 @@
 package com.news.data.local.entities
 
+import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 @Entity(
     tableName = "rss_items",
     primaryKeys = ["link", "siteId", "siteGroup", "siteKind"],
@@ -27,4 +30,4 @@ data class RssItemEntity(
     val siteKind: String,
     val updDate: Long? = null,
     val content: String? = null
-)
+) : Parcelable

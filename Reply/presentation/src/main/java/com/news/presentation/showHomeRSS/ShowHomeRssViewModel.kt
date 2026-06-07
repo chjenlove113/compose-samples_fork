@@ -3,6 +3,7 @@ package com.news.presentation.showHomeRSS
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.news.data.local.AppDatabase
+import com.news.data.local.entities.RssItemEntity
 import com.news.data.local.entities.toDomain
 import com.news.domain.models.AppUserSite
 import com.news.domain.usecases.GetAuthInfoUseCase
@@ -15,7 +16,8 @@ import javax.inject.Inject
 data class ShowHomeRssUiState(
     val sites: List<AppUserSite> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val selectedItem: RssItemEntity? = null
 )
 
 @HiltViewModel
@@ -46,5 +48,9 @@ class ShowHomeRssViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun setSelectedRssItem(item: RssItemEntity?) {
+        _uiState.update { it.copy(selectedItem = item) }
     }
 }

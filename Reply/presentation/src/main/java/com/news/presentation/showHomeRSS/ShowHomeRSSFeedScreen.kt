@@ -11,7 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldDefaults
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.calculateThreePaneScaffoldValue
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -42,18 +44,42 @@ fun ShowHomeRSSFeedScreen(
     val rssJump by mainViewModel.rssJump.collectAsStateWithLifecycle()
     val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
     val scope = rememberCoroutineScope()
+    var isFullScreen by rememberSaveable { mutableStateOf(false) }
+
+    // Sync Navigator state back to ViewModel
+    val currentDetail = navigator.currentDestination?.contentKey as? RssItemEntity
+    LaunchedEffect(currentDetail) {
+        viewModel.setSelectedRssItem(currentDetail)
+    }
+
+    // Determine if we should show List or Detail as the single pane when maxHorizontalPartitions = 1
+    val currentScaffoldDirective = if (isFullScreen) {
+        navigator.scaffoldDirective.copy(maxHorizontalPartitions = 1)
+    } else {
+        navigator.scaffoldDirective
+    }
+
+    val scaffoldValue = calculateThreePaneScaffoldValue(
+        maxHorizontalPartitions = currentScaffoldDirective.maxHorizontalPartitions,
+        adaptStrategies = ListDetailPaneScaffoldDefaults.adaptStrategies(),
+        currentDestination = navigator.currentDestination
+    )
 
     ListDetailPaneScaffold(
-        directive = navigator.scaffoldDirective,
-        value = navigator.scaffoldValue,
+        directive = currentScaffoldDirective,
+        value = scaffoldValue,
         listPane = {
             AnimatedPane {
                 RSSListPane(
                     sites = uiState.sites,
                     rssJump = rssJump,
+                    selectedItem = uiState.selectedItem,
                     onJumpHandled = { mainViewModel.clearRssJump() },
                     onRssItemClick = { item ->
                         scope.launch {
+                            // When clicking an item, we usually want to see both panes on large screens
+                            // so we ensure isFullScreen is false unless the user explicitly expands it later.
+                            isFullScreen = false 
                             navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
                         }
                     }
@@ -62,16 +88,20 @@ fun ShowHomeRSSFeedScreen(
         },
         detailPane = {
             AnimatedPane {
-                val selectedItem = navigator.currentDestination?.contentKey as? RssItemEntity
-                if (selectedItem != null) {
+                if (currentDetail != null) {
                     ShowHomeRSSFeedDetailScreen(
-                        item = selectedItem,
+                        item = currentDetail,
                         onBack = {
                             scope.launch {
-                                if (navigator.canNavigateBack()) {
-                                    navigator.navigateBack()
-                                }
+                                // 1. Exit full screen mode
+                                isFullScreen = false
+                                // 2. Navigate back to List role in the navigator
+                                navigator.navigateBack()
                             }
+                        },
+                        isFullScreen = isFullScreen,
+                        onToggleFullScreen = {
+                            isFullScreen = !isFullScreen
                         }
                     )
                 } else {
@@ -89,6 +119,7 @@ fun ShowHomeRSSFeedScreen(
 fun RSSListPane(
     sites: List<AppUserSite>,
     rssJump: RssJump? = null,
+    selectedItem: RssItemEntity? = null,
     onJumpHandled: () -> Unit = {},
     onRssItemClick: (RssItemEntity) -> Unit
 ) {
@@ -133,13 +164,18 @@ fun RSSListPane(
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            key = { index -> 
+                val site = sites.getOrNull(index)
+                if (site != null) "${site.Id}_${site.GROUP}_${site.Kind}" else index
+            }
         ) { page ->
             val site = sites[page]
             RSSFeedChildScreen(
                 siteId = site.Id,
                 siteGroup = site.GROUP,
                 siteKind = site.Kind,
+                selectedItem = selectedItem,
                 onItemClick = onRssItemClick
             )
         }
@@ -151,6 +187,7 @@ fun RSSFeedChildScreen(
     siteId: Int,
     siteGroup: String,
     siteKind: String,
+    selectedItem: RssItemEntity? = null,
     onItemClick: (RssItemEntity) -> Unit,
     viewModel: ShowHomeRssChildViewModel = hiltViewModel(
         key = "${siteId}_${siteGroup}_${siteKind}",
@@ -164,12 +201,18 @@ fun RSSFeedChildScreen(
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(
             count = pagingItems.itemCount,
-            key = pagingItems.itemKey { it.link },
+            key = pagingItems.itemKey { "${it.link}_${it.siteId}_${it.siteGroup}_${it.siteKind}" },
             contentType = pagingItems.itemContentType { "rss_item" }
         ) { index ->
             val item = pagingItems[index]
             if (item != null) {
-                RssItemRow(item, onClick = { onItemClick(item) })
+                val isSelected = selectedItem != null &&
+                               selectedItem.link == item.link && 
+                               selectedItem.siteId == item.siteId &&
+                               selectedItem.siteGroup == item.siteGroup &&
+                               selectedItem.siteKind == item.siteKind
+                
+                RssItemRow(item, isSelected = isSelected, onClick = { onItemClick(item) })
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
@@ -177,9 +220,12 @@ fun RSSFeedChildScreen(
 }
 
 @Composable
-fun RssItemRow(item: RssItemEntity, onClick: () -> Unit) {
+fun RssItemRow(item: RssItemEntity, isSelected: Boolean = false, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable { onClick() },
+        colors = ListItemDefaults.colors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+        ),
         headlineContent = {
             Text(
                 text = item.title,

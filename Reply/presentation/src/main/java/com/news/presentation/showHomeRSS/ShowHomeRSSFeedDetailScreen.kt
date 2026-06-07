@@ -9,7 +9,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloseFullscreen
 import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +36,8 @@ import java.util.*
 fun ShowHomeRSSFeedDetailScreen(
     item: RssItemEntity,
     onBack: () -> Unit,
+    isFullScreen: Boolean = false,
+    onToggleFullScreen: () -> Unit = {},
     mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
 ) {
     val context = LocalContext.current
@@ -56,6 +60,12 @@ fun ShowHomeRSSFeedDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onToggleFullScreen) {
+                        Icon(
+                            if (isFullScreen) Icons.Default.CloseFullscreen else Icons.Default.OpenInFull,
+                            contentDescription = if (isFullScreen) "Exit Full Screen" else "Expand to Full Screen"
+                        )
+                    }
                     IconButton(onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, item.link.toUri())
                         context.startActivity(intent)
