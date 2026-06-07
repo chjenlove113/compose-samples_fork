@@ -5,7 +5,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
@@ -24,6 +23,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import com.news.data.local.entities.RssItemEntity
 import com.news.domain.models.AppUserSite
 import com.news.presentation.main.MainViewModel
@@ -157,12 +159,19 @@ fun RSSFeedChildScreen(
         }
     )
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val pagingItems = viewModel.rssItemsPagingData.collectAsLazyPagingItems()
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(uiState.rssItems) { item ->
-            RssItemRow(item, onClick = { onItemClick(item) })
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        items(
+            count = pagingItems.itemCount,
+            key = pagingItems.itemKey { it.link },
+            contentType = pagingItems.itemContentType { "rss_item" }
+        ) { index ->
+            val item = pagingItems[index]
+            if (item != null) {
+                RssItemRow(item, onClick = { onItemClick(item) })
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
         }
     }
 }

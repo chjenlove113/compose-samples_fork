@@ -9,6 +9,9 @@ interface RssItemDao {
     @Query("SELECT * FROM rss_items WHERE siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind ORDER BY pubDate DESC")
     fun getRssItemsForSite(siteId: Int, siteGroup: String, siteKind: String): Flow<List<RssItemEntity>>
 
+    @Query("SELECT * FROM rss_items WHERE siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind ORDER BY pubDate DESC")
+    fun getRssItemsForSitePaging(siteId: Int, siteGroup: String, siteKind: String): androidx.paging.PagingSource<Int, RssItemEntity>
+
     @Query("SELECT * FROM rss_items WHERE link = :link LIMIT 1")
     suspend fun getItemByLink(link: String): RssItemEntity?
 

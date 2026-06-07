@@ -2,6 +2,10 @@ package com.news.presentation.showHomeRSS
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.news.data.local.AppDatabase
 import com.news.data.local.entities.RssItemEntity
 import dagger.assisted.Assisted
@@ -9,10 +13,8 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 
 data class ShowHomeRssChildUiState(
-    val rssItems: List<RssItemEntity> = emptyList(),
     val isLoading: Boolean = false
 )
 
@@ -27,18 +29,13 @@ class ShowHomeRssChildViewModel @AssistedInject constructor(
     private val _uiState = MutableStateFlow(ShowHomeRssChildUiState())
     val uiState: StateFlow<ShowHomeRssChildUiState> = _uiState.asStateFlow()
 
-    init {
-        loadRssItems()
-    }
-
-    private fun loadRssItems() {
-        viewModelScope.launch {
-            appDatabase.rssItemDao().getRssItemsForSite(siteId, siteGroup, siteKind)
-                .collect { items ->
-                    _uiState.update { it.copy(rssItems = items) }
-                }
-        }
-    }
+    val rssItemsPagingData: Flow<PagingData<RssItemEntity>> = Pager(
+        config = PagingConfig(
+            pageSize = 10,
+            enablePlaceholders = false
+        ),
+        pagingSourceFactory = { appDatabase.rssItemDao().getRssItemsForSitePaging(siteId, siteGroup, siteKind) }
+    ).flow.cachedIn(viewModelScope)
 }
 
 @AssistedFactory
