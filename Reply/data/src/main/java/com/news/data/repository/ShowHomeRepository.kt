@@ -17,19 +17,20 @@ import javax.inject.Singleton
 
 @Singleton
 class ShowHomeRepository @Inject constructor(private  val showHomeService: ShowHomeService) : IShowHomeRepository {
-    override fun getShowHome(page: Int, site_Slug: String): Flow<ShowHomeDataModel> {
+    override fun getShowHome(page: Int, site_Slug: String, userId: String?): Flow<ShowHomeDataModel> {
         return flow {
-            emit(showHomeService.getShowHome(AppContants.app_Slug, page, site_Slug, ""))
+            emit(showHomeService.getShowHome(AppContants.app_Slug, page, site_Slug, "", userId))
         }
     }
 
     override fun getShowHomePaging(
         page: Int,
-        site_Slug: String
-        , cat_Slug: String
+        site_Slug: String,
+        cat_Slug: String,
+        userId: String?
     ): Flow<PagingData<News>> {
         return Pager(config = PagingConfig(pageSize = 10, enablePlaceholders = false)
-                , pagingSourceFactory = { ShowHomePagingSource(showHomeService, site_Slug, cat_Slug) }
+                , pagingSourceFactory = { ShowHomePagingSource(showHomeService, site_Slug, cat_Slug, userId) }
         ).flow
     }
 
@@ -37,7 +38,8 @@ class ShowHomeRepository @Inject constructor(private  val showHomeService: ShowH
 
  class ShowHomePagingSource(
     val showHomeService: ShowHomeService,
-    val siteSlug: String, val catSlug: String
+    val siteSlug: String, val catSlug: String,
+    val userId: String? = null
 ): PagingSource<Int, News>() {
      override fun getRefreshKey(state: PagingState<Int, News>): Int? {
          // Return the most recently accessed page key
@@ -49,7 +51,7 @@ class ShowHomeRepository @Inject constructor(private  val showHomeService: ShowH
      override suspend fun load(params: LoadParams<Int>): LoadResult<Int, News> {
          return try {
              val currentPage = params.key ?: 1 // Start page
-             val response = showHomeService.getShowHome(AppContants.app_Slug, currentPage, siteSlug, catSlug)
+             val response = showHomeService.getShowHome(AppContants.app_Slug, currentPage, siteSlug, catSlug, userId)
              val items =   response.CategoryViewModel.LstNewsItem
 
              LoadResult.Page(

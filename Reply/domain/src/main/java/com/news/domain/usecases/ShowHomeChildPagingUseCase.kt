@@ -9,7 +9,7 @@ import javax.inject.Singleton
 
 @Singleton
 class ShowHomeChildPagingUseCase @Inject constructor(private val showHomeRepository: IShowHomeRepository) {
-    operator fun invoke(page: Int, site_Slug: String, cat_Slug: String): Flow<PagingData<News>>{
-        return showHomeRepository.getShowHomePaging(page, site_Slug, cat_Slug)
+    operator fun invoke(page: Int, site_Slug: String, cat_Slug: String, userId: String? = null): Flow<PagingData<News>>{
+        return showHomeRepository.getShowHomePaging(page, site_Slug, cat_Slug, userId)
     }
 }

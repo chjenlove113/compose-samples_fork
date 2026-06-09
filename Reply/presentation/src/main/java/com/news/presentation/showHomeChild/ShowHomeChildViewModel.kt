@@ -3,6 +3,7 @@ package com.news.presentation.showHomeChild
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.news.domain.models.ShowHomeDataModel
+import com.news.domain.usecases.GetAuthInfoUseCase
 import com.news.domain.usecases.ShowHomeUseCase
 import com.news.domain.util.DispatcherProvider
 import com.news.presentation.base.UiState
@@ -22,7 +23,8 @@ import javax.inject.Inject;
 class ShowHomeChildViewModel @AssistedInject constructor(
     private val showHomeUseCase:ShowHomeUseCase,
     private val dispatcherProvider:DispatcherProvider,
-    @Assisted val navKey: ItemDetailSite
+    @Assisted val navKey: ItemDetailSite,
+    private val getAuthInfoUseCase: GetAuthInfoUseCase
 ) : ViewModel(){
 
     @AssistedFactory
@@ -34,12 +36,16 @@ class ShowHomeChildViewModel @AssistedInject constructor(
             val uiState: MutableStateFlow<UiState<ShowHomeDataModel>> = _uiState
 
     init {
-        fetchShowHome()
+        viewModelScope.launch {
+            getAuthInfoUseCase().collect { auth ->
+                fetchShowHome(userId = auth?.IdentityId ?: "")
+            }
+        }
     }
 
-    fun fetchShowHome(pageNumber: Int = 1,siteSlug:String = navKey.slug.slug) {
+    fun fetchShowHome(pageNumber: Int = 1, siteSlug: String = navKey.slug.slug, userId: String = "") {
         viewModelScope.launch(dispatcherProvider.main) {
-            showHomeUseCase.invoke(pageNumber,siteSlug).flowOn(dispatcherProvider.io)
+            showHomeUseCase.invoke(pageNumber, siteSlug, userId).flowOn(dispatcherProvider.io)
                     .catch { e -> _uiState.value = UiState.Error(e.toString()) }
                 .collect { _uiState.value = UiState.Success(it) }
         }
