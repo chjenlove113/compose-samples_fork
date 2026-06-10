@@ -14,6 +14,11 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class ShowHomeForYouUiState(
+    val data: UiState<ShowHomeDataModel> = UiState.Loading,
+    val isLoggedIn: Boolean = false
+)
+
 @HiltViewModel
 class ShowHomeForYouViewModel @Inject constructor(
     private val showHomeUseCase: ShowHomeUseCase,
@@ -22,8 +27,8 @@ class ShowHomeForYouViewModel @Inject constructor(
     private val setViewModeUseCase: SetViewModeUseCase,
     private val getAuthInfoUseCase: GetAuthInfoUseCase
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow<UiState<ShowHomeDataModel>>(UiState.Loading)
-    val uiState: MutableStateFlow<UiState<ShowHomeDataModel>> = _uiState
+    private val _uiState = MutableStateFlow(ShowHomeForYouUiState())
+    val uiState: StateFlow<ShowHomeForYouUiState> = _uiState.asStateFlow()
 
     val viewMode: StateFlow<String> = getViewModeUseCase()
         .stateIn(
@@ -35,16 +40,20 @@ class ShowHomeForYouViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             getAuthInfoUseCase().collect { auth ->
-                fetchShowHome(auth?.IdentityId ?: "")
+                _uiState.update { it.copy(isLoggedIn = auth != null) }
+                if (auth != null) {
+                    fetchShowHome(auth.IdentityId)
+                }
             }
         }
     }
 
     fun fetchShowHome(userId: String = "") {
         viewModelScope.launch(dispatcherProvider.main) {
+            _uiState.update { it.copy(data = UiState.Loading) }
             showHomeUseCase.invoke(userId = userId).flowOn(dispatcherProvider.io)
-                .catch { e -> _uiState.value = UiState.Error(e.toString()) }
-                .collect { _uiState.value = UiState.Success(it) }
+                .catch { e -> _uiState.update { it.copy(data = UiState.Error(e.toString())) } }
+                .collect { data -> _uiState.update { it.copy(data = UiState.Success(data)) } }
         }
     }
 

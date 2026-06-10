@@ -124,20 +124,39 @@ data object ExtraScreenForYou : NavKey
 
 @Composable
 fun ShowHomeForYouRoute(
-    viewModel: ShowHomeForYouViewModel = hiltViewModel()
+    viewModel: ShowHomeForYouViewModel = hiltViewModel(),
+    onNavigateToLogin: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ShowHomeForYouScreen(uiState, viewModel)
+    ShowHomeForYouScreen(uiState, viewModel, onNavigateToLogin = onNavigateToLogin)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun ShowHomeForYouScreen(
-    uiState: UiState<ShowHomeDataModel>,
+    uiState: ShowHomeForYouUiState,
     viewModel: ShowHomeForYouViewModel?,
-    onTabSelected: (String) -> Unit = {}
+    onTabSelected: (String) -> Unit = {},
+    onNavigateToLogin: () -> Unit = {}
 ) {
-    when (uiState) {
+    if (!uiState.isLoggedIn) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "You must be logged in to see personalized content.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+                Button(onClick = onNavigateToLogin) {
+                    Text("Go to Login")
+                }
+            }
+        }
+        return
+    }
+
+    when (val data = uiState.data) {
         is UiState.Loading -> {
             ShowLoading()
         }
@@ -202,7 +221,7 @@ fun ShowHomeForYouScreen(
                     AnimatedPane{
                         var selectedTabKey00 by rememberSaveable { mutableStateOf("home") }
 
-                        val tabs = remember(uiState.data) {
+                        val tabs = remember(data.data) {
                             val tabsItem = arrayListOf<TabItem>()
                             tabsItem.add(TabItem(key = "home", title = "Home", screen = {
                                 ShowHomeRoute(
@@ -243,7 +262,7 @@ fun ShowHomeForYouScreen(
                                 })
                             )
 
-                            uiState.data.CategoryViewModel.AppSiteCateByGroup?.forEach {
+                            data.data.CategoryViewModel.AppSiteCateByGroup?.forEach {
                                 val appSite = ItemDetailSite(
                                     AppSite(it.Id, it.Slug, it.Key, it.Name, "", "", "", "")
                                 )

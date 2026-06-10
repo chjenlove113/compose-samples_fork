@@ -84,6 +84,7 @@ import com.news.presentation.base.Destination
 import com.news.presentation.base.bottomNavItems
 import com.news.presentation.components.NewsDetailScreen
 import com.news.presentation.showHome.ShowHomeRoute2
+import com.news.presentation.showHomeForYou.ShowHomeForYouRoute
 import com.news.presentation.showHomeChild.ShowHomeChildRoute
 import androidx.compose.material.icons.filled.Person
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -169,6 +170,14 @@ class MainActivity : ComponentActivity() {
                         route = "screen1"
                     ) {
                         ShowHomeRoute2()
+                    }
+
+                    composable(
+                        route = "screen_foryou"
+                    ) {
+                        ShowHomeForYouRoute(
+                            onNavigateToLogin = { navHost.navigate("login") }
+                        )
                     }
 
                     composable(
@@ -409,6 +418,19 @@ private fun navigationSuiteItems(
         icon = {
             Icon(
                 imageVector = AppDestinations.HOME.icon, contentDescription = "HOME"
+            )
+        },
+    )
+
+    item(
+        selected = currentDestination?.hierarchy?.any { it.route == "screen_foryou" } == true,
+        onClick = {
+            navigateWithBackStackHandling("screen_foryou", navHost)
+        },
+        label = { Text("#FOR YOU") },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Face, contentDescription = "FOR YOU"
             )
         },
     )

@@ -3,7 +3,6 @@ package com.news.presentation.showHomeChild
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.news.domain.models.ShowHomeDataModel
-import com.news.domain.usecases.GetAuthInfoUseCase
 import com.news.domain.usecases.ShowHomeUseCase
 import com.news.domain.util.DispatcherProvider
 import com.news.presentation.base.UiState
@@ -23,8 +22,7 @@ import javax.inject.Inject;
 class ShowHomeChildViewModel @AssistedInject constructor(
     private val showHomeUseCase:ShowHomeUseCase,
     private val dispatcherProvider:DispatcherProvider,
-    @Assisted val navKey: ItemDetailSite,
-    private val getAuthInfoUseCase: GetAuthInfoUseCase
+    @Assisted val navKey: ItemDetailSite
 ) : ViewModel(){
 
     @AssistedFactory
@@ -36,11 +34,7 @@ class ShowHomeChildViewModel @AssistedInject constructor(
             val uiState: MutableStateFlow<UiState<ShowHomeDataModel>> = _uiState
 
     init {
-        viewModelScope.launch {
-            getAuthInfoUseCase().collect { auth ->
-                fetchShowHome(userId = auth?.IdentityId ?: "")
-            }
-        }
+        fetchShowHome()
     }
 
     fun fetchShowHome(pageNumber: Int = 1, siteSlug: String = navKey.slug.slug, userId: String = "") {

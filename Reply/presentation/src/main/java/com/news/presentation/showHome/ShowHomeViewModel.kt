@@ -3,7 +3,6 @@ package com.news.presentation.showHome
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.news.domain.models.ShowHomeDataModel
-import com.news.domain.usecases.GetAuthInfoUseCase
 import com.news.domain.usecases.GetViewModeUseCase
 import com.news.domain.usecases.SetViewModeUseCase
 import com.news.domain.usecases.ShowHomeUseCase
@@ -14,8 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -26,8 +23,7 @@ class ShowHomeViewModel @Inject constructor(
     private val showHomeUseCase: ShowHomeUseCase,
     private val dispatcherProvider: DispatcherProvider,
     private val getViewModeUseCase: GetViewModeUseCase,
-    private val setViewModeUseCase: SetViewModeUseCase,
-    private val getAuthInfoUseCase: GetAuthInfoUseCase
+    private val setViewModeUseCase: SetViewModeUseCase
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<UiState<ShowHomeDataModel>>(UiState.Loading)
     val uiState: MutableStateFlow<UiState<ShowHomeDataModel>> = _uiState
@@ -40,16 +36,12 @@ class ShowHomeViewModel @Inject constructor(
         )
 
     init {
-        viewModelScope.launch {
-            getAuthInfoUseCase().collect { auth ->
-                fetchShowHome(auth?.IdentityId ?: "")
-            }
-        }
+        fetchShowHome()
     }
 
-    fun fetchShowHome(userId: String = "") {
+    fun fetchShowHome() {
         viewModelScope.launch(dispatcherProvider.main) {
-            showHomeUseCase.invoke(userId = userId).flowOn(dispatcherProvider.io)
+            showHomeUseCase.invoke(userId = "").flowOn(dispatcherProvider.io)
                 .catch { e -> _uiState.value = UiState.Error(e.toString()) }
                 .collect { _uiState.value = UiState.Success(it) }
         }

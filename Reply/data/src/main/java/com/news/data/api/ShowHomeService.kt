@@ -11,6 +11,6 @@ interface ShowHomeService {
         @Query("page") page: Int,
         @Query("site_Slug") site_Slug: String,
         @Query("cat_Slug") cat_Slug: String,
-        @Query("UserId") userId: String? = null
+        @Query("Identity") userId: String? = null
     ): ShowHomeDataModel
 }
