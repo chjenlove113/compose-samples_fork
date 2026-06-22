@@ -59,6 +59,7 @@ android {
 
         getByName("release") {
             isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro")
@@ -124,6 +125,7 @@ dependencies {
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.window)
+    implementation(libs.androidx.core.splashscreen)
 
     androidTestImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.core)

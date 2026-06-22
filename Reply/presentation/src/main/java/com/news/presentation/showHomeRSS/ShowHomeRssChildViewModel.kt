@@ -18,9 +18,9 @@ data class ShowHomeRssChildUiState(
     val isLoading: Boolean = false
 )
 
-@HiltViewModel(assistedFactory = ShowHomeRssChildViewModelFactory::class)
+@HiltViewModel(assistedFactory = ShowHomeRssChildViewModel.Factory::class)
 class ShowHomeRssChildViewModel @AssistedInject constructor(
-    @Assisted("siteId") private val siteId: Int,
+    @Assisted private val siteId: Int,
     @Assisted("siteGroup") private val siteGroup: String,
     @Assisted("siteKind") private val siteKind: String,
     private val appDatabase: AppDatabase
@@ -36,13 +36,13 @@ class ShowHomeRssChildViewModel @AssistedInject constructor(
         ),
         pagingSourceFactory = { appDatabase.rssItemDao().getRssItemsForSitePaging(siteId, siteGroup, siteKind) }
     ).flow.cachedIn(viewModelScope)
-}
 
-@AssistedFactory
-interface ShowHomeRssChildViewModelFactory {
-    fun create(
-        @Assisted("siteId") siteId: Int,
-        @Assisted("siteGroup") siteGroup: String,
-        @Assisted("siteKind") siteKind: String
-    ): ShowHomeRssChildViewModel
+    @AssistedFactory
+    interface Factory {
+        fun create(
+            @Assisted siteId: Int,
+            @Assisted("siteGroup") siteGroup: String,
+            @Assisted("siteKind") siteKind: String
+        ): ShowHomeRssChildViewModel
+    }
 }

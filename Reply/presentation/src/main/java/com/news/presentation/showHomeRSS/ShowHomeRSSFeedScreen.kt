@@ -191,7 +191,7 @@ fun RSSFeedChildScreen(
     onItemClick: (RssItemEntity) -> Unit,
     viewModel: ShowHomeRssChildViewModel = hiltViewModel(
         key = "${siteId}_${siteGroup}_${siteKind}",
-        creationCallback = { factory: ShowHomeRssChildViewModelFactory ->
+        creationCallback = { factory: ShowHomeRssChildViewModel.Factory ->
             factory.create(siteId, siteGroup, siteKind)
         }
     )

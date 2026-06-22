@@ -54,6 +54,7 @@ import com.news.presentation.newsTag.NewsTagRoute
 import com.news.presentation.newsTag.NewsTagScreen
 import com.news.presentation.showHome.ShowHomeScreen
 import com.news.presentation.showHomeRSS.ShowHomeRSSFeedScreen
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 import androidx.compose.runtime.getValue
@@ -120,6 +121,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi")
     @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 //        enableEdgeToEdge()
         setContent {
