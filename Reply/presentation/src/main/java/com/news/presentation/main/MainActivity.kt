@@ -207,7 +207,8 @@ class MainActivity : ComponentActivity() {
                         route = "account"
                     ) {
                         AccountInfoScreen(
-                            onNavigateToLogin = { navHost.navigate("login") }
+                            onNavigateToLogin = { navHost.navigate("login") },
+                            onNavigateToUserSites = { navHost.navigate("user_sites") }
                         )
                     }
 
@@ -476,7 +477,7 @@ private fun navigationSuiteItems(
         onClick = {
             navigateWithBackStackHandling("screen_rss", navHost)
         },
-        label = { Text("#RSS NEWS") },
+        label = { Text("#RSS") },
         icon = {
             Icon(
                 imageVector = AppDestinations.SHOPPING.icon, contentDescription = "RSS NEWS"
@@ -497,18 +498,7 @@ private fun navigationSuiteItems(
         },
     )
 
-    item(
-        selected = currentDestination?.hierarchy?.any { it.route == "user_sites" } == true,
-        onClick = {
-            navigateWithBackStackHandling("user_sites", navHost)
-        },
-        label = { Text("#SITES") },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Menu, contentDescription = "SITES"
-            )
-        },
-    )
+
 
     item(
         selected = currentDestination?.hierarchy?.any { it.route == "account" } == true,

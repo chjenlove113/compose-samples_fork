@@ -477,7 +477,7 @@ fun NewsDetailScreen(
                             try {
                                 val baseFontSize = 18 // Base size in px
                                 val scaledFontSize = (baseFontSize * fontScale).toInt()
-                                
+
                                 context.assets.open("news_template_v0.html").bufferedReader().use { it.readText() }
                                     .replace("#BG_COLOR", colorScheme.background.toHtmlHex().substring(1))
                                     .replace("#TEXT_PRIMARY", colorScheme.onBackground.toHtmlHex().substring(1))

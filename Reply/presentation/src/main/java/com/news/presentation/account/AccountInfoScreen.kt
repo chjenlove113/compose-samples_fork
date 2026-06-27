@@ -27,6 +27,7 @@ import java.util.Locale
 @Composable
 fun AccountInfoScreen(
     onNavigateToLogin: () -> Unit,
+    onNavigateToUserSites: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel()
 ) {
     val authInfo by viewModel.authInfo.collectAsStateWithLifecycle()
@@ -51,7 +52,11 @@ fun AccountInfoScreen(
         SettingItem(Icons.Default.BookmarkBorder, "Bookmarks")
         SettingItem(Icons.Default.NotificationsNone, "Notifications")
         SettingItem(Icons.Default.Category, "Categories")
-        SettingItem(Icons.AutoMirrored.Filled.Article, "Sources")
+        SettingItem(
+            icon = Icons.AutoMirrored.Filled.Article, 
+            title = "Sources",
+            onClick = onNavigateToUserSites
+        )
         
         SettingSwitchItem(
             icon = Icons.Default.FilterHdr, 
