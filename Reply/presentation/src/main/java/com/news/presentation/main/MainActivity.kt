@@ -38,6 +38,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScope
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -54,8 +55,10 @@ import com.news.presentation.newsTag.NewsTagRoute
 import com.news.presentation.newsTag.NewsTagScreen
 import com.news.presentation.showHome.ShowHomeScreen
 import com.news.presentation.showHomeRSS.ShowHomeRSSFeedScreen
+import android.net.Uri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.serialization.json.Json
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -241,6 +244,37 @@ class MainActivity : ComponentActivity() {
                             onNavigateToLogin = { navHost.navigate("login") },
                             onRegisterSuccess = { navHost.popBackStack() }
                         )
+                    }
+
+                    composable(
+                        route = "news_detail/{newsJson}",
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = "reply://news_detail/{newsJson}" }
+                        )
+                    ) { backStackEntry ->
+                        val newsJson = backStackEntry.arguments?.getString("newsJson")
+                        val payload = newsJson?.let { 
+                            try {
+                                Json.decodeFromString<NewsNotificationPayload>(Uri.decode(it))
+                            } catch (e: Exception) {
+                                // Fallback for old simple News JSON if needed, or just handle error
+                                try {
+                                    val news = Json.decodeFromString<News>(Uri.decode(it))
+                                    NewsNotificationPayload(news)
+                                } catch (e2: Exception) {
+                                    null
+                                }
+                            }
+                        }
+                        
+                        LaunchedEffect(payload) {
+                            if (payload != null) {
+                                mainViewModel.selectNews(payload.news, payload.tabKey)
+                                navHost.navigate("screen1") {
+                                    popUpTo("screen1") { inclusive = true }
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -135,11 +135,12 @@ data object ExtraScreen : NavKey
 fun ShowHomeRoute(
     viewModel: ShowHomeViewModel = hiltViewModel(),
     onNewsClicked: ((News) -> Unit)? = null,
-    onTabSelected: (String) -> Unit
+    onTabSelected: (String) -> Unit,
+    selectedNews: News? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
-    ShowHomeScreen(uiState, viewMode, viewModel, onNewsClicked, onTabSelected)
+    ShowHomeScreen(uiState, viewMode, viewModel, onNewsClicked, onTabSelected, selectedNews)
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -149,7 +150,8 @@ fun ShowHomeScreen(
     viewMode: String,
     viewModel: ShowHomeViewModel?,
     onNewsClicked: ((News) -> Unit)? = null,
-    onTabSelected: (String) -> Unit
+    onTabSelected: (String) -> Unit,
+    selectedNews: News? = null
 ) {
     when (uiState) {
         is UiState.Loading -> {
@@ -171,9 +173,9 @@ fun ShowHomeScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     ExploreContent(
-                        uiState.data,
+                        allEventCategories = uiState.data,
                         viewMode = viewMode,
-                        selectedNews = null,
+                        selectedNews = selectedNews,
                         onViewModeChange = { viewModel?.setViewMode(it) },
                         onEventClick = onNewsClicked,
                         onEventClickSiteName = {},
@@ -343,8 +345,63 @@ fun ExploreContent(
     onEventClickSiteName: (AppSite) -> Unit,
     onTabSelected: (String) -> Unit
 ) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedNews) {
+        if (selectedNews != null) {
+            var targetIndex = -1
+            var currentIndex = 0
+
+            // Featured posts
+            currentIndex++ // for item { ... } at index 0
+
+            // Latest posts header
+            currentIndex++ // for stickyHeader { ... } at index 1
+
+            allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { category ->
+                val categoryNews = category.LstNews ?: emptyList()
+                if (categoryNews.isNotEmpty()) {
+                    // ExploreHeader
+                    if (categoryNews.any { it.Id == selectedNews.Id }) {
+                        // Found in this category
+                        currentIndex++ // Skip the category header itself to get to items
+                        
+                        if (viewMode == "grid") {
+                            val chunks = categoryNews.chunked(2)
+                            val chunkIndex = chunks.indexOfFirst { rowItems -> 
+                                rowItems.any { it.Id == selectedNews.Id } 
+                            }
+                            if (chunkIndex != -1) {
+                                targetIndex = currentIndex + chunkIndex
+                            }
+                        } else {
+                            val itemIndex = categoryNews.indexOfFirst { it.Id == selectedNews.Id }
+                            if (itemIndex != -1) {
+                                targetIndex = currentIndex + itemIndex
+                            }
+                        }
+                        return@forEach
+                    } else {
+                        // Not in this category, skip it all
+                        currentIndex++ // The header
+                        if (viewMode == "grid") {
+                            currentIndex += categoryNews.chunked(2).size
+                        } else {
+                            currentIndex += categoryNews.size
+                        }
+                    }
+                }
+            }
+
+            if (targetIndex != -1) {
+                listState.animateScrollToItem(targetIndex)
+            }
+        }
+    }
+
     LazyColumn(
-        Modifier
+        state = listState,
+        modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {

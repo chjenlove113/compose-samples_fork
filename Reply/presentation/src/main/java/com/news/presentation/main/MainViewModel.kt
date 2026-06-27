@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.news.domain.usecases.GetFontScaleUseCase
 import com.news.domain.usecases.GetNightModeUseCase
 import com.news.domain.usecases.SetFontScaleUseCase
+import kotlinx.serialization.Serializable
+import com.news.domain.models.News
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,6 +16,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+@Serializable
+data class NewsNotificationPayload(
+    val news: News,
+    val tabKey: String? = null
+)
 
 data class RssJump(val siteId: Int, val siteGroup: String, val timestamp: Long)
 
@@ -26,6 +34,25 @@ class MainViewModel @Inject constructor(
 
     private val _rssJump = MutableStateFlow<RssJump?>(null)
     val rssJump = _rssJump.asStateFlow()
+
+    private val _selectedNews = MutableStateFlow<News?>(null)
+    val selectedNews = _selectedNews.asStateFlow()
+
+    private val _targetTab = MutableStateFlow<String?>(null)
+    val targetTab = _targetTab.asStateFlow()
+
+    fun selectNews(news: News?, tabKey: String? = null) {
+        _selectedNews.value = news
+        _targetTab.value = tabKey
+    }
+
+    fun clearTargetTab() {
+        _targetTab.value = null
+    }
+
+    fun setTargetTab(tabKey: String?) {
+        _targetTab.value = tabKey
+    }
 
     fun setRssJump(siteId: Int, siteGroup: String) {
         _rssJump.update { RssJump(siteId, siteGroup, System.currentTimeMillis()) }

@@ -1,6 +1,8 @@
 package com.news.presentation.showHome
 
 import android.util.Log
+import androidx.activity.compose.LocalActivity
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -54,6 +56,7 @@ import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.news.domain.models.AppSiteCateByGroup
@@ -84,6 +87,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
@@ -93,6 +97,7 @@ import androidx.navigation3.ui.NavDisplay
 import coil3.compose.AsyncImage
 import com.news.domain.models.AppSite
 import com.news.presentation.base.TabItem
+import com.news.presentation.main.MainViewModel
 import com.news.presentation.components.NewsDetailScreen
 import com.news.presentation.newsByTagId.NewsByTagIdScreen
 import com.news.presentation.newsByTagId.NewsByTagViewModel
@@ -122,10 +127,21 @@ data object ExtraScreen2 : NavKey
 
 @Composable
 fun ShowHomeRoute2(
-    viewModel: ShowHomeViewModel = hiltViewModel()
+    viewModel: ShowHomeViewModel = hiltViewModel(),
+    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalActivity.current as ComponentActivity)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ShowHomeScreen2(uiState, viewModel)
+    val selectedNews by mainViewModel.selectedNews.collectAsStateWithLifecycle()
+    val targetTab by mainViewModel.targetTab.collectAsStateWithLifecycle()
+
+    ShowHomeScreen2(
+        uiState = uiState,
+        viewModel = viewModel,
+        selectedNews = selectedNews,
+        targetTab = targetTab,
+        onClearSelectedNews = { mainViewModel.selectNews(null) },
+        onTabAutoSelected = { mainViewModel.clearTargetTab() }
+    )
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -133,6 +149,10 @@ fun ShowHomeRoute2(
 fun ShowHomeScreen2(
     uiState: UiState<ShowHomeDataModel>,
     viewModel: ShowHomeViewModel?,
+    selectedNews: News? = null,
+    targetTab: String? = null,
+    onClearSelectedNews: () -> Unit = {},
+    onTabAutoSelected: () -> Unit = {},
     onTabSelected: (String) -> Unit = {}
 ) {
     when (uiState) {
@@ -169,6 +189,13 @@ fun ShowHomeScreen2(
                 }
             }
 
+            LaunchedEffect(selectedNews) {
+                if (selectedNews != null) {
+                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, selectedNews)
+                    onClearSelectedNews()
+                }
+            }
+
             // 3. We manually define the Scaffold Value to force Full Screen behaviors
             val manualValue = when {
                 // Case A: Nothing selected -> Force List (Secondary) to fill screen
@@ -200,7 +227,14 @@ fun ShowHomeScreen2(
                     AnimatedPane{
                         var selectedTabKey00 by rememberSaveable { mutableStateOf("home") }
 
-                        val tabs = remember(uiState.data) {
+                        LaunchedEffect(targetTab) {
+                            if (targetTab != null) {
+                                selectedTabKey00 = targetTab
+                                onTabAutoSelected()
+                            }
+                        }
+
+                        val tabs = remember(uiState.data, currentSelectedItem) {
                             val tabsItem = arrayListOf<TabItem>()
                             tabsItem.add(TabItem(key = "home", title = "Home", screen = {
                                 ShowHomeRoute(
@@ -211,7 +245,8 @@ fun ShowHomeScreen2(
                                     },
                                     onTabSelected = { key ->
                                         selectedTabKey00 = key
-                                    }
+                                    },
+                                    selectedNews = currentSelectedItem as? News
                                 )
                             }))
 
@@ -236,7 +271,8 @@ fun ShowHomeScreen2(
                                         },
                                         onTabSelected = { key ->
                                             selectedTabKey00 = key
-                                        }
+                                        },
+                                        selectedNews = currentSelectedItem as? News
                                     )
                                 })
                             )
@@ -264,7 +300,8 @@ fun ShowHomeScreen2(
                                             },
                                             onTabSelected = { key ->
                                                 selectedTabKey00 = key
-                                            }
+                                            },
+                                            selectedNews = currentSelectedItem as? News
                                         )
                                     })
                                 )
@@ -321,9 +358,10 @@ fun ShowHomeScreen2(
 
                 }, detailPane = {
                     AnimatedPane {
-                        if (lastSelectedNews != null) {
+                        val newsToDisplay = (currentSelectedItem as? News) ?: lastSelectedNews
+                        if (newsToDisplay != null) {
                             NewsDetailScreen(
-                                news = lastSelectedNews!!,
+                                news = newsToDisplay,
                                 onBack = {
                                     if (isDetailFullScreen) isDetailFullScreen = false
                                     scope.launch {

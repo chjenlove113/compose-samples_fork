@@ -53,12 +53,13 @@ import kotlinx.coroutines.launch
 fun ShowHomeChildRoute(
     viewModel: ShowHomeChildViewModel = hiltViewModel(),
     onNewsClicked: ((News) -> Unit)? = null,
-    onTabSelected: (String) -> Unit = {}
+    onTabSelected: (String) -> Unit = {},
+    selectedNews: News? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     if (onNewsClicked != null) {
-        ShowHomeChildScreen(uiState, viewModel, onNewsClicked, onTabSelected)
+        ShowHomeChildScreen(uiState, viewModel, onNewsClicked, onTabSelected, selectedNews)
     } else {
         // Internal navigation for screen3 when called directly from MainActivity
         val backStack = rememberNavBackStack(ItemsList)
@@ -114,7 +115,8 @@ fun ShowHomeChildScreen(
     uiState: UiState<ShowHomeDataModel>,
     viewModel: ShowHomeChildViewModel?,
     onNewsClicked: (News) -> Unit,
-    onTabSelected: (String) -> Unit = {}
+    onTabSelected: (String) -> Unit = {},
+    selectedNews: News? = null
 ) {
     when (uiState) {
         is UiState.Loading -> {
@@ -131,10 +133,11 @@ fun ShowHomeChildScreen(
         is UiState.Success -> {
             Column(modifier = Modifier.fillMaxSize()) {
                 ExploreContentChild(
-                    uiState.data,
-                    onNewsClicked,
-                    viewModel?.navKey?.slug?.slug ?: "",
-                    onTabSelected
+                    allEventCategories = uiState.data,
+                    onNewsClick = onNewsClicked,
+                    appSite = viewModel?.navKey?.slug?.slug ?: "",
+                    onTabSelected = onTabSelected,
+                    selectedNews = selectedNews
                 )
             }
         }
@@ -147,7 +150,8 @@ fun ExploreContentChild(
     allEventCategories: ShowHomeDataModel,
     onNewsClick: (News) -> Unit,
     appSite: String,
-    onTabSelected: (String) -> Unit = {}
+    onTabSelected: (String) -> Unit = {},
+    selectedNews: News? = null
 ) {
     val itemsListHeader = allEventCategories.CategoryViewModel.LstNewsHeader
     val appSiteCateByGroup = allEventCategories.CategoryViewModel.AppSiteCateByGroup
@@ -170,7 +174,8 @@ fun ExploreContentChild(
                     appSite = appSite,
                     onNewsClick = onNewsClick,
                     onTabSelected = onTabSelected,
-                    itemsListHeader = itemsListHeader
+                    itemsListHeader = itemsListHeader,
+                    selectedNews = selectedNews
                 )
             }
         }
@@ -183,7 +188,8 @@ fun DynamicTabLayoutScreen(
     appSite: String,
     onNewsClick: (News) -> Unit,
     onTabSelected: (String) -> Unit = {},
-    itemsListHeader: List<News>?
+    itemsListHeader: List<News>?,
+    selectedNews: News? = null
 ) {
     val tabDefinitions = remember(appSiteCateByGroup) {
         val list = mutableListOf<Triple<String, String, String>>() // Name, Slug, Key
@@ -239,7 +245,8 @@ fun DynamicTabLayoutScreen(
                     parentAppSite = appSite,
                     onNewsClick = onNewsClick,
                     onTabSelected = onTabSelected,
-                    itemsListHeader = itemsListHeader
+                    itemsListHeader = itemsListHeader,
+                    selectedNews = selectedNews
                 )
             }
         }
@@ -252,7 +259,8 @@ fun DynamicTabLayoutScreen(
             parentAppSite = appSite,
             onNewsClick = onNewsClick,
             onTabSelected = onTabSelected,
-            itemsListHeader = itemsListHeader
+            itemsListHeader = itemsListHeader,
+            selectedNews = selectedNews
         )
     }
 }
@@ -265,7 +273,8 @@ fun ShowHomeChildTabPage(
     parentAppSite: String,
     onNewsClick: (News) -> Unit,
     onTabSelected: (String) -> Unit = {},
-    itemsListHeader: List<News>?
+    itemsListHeader: List<News>?,
+    selectedNews: News? = null
 ) {
     val appSiteModel = remember(tabSlug, tabKey, parentAppSite, tabName) {
         ItemDetailSite(
@@ -287,6 +296,8 @@ fun ShowHomeChildTabPage(
         onRetry = { viewModel.fetchShowHomeChildPaging(1, parentAppSite, tabSlug) },
         onNewsClick = onNewsClick,
         onTabSelected = onTabSelected,
-        siteSlug = tabSlug, itemsListHeader = itemsListHeader
+        siteSlug = tabSlug, 
+        itemsListHeader = itemsListHeader,
+        selectedNews = selectedNews
     )
 }

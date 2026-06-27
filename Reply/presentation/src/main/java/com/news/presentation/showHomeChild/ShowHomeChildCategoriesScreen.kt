@@ -14,7 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -35,6 +37,7 @@ import com.news.presentation.base.ShowLoading
 import com.news.presentation.base.UiState
 import com.news.presentation.showHome.AutoAdvancePager
 import com.news.presentation.showHome.ShowHomeChildPagingViewModel
+import kotlinx.coroutines.flow.filter
 import kotlin.collections.List
 
 @Composable
@@ -72,9 +75,26 @@ fun ShowHomeChildCateScreen(
     modifier: Modifier = Modifier,
     onTabSelected: (String) -> Unit = {},
     siteSlug: String = "",
-    itemsListHeader: List<News>?
+    itemsListHeader: List<News>?,
+    selectedNews: News? = null
 ) {
     val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedNews) {
+        if (selectedNews != null) {
+            snapshotFlow { lazyPagingItems.loadState.refresh }
+                .filter { it is LoadState.NotLoading }
+                .collect {
+                    val index = (0 until lazyPagingItems.itemCount).indexOfFirst { 
+                        lazyPagingItems.peek(it)?.Id == selectedNews.Id 
+                    }
+                    if (index >= 0) {
+                        // index + 1 because of the "header" item at index 0
+                        listState.animateScrollToItem(index + 1)
+                    }
+                }
+        }
+    }
 
     // Determine if we are currently refreshing.
     // We only show the pull-to-refresh indicator if there are already items visible.
@@ -118,16 +138,19 @@ fun ShowHomeChildCateScreen(
                         ) { index ->
                             val news = lazyPagingItems[index]
                             if (news != null) {
+                                val isSelected = news.Id == selectedNews?.Id
                                 if(siteSlug == ""){
                                     NewsItemAdv(
                                         news = news,
                                         onNewsClick = onNewsClick,
-                                        onTabSelected = onTabSelected
+                                        onTabSelected = onTabSelected,
+                                        selected = isSelected
                                     )
                                 }else{
                                     NewsItem(
                                         news = news,
-                                        onNewsClick = onNewsClick
+                                        onNewsClick = onNewsClick,
+                                        selected = isSelected
                                     )
                                 }
 
