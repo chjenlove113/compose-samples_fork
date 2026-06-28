@@ -1,6 +1,7 @@
 package com.news.presentation.showHome
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -218,6 +219,17 @@ fun ShowHomeScreen2(
                 else -> navigator.scaffoldValue
             }
             val scope = rememberCoroutineScope()
+
+            // Handle system back button for adaptive layout
+            BackHandler(navigator.canNavigateBack() || isDetailFullScreen) {
+                if (isDetailFullScreen) {
+                    isDetailFullScreen = false
+                } else {
+                    scope.launch {
+                        navigator.navigateBack()
+                    }
+                }
+            }
 
 
             ListDetailPaneScaffold(

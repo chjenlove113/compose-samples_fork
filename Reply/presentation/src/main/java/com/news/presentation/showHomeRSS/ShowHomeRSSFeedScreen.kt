@@ -1,6 +1,7 @@
 package com.news.presentation.showHomeRSS
 
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -45,6 +46,17 @@ fun ShowHomeRSSFeedScreen(
     val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
     val scope = rememberCoroutineScope()
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
+
+    // Handle system back button
+    BackHandler(navigator.canNavigateBack() || isFullScreen) {
+        if (isFullScreen) {
+            isFullScreen = false
+        } else {
+            scope.launch {
+                navigator.navigateBack()
+            }
+        }
+    }
 
     // Sync Navigator state back to ViewModel
     val currentDetail = navigator.currentDestination?.contentKey as? RssItemEntity
