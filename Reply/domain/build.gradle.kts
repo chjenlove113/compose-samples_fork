@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.news.domain"
+    namespace = "com.app.tintuccongnghe.domain"
     compileSdk = 35
 
     defaultConfig {

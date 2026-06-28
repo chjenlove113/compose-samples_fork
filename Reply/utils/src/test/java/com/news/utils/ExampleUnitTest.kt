@@ -1,4 +1,4 @@
-package com.news.utils
+package com.app.tintuccongnghe.utils
 
 import org.junit.Test
 

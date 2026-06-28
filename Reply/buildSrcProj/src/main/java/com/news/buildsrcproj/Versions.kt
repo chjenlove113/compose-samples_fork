@@ -1,4 +1,4 @@
-package com.news.buildsrcproj
+package com.app.tintuccongnghe.buildsrcproj
 
 
 object Versions {

@@ -1,4 +1,4 @@
-package com.news.buildsrcproj
+package com.app.tintuccongnghe.buildsrcproj
 
 import org.gradle.api.artifacts.dsl.DependencyHandler
 

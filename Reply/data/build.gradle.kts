@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.news.data"
+    namespace = "com.app.tintuccongnghe.data"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {

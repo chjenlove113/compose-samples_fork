@@ -1,4 +1,4 @@
-package com.news.buildsrcproj
+package com.app.tintuccongnghe.buildsrcproj
 
 import org.gradle.api.artifacts.dsl.DependencyHandler
 
@@ -10,6 +10,6 @@ internal object Dependencies {
 
 }
 fun DependencyHandler.roomDB() {
-    ksp(com.news.buildsrcproj.Dependencies.roomCompiler)
-    implementation(com.news.buildsrcproj.Dependencies.room)
+    ksp(com.app.tintuccongnghe.buildsrcproj.Dependencies.roomCompiler)
+    implementation(com.app.tintuccongnghe.buildsrcproj.Dependencies.room)
 }

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.news.utils"
+    namespace = "com.app.tintuccongnghe.utils"
     compileSdk = 35
 
     defaultConfig {

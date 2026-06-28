@@ -1,6 +1,6 @@
 package com.example.reply
 
-import com.news.presentation.NewsApplication
+import com.app.tintuccongnghe.presentation.NewsApplication
 import dagger.hilt.android.HiltAndroidApp
 
 //@HiltAndroidApp
