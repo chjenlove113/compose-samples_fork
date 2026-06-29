@@ -90,6 +90,9 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
+    var usernameError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
             onLoginSuccess()
@@ -110,20 +113,30 @@ fun LoginScreen(
 
         OutlinedTextField(
             value = username,
-            onValueChange = { username = it },
+            onValueChange = { 
+                username = it
+                usernameError = null
+            },
             label = { Text("UserName") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = usernameError != null,
+            supportingText = usernameError?.let { { Text(it) } }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = { 
+                password = it
+                passwordError = null
+            },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = passwordError != null,
+            supportingText = passwordError?.let { { Text(it) } },
             trailingIcon = {
                 val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -138,7 +151,21 @@ fun LoginScreen(
             CircularProgressIndicator()
         } else {
             Button(
-                onClick = { viewModel.login(LoginRequest(username, password)) },
+                onClick = {
+                    var hasError = false
+                    if (username.isBlank()) {
+                        usernameError = "Username cannot be empty"
+                        hasError = true
+                    }
+                    if (password.isBlank()) {
+                        passwordError = "Password cannot be empty"
+                        hasError = true
+                    }
+
+                    if (!hasError) {
+                        viewModel.login(LoginRequest(username, password))
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Login")
@@ -240,6 +267,10 @@ fun RegisterScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var usernameError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
             onRegisterSuccess()
@@ -270,20 +301,30 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = username,
-            onValueChange = { username = it },
+            onValueChange = { 
+                username = it
+                usernameError = null
+            },
             label = { Text("UserName") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            isError = usernameError != null,
+            supportingText = usernameError?.let { { Text(it) } }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = { 
+                password = it
+                passwordError = null
+            },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = passwordError != null,
+            supportingText = passwordError?.let { { Text(it) } },
             trailingIcon = {
                 val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -299,15 +340,31 @@ fun RegisterScreen(
         } else {
             Button(
                 onClick = {
-                    viewModel.register(
-                        RegisterRequest(
-                            AppId = 0,
-                            Email = email,
-                            UserName = username,
-                            Password = password
+                    var hasError = false
+                    if (email.isBlank()) {
+                        emailError = "Email cannot be empty"
+                        hasError = true
+                    }
+                    if (username.isBlank()) {
+                        usernameError = "Username cannot be empty"
+                        hasError = true
+                    }
+                    if (password.isBlank()) {
+                        passwordError = "Password cannot be empty"
+                        hasError = true
+                    }
+
+                    if (!hasError) {
+                        viewModel.register(
+                            RegisterRequest(
+                                AppId = 0,
+                                Email = email,
+                                UserName = username,
+                                Password = password
+                            )
                         )
-                    )
-                    FirebaseCrashlytics.getInstance().log("RegisterScreen: User clicked on Register button")
+                        FirebaseCrashlytics.getInstance().log("RegisterScreen: User clicked on Register button")
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
