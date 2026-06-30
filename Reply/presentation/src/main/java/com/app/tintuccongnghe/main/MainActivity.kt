@@ -200,7 +200,10 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = "screen_rss"
                     ) {
-                        ShowHomeRSSFeedScreen()
+                        ShowHomeRSSFeedScreen(
+                            onNavigateToLogin = { navHost.navigate("login") },
+                            onNavigateToUserSites = { navHost.navigate("user_sites") }
+                        )
                     }
 
                     composable(

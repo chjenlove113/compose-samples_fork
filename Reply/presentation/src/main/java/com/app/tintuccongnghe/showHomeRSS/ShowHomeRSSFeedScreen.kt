@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,6 +39,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun ShowHomeRSSFeedScreen(
+    onNavigateToLogin: () -> Unit,
+    onNavigateToUserSites: () -> Unit,
     viewModel: ShowHomeRssViewModel = hiltViewModel(),
     mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
 ) {
@@ -76,6 +79,41 @@ fun ShowHomeRSSFeedScreen(
         adaptStrategies = ListDetailPaneScaffoldDefaults.adaptStrategies(),
         currentDestination = navigator.currentDestination
     )
+
+    if (!uiState.isLoggedIn) {
+        EmptyStateWithButton(
+            message = "Please login to view RSS feeds",
+            buttonText = "Go to Login",
+            onClick = onNavigateToLogin
+        )
+        return
+    }
+
+    if (uiState.sites.isEmpty() && !uiState.isLoading) {
+        EmptyStateWithButton(
+            message = "No RSS sites found. Add some in User Sites.",
+            buttonText = "Add RSS Site",
+            onClick = onNavigateToUserSites
+        )
+        return
+    }
+
+    val totalItems = uiState.sites.sumOf { it.itemCount }
+    if (totalItems == 0 && !uiState.isLoading && !uiState.isSyncing) {
+        EmptyStateWithButton(
+            message = "Your RSS feeds are empty. Sync now to get latest news.",
+            buttonText = "Sync RSS News",
+            onClick = { viewModel.syncRss() }
+        )
+        return
+    }
+
+    if (uiState.isLoading || uiState.isSyncing) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
 
     ListDetailPaneScaffold(
         directive = currentScaffoldDirective,
@@ -124,6 +162,30 @@ fun ShowHomeRSSFeedScreen(
             }
         }
     )
+}
+
+@Composable
+fun EmptyStateWithButton(
+    message: String,
+    buttonText: String,
+    onClick: () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = message,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onClick) {
+                Text(buttonText)
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
