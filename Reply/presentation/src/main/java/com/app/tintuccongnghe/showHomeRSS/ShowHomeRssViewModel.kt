@@ -139,4 +139,14 @@ class ShowHomeRssViewModel @Inject constructor(
     fun setSelectedRssItem(item: RssItemEntity?) {
         _uiState.update { it.copy(selectedItem = item) }
     }
+
+    fun toggleFavorite(item: RssItemEntity) {
+        viewModelScope.launch {
+            val updatedItem = item.copy(isFavorite = !item.isFavorite)
+            appDatabase.rssItemDao().update(updatedItem)
+            if (_uiState.value.selectedItem?.link == item.link) {
+                _uiState.update { it.copy(selectedItem = updatedItem) }
+            }
+        }
+    }
 }

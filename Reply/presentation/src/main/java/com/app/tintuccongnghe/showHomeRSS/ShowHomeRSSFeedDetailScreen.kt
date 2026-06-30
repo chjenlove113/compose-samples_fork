@@ -10,6 +10,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloseFullscreen
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.*
@@ -38,14 +40,25 @@ fun ShowHomeRSSFeedDetailScreen(
     onBack: () -> Unit,
     isFullScreen: Boolean = false,
     onToggleFullScreen: () -> Unit = {},
-    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
+    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity),
+    rssViewModel: ShowHomeRssViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
 ) {
     val context = LocalContext.current
     val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
+    val rssUiState by rssViewModel.uiState.collectAsStateWithLifecycle()
     val colorScheme = MaterialTheme.colorScheme
     
-    val dateStr = remember(item.pubDate) {
-        item.pubDate?.let {
+    // Use the item from the ViewModel if it matches, to get live updates (like isFavorite)
+    val currentItem = remember(rssUiState.selectedItem, item) {
+        if (rssUiState.selectedItem?.link == item.link) {
+            rssUiState.selectedItem!!
+        } else {
+            item
+        }
+    }
+
+    val dateStr = remember(currentItem.pubDate) {
+        currentItem.pubDate?.let {
             SimpleDateFormat("HH:mm dd/MM/yyyy", Locale.getDefault()).format(Date(it))
         } ?: ""
     }
@@ -60,6 +73,13 @@ fun ShowHomeRSSFeedDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { rssViewModel.toggleFavorite(currentItem) }) {
+                        Icon(
+                            imageVector = if (currentItem.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (currentItem.isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (currentItem.isFavorite) Color.Red else LocalContentColor.current
+                        )
+                    }
                     IconButton(onClick = onToggleFullScreen) {
                         Icon(
                             if (isFullScreen) Icons.Default.CloseFullscreen else Icons.Default.OpenInFull,
@@ -67,7 +87,7 @@ fun ShowHomeRSSFeedDetailScreen(
                         )
                     }
                     IconButton(onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, item.link.toUri())
+                        val intent = Intent(Intent.ACTION_VIEW, currentItem.link.toUri())
                         context.startActivity(intent)
                     }) {
                         Icon(Icons.Default.OpenInBrowser, contentDescription = "Open in Browser")
@@ -84,7 +104,7 @@ fun ShowHomeRSSFeedDetailScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = item.title,
+                text = currentItem.title,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -100,8 +120,8 @@ fun ShowHomeRSSFeedDetailScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-            val content = item.content
-            val description = item.description
+            val content = currentItem.content
+            val description = currentItem.description
             if (content != null) {
                 HtmlContent(
                     html = content,
@@ -119,7 +139,7 @@ fun ShowHomeRSSFeedDetailScreen(
             
             Button(
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, item.link.toUri())
+                    val intent = Intent(Intent.ACTION_VIEW, currentItem.link.toUri())
                     context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxWidth()

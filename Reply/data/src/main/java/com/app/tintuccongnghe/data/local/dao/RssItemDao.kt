@@ -15,6 +15,9 @@ interface RssItemDao {
     @Query("SELECT * FROM rss_items WHERE link = :link LIMIT 1")
     suspend fun getItemByLink(link: String): RssItemEntity?
 
+    @Query("SELECT * FROM rss_items WHERE link = :link AND siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind LIMIT 1")
+    fun getItemFlow(link: String, siteId: Int, siteGroup: String, siteKind: String): Flow<RssItemEntity?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<RssItemEntity>)
 
@@ -23,4 +26,7 @@ interface RssItemDao {
 
     @Query("DELETE FROM rss_items WHERE siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind")
     suspend fun deleteItemsForSite(siteId: Int, siteGroup: String, siteKind: String)
+
+    @Query("SELECT * FROM rss_items WHERE isFavorite = 1 ORDER BY pubDate DESC")
+    fun getFavoriteItems(): Flow<List<RssItemEntity>>
 }
