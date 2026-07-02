@@ -29,4 +29,7 @@ interface RssItemDao {
 
     @Query("SELECT * FROM rss_items WHERE isFavorite = 1 ORDER BY pubDate DESC")
     fun getFavoriteItems(): Flow<List<RssItemEntity>>
+
+    @Query("SELECT * FROM rss_items WHERE isFavorite = 1 ORDER BY pubDate DESC")
+    fun getFavoriteItemsPaging(): androidx.paging.PagingSource<Int, RssItemEntity>
 }

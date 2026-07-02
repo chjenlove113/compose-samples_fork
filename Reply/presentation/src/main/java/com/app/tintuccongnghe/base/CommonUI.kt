@@ -296,6 +296,24 @@ fun NewsItemAdv(
                             )
                         }
 
+                        Box(modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(20.dp,0.dp,0.dp,12.dp)
+                        ) {
+                            Text(
+                                text = news.App_Site_Name ?: "",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSecondary,
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.secondary.copy(0.8f), shape = CircleShape)
+                                    .clip(CircleShape)
+                                    .clickable { news.App_Site_Slug?.let { onTabSelected(it)
+                                        Log.d("news.App_Site_Slug?.let { onTabSelected(it)",it.toString())
+                                    } }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+
                         // Icon overlay in bottom-right
                         if (news.Is_Video || news.Is_Album) {
                             Box(
@@ -354,23 +372,10 @@ fun NewsItemAdv(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = news.App_Site_Name ?: "",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSecondary,
-                            modifier = Modifier
-                                .background(MaterialTheme.colorScheme.secondary, shape = CircleShape)
-                                .clip(CircleShape)
-                                .clickable { news.App_Site_Slug?.let { onTabSelected(it)
-                                Log.d("news.App_Site_Slug?.let { onTabSelected(it)",it.toString())
-                                } }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                        if(news.Source != ""){
-                            Spacer(modifier = Modifier.width(8.dp))
 
+                        if(news.Source != ""){
                             Text(
-                                text = "• " + news.Source,
+                                text = news.Source,
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold

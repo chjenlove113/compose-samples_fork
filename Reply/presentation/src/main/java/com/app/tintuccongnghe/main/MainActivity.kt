@@ -55,6 +55,7 @@ import com.app.tintuccongnghe.newsTag.NewsTagRoute
 import com.app.tintuccongnghe.newsTag.NewsTagScreen
 import com.app.tintuccongnghe.showHome.ShowHomeScreen
 import com.app.tintuccongnghe.showHomeRSS.ShowHomeRSSFeedScreen
+import com.app.tintuccongnghe.showHomeFavorite.ShowHomeFavoriteScreen
 import android.net.Uri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -195,6 +196,12 @@ class MainActivity : ComponentActivity() {
                         route = "screen3"
                     ) {
                         ShowHomeChildRoute()
+                    }
+
+                    composable(
+                        route = "screen_favorites"
+                    ) {
+                        ShowHomeFavoriteScreen()
                     }
 
                     composable(
@@ -489,6 +496,19 @@ private fun navigationSuiteItems(
     )
 
     item(
+        selected = currentDestination?.hierarchy?.any { it.route == "screen_favorites" } == true,
+        onClick = {
+            navigateWithBackStackHandling("screen_favorites", navHost)
+        },
+        label = { Text("#FAVORITE") },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Favorite, contentDescription = "FAVORITE"
+            )
+        },
+    )
+
+    item(
         selected = currentDestination?.hierarchy?.any { it.route == "screen2" } == true,
         onClick = {
             navigateWithBackStackHandling("screen2", navHost)
@@ -496,7 +516,7 @@ private fun navigationSuiteItems(
         label = { Text("#TAG") },
         icon = {
             Icon(
-                imageVector = AppDestinations.FAVORITES.icon, contentDescription = "TAG"
+                imageVector = Icons.Default.Face, contentDescription = "TAG"
             )
         },
     )

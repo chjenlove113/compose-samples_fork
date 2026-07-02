@@ -49,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -156,7 +157,7 @@ fun NewsDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = news.Source) },
+                title = { /*Text(text = news.Source) */},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
@@ -404,16 +405,23 @@ fun NewsDetailScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "• " + news.App_Site_Name,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onTertiary,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.tertiary, shape = RoundedCornerShape(10))
-                            .clip(CircleShape)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    if(news.App_Site_Name != ""){
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = MaterialTheme.shapes.large,
+//                            modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                        ) {
+                            Text(
+                                text = "• " + news.App_Site_Name,
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+
                 }
 
 
