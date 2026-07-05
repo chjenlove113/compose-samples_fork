@@ -31,6 +31,7 @@ import java.util.Locale
 fun AccountInfoScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToUserSites: () -> Unit = {},
+    onNavigateToFavorites: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel()
 ) {
     val authInfo by viewModel.authInfo.collectAsStateWithLifecycle()
@@ -58,7 +59,11 @@ fun AccountInfoScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         SettingItem(Icons.Default.TextFields, "Language")
-        SettingItem(Icons.Default.BookmarkBorder, "Bookmarks")
+        SettingItem(
+            icon = Icons.Default.BookmarkBorder, 
+            title = "Bookmarks",
+            onClick = onNavigateToFavorites
+        )
         SettingItem(Icons.Default.NotificationsNone, "Notifications")
         SettingItem(Icons.Default.Category, "Categories")
         SettingItem(

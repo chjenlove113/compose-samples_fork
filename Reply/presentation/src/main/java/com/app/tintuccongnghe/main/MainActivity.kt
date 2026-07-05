@@ -218,7 +218,8 @@ class MainActivity : ComponentActivity() {
                     ) {
                         AccountInfoScreen(
                             onNavigateToLogin = { navHost.navigate("login") },
-                            onNavigateToUserSites = { navHost.navigate("user_sites") }
+                            onNavigateToUserSites = { navHost.navigate("user_sites") },
+                            onNavigateToFavorites = { navHost.navigate("screen_favorites") }
                         )
                     }
 
@@ -495,18 +496,7 @@ private fun navigationSuiteItems(
         },
     )
 
-    item(
-        selected = currentDestination?.hierarchy?.any { it.route == "screen_favorites" } == true,
-        onClick = {
-            navigateWithBackStackHandling("screen_favorites", navHost)
-        },
-        label = { Text("#FAVORITE") },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Favorite, contentDescription = "FAVORITE"
-            )
-        },
-    )
+
 
     item(
         selected = currentDestination?.hierarchy?.any { it.route == "screen2" } == true,
