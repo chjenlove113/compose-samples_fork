@@ -30,6 +30,10 @@ class LoginViewModel @Inject constructor(
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     fun login(request: LoginRequest) {
+        if (request.Username.isBlank() || request.Password.isBlank()) {
+            _uiState.update { it.copy(error = "Username and password cannot be empty") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {

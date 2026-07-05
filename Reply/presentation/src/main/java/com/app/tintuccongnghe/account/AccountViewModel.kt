@@ -3,6 +3,7 @@ package com.app.tintuccongnghe.account
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.tintuccongnghe.domain.models.LoginResponse
+import com.app.tintuccongnghe.domain.usecases.DeleteAccountUseCase
 import com.app.tintuccongnghe.domain.usecases.GetAuthInfoUseCase
 import com.app.tintuccongnghe.domain.usecases.GetFontScaleUseCase
 import com.app.tintuccongnghe.domain.usecases.GetNightModeUseCase
@@ -20,6 +21,7 @@ import javax.inject.Inject
 class AccountViewModel @Inject constructor(
     getAuthInfoUseCase: GetAuthInfoUseCase,
     private val logoutUseCase: LogoutUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     getNightModeUseCase: GetNightModeUseCase,
     private val setNightModeUseCase: SetNightModeUseCase,
     getFontScaleUseCase: GetFontScaleUseCase,
@@ -62,6 +64,12 @@ class AccountViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             logoutUseCase()
+        }
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            deleteAccountUseCase()
         }
     }
 }

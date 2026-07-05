@@ -1,5 +1,6 @@
 package com.app.tintuccongnghe.data.api
 
+import com.app.tintuccongnghe.domain.models.DeleteAccountRequest
 import com.app.tintuccongnghe.domain.models.LoginRequest
 import com.app.tintuccongnghe.domain.models.LoginResponse
 import com.app.tintuccongnghe.domain.models.RegisterRequest
@@ -13,4 +14,7 @@ interface AuthService {
 
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
+
+    @POST("api/Auth/Delete")
+    suspend fun deleteAccount(@Body request: DeleteAccountRequest): Any
 }

@@ -4,6 +4,7 @@ import com.app.tintuccongnghe.data.api.AuthService
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.AuthEntity
 import com.app.tintuccongnghe.domain.models.AccessToken
+import com.app.tintuccongnghe.domain.models.DeleteAccountRequest
 import com.app.tintuccongnghe.domain.models.LoginRequest
 import com.app.tintuccongnghe.domain.models.LoginResponse
 import com.app.tintuccongnghe.domain.models.RegisterRequest
@@ -12,6 +13,7 @@ import com.app.tintuccongnghe.domain.repository.IAuthRepository
 import javax.inject.Inject
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 
 class AuthRepositoryImpl @Inject constructor(
@@ -37,6 +39,24 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun logout() {
         appDatabase.authDao().clearAuth()
+    }
+
+    override suspend fun deleteAccount(): Boolean {
+        val authInfo = getAuthInfo().firstOrNull() ?: return false
+        // Perform local logout first to clear session state immediately
+        logout()
+        return try {
+            authService.deleteAccount(
+                DeleteAccountRequest(
+                    IdentityId = authInfo.IdentityId,
+                    Email = authInfo.Email,
+                    UserName = authInfo.UserName
+                )
+            )
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 
     override suspend fun register(request: RegisterRequest): RegisterResponse {

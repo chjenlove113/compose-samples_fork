@@ -42,3 +42,9 @@ data class AccessToken(
     val Token:String,
     val  ExpiresIn : Int
 )
+
+data class DeleteAccountRequest(
+    val IdentityId: String,
+    val Email: String,
+    val UserName: String
+)

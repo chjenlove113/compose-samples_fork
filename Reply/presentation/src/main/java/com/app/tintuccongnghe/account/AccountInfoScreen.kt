@@ -38,6 +38,7 @@ fun AccountInfoScreen(
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
 
     var showLogoutSheet by remember { mutableStateOf(false) }
+    var showDeleteAccountSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
     val crashlytics = Firebase.crashlytics
@@ -97,6 +98,11 @@ fun AccountInfoScreen(
                 icon = Icons.AutoMirrored.Filled.Logout,
                 title = "Log Out",
                 onClick = { showLogoutSheet = true }
+            )
+            SettingItem(
+                icon = Icons.Default.DeleteForever,
+                title = "Delete account",
+                onClick = { showDeleteAccountSheet = true }
             )
         }
     }
@@ -164,6 +170,75 @@ fun AccountInfoScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Log Out", color = MaterialTheme.colorScheme.onError)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showDeleteAccountSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showDeleteAccountSheet = false },
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 48.dp, start = 24.dp, end = 24.dp, top = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DeleteForever,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(48.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Delete Account?",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Are you sure you want to delete your account? This action is permanent and cannot be undone.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showDeleteAccountSheet = false },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+                    
+                    Button(
+                        onClick = {
+                            viewModel.deleteAccount()
+                            showDeleteAccountSheet = false
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.onError)
                     }
                 }
             }

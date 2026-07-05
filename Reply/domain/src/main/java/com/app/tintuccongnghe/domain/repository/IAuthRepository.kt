@@ -12,4 +12,5 @@ interface IAuthRepository {
     suspend fun login(request: LoginRequest): LoginResponse
     fun getAuthInfo(): Flow<LoginResponse?>
     suspend fun logout()
+    suspend fun deleteAccount(): Boolean
 }
