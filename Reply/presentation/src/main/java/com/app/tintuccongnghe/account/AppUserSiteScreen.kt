@@ -106,6 +106,14 @@ fun AppUserSiteScreen(
                                         showLoginRequiredDialog = true
                                     }
                                 },
+                                onSync = {
+                                    if (uiState.isLoggedIn) {
+                                        viewModel.syncSite(site)
+                                    } else {
+                                        showLoginRequiredDialog = true
+                                    }
+                                },
+                                isSyncing = uiState.syncingSiteIds.contains(site.Id),
                                 onNavigateToRss = onNavigateToRss
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -175,6 +183,8 @@ fun SiteListItem(
     site: AppUserSite,
     onToggleActive: () -> Unit,
     onEdit: () -> Unit,
+    onSync: () -> Unit,
+    isSyncing: Boolean,
     onNavigateToRss: (Int, String) -> Unit
 ) {
     ListItem(
@@ -205,6 +215,28 @@ fun SiteListItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
+                }
+
+                if (site.GROUP == "1" && site.Url.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = onSync,
+                        enabled = !isSyncing,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        if (isSyncing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Syncing...", style = MaterialTheme.typography.labelMedium)
+                        } else {
+                            Text("Sync News", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                 }
             }
         },
