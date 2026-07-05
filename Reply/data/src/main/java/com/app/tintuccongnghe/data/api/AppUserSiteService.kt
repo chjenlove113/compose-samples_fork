@@ -1,6 +1,7 @@
 package com.app.tintuccongnghe.data.api
 
 import com.app.tintuccongnghe.domain.models.AppUserSite
+import com.app.tintuccongnghe.domain.models.AppUserSiteCopyRequest
 import com.app.tintuccongnghe.domain.models.AppUserSiteCreateRequest
 import com.app.tintuccongnghe.domain.models.AppUserSiteCreateResponse
 import com.app.tintuccongnghe.domain.models.AppUserSiteRequest
@@ -20,4 +21,7 @@ interface AppUserSiteService {
 
     @POST("api/AppUserSiteDelete")
     suspend fun deleteAppUserSite(@Body request: AppUserSiteCreateRequest): AppUserSiteCreateResponse
+
+    @POST("api/AppUserSiteCopy")
+    suspend fun copyAppUserSite(@Body request: AppUserSiteCopyRequest): AppUserSiteCreateResponse
 }

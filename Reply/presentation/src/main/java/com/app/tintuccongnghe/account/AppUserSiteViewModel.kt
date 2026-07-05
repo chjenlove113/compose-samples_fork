@@ -6,6 +6,7 @@ import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import com.app.tintuccongnghe.data.local.entities.toEntity
 import com.app.tintuccongnghe.domain.models.AppUserSite
+import com.app.tintuccongnghe.domain.models.AppUserSiteCopyRequest
 import com.app.tintuccongnghe.domain.models.AppUserSiteRequest
 import com.app.tintuccongnghe.domain.models.AppUserSiteCreateRequest
 import com.app.tintuccongnghe.domain.usecases.GetAppUserSiteListUseCase
@@ -13,6 +14,7 @@ import com.app.tintuccongnghe.domain.usecases.UpdateAppUserSiteUseCase
 import com.app.tintuccongnghe.domain.usecases.GetAuthInfoUseCase
 import com.app.tintuccongnghe.domain.usecases.CreateOrUpdateAppUserSiteUseCase
 import com.app.tintuccongnghe.domain.usecases.DeleteAppUserSiteUseCase
+import com.app.tintuccongnghe.domain.usecases.CopyAppUserSiteUseCase
 import com.app.tintuccongnghe.domain.usecases.RefreshAppUserSiteListUseCase
 import com.app.tintuccongnghe.utils.AppContants
 import com.rometools.rome.feed.synd.SyndFeed
@@ -48,7 +50,8 @@ class AppUserSiteViewModel @Inject constructor(
     private val updateAppUserSiteUseCase: UpdateAppUserSiteUseCase,
     private val getAuthInfoUseCase: GetAuthInfoUseCase,
     private val createOrUpdateAppUserSiteUseCase: CreateOrUpdateAppUserSiteUseCase,
-    private val deleteAppUserSiteUseCase: DeleteAppUserSiteUseCase
+    private val deleteAppUserSiteUseCase: DeleteAppUserSiteUseCase,
+    private val copyAppUserSiteUseCase: CopyAppUserSiteUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUserSiteUiState())
@@ -62,16 +65,20 @@ class AppUserSiteViewModel @Inject constructor(
             getAuthInfoUseCase().collect { auth ->
                 _uiState.update { it.copy(isLoggedIn = auth != null) }
                 auth?.let {
-                    currentIdentityId = it.IdentityId
-                    val request = AppUserSiteRequest(it.IdentityId, "UserIdEncrypt", AppContants.app_Id)
-                    observeSites(request)
-                    loadSites(request)
+                    initData(it.IdentityId)
                 } ?: run {
                     _uiState.update { it.copy(sites = emptyMap()) }
                     dataCollectionJob?.cancel()
                 }
             }
         }
+    }
+
+    private fun initData(identityId: String) {
+        currentIdentityId = identityId
+        val request = AppUserSiteRequest(identityId, "UserIdEncrypt", AppContants.app_Id)
+        observeSites(request)
+        loadSites(request)
     }
 
     private fun observeSites(request: AppUserSiteRequest) {
@@ -166,6 +173,26 @@ class AppUserSiteViewModel @Inject constructor(
                 val response = deleteAppUserSiteUseCase(request)
                 if (response.Id > 0 || response.Mess == "") {
                     loadSites(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
+                } else {
+                    _uiState.update { it.copy(isLoading = false, error = response.Mess) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
+            }
+        }
+    }
+
+    fun copySite(id: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val request = AppUserSiteCopyRequest(
+                    IdentityId = currentIdentityId,
+                    Id = id
+                )
+                val response = copyAppUserSiteUseCase(request)
+                if (response.Id > 0 || response.Mess == "") {
+                    initData(currentIdentityId)
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = response.Mess) }
                 }

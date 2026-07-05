@@ -135,6 +135,13 @@ fun AppUserSiteScreen(
                                             showLoginRequiredDialog = true
                                         }
                                     },
+                                    onCopy = {
+                                        if (uiState.isLoggedIn) {
+                                            viewModel.copySite(site.Id)
+                                        } else {
+                                            showLoginRequiredDialog = true
+                                        }
+                                    },
                                     isSyncing = uiState.syncingSiteIds.contains(site.Id),
                                     onNavigateToRss = onNavigateToRss
                                 )
@@ -209,6 +216,7 @@ fun SiteListItem(
     onToggleActive: () -> Unit,
     onEdit: () -> Unit,
     onSync: () -> Unit,
+    onCopy: () -> Unit,
     isSyncing: Boolean,
     onNavigateToRss: (Int, String) -> Unit
 ) {
@@ -261,6 +269,17 @@ fun SiteListItem(
                         } else {
                             Text("Sync News", style = MaterialTheme.typography.labelMedium)
                         }
+                    }
+                }
+
+                if (site.GROUP == "2") {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = onCopy,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Copy site", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

@@ -49,3 +49,8 @@ data class AppUserSiteCreateResponse(
     val Id: Int,
     val Mess: String
 )
+
+data class AppUserSiteCopyRequest(
+    val IdentityId: String,
+    val Id: Int
+)
