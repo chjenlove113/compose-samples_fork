@@ -162,7 +162,13 @@ fun FavoriteListPane(
                 is FavoriteItem.LocalRss -> {
                     val isSelected = selectedRssItem?.link == item.item.link
                     Column {
-                        TypeLabel("Local RSS")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TypeLabel("Local RSS")
+                            item.item.siteName?.let {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                SiteLabel(it)
+                            }
+                        }
                         RssItemRow(
                             item = item.item,
                             isSelected = isSelected,
@@ -174,7 +180,14 @@ fun FavoriteListPane(
                 is FavoriteItem.Website -> {
                     val isSelected = selectedWebsiteNews?.Id == item.news.Id
                     Column {
-                        TypeLabel("From Website")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TypeLabel("From Website")
+                            val siteName = item.news.App_Site_Name
+                            if (!siteName.isNullOrEmpty()) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                SiteLabel(siteName)
+                            }
+                        }
                         NewsListItem(
                             news = item.news,
                             selected = isSelected,
@@ -186,6 +199,22 @@ fun FavoriteListPane(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SiteLabel(text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.small,
+        modifier = Modifier.padding(top = 8.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
     }
 }
 

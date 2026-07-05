@@ -549,66 +549,33 @@ fun NewsListItem(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(width = 140.dp, height = 90.dp)
+                    .size(width = 140.dp, height = 105.dp)
                     .clip(MaterialTheme.shapes.small)
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = news.Date ?: "",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-//                    Spacer(modifier = Modifier.weight(1f))
-//                    Icon(
-//                        Icons.Outlined.ChatBubbleOutline,
-//                        null,
-//                        Modifier.size(12.dp),
-//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-//                    Text(
-//                        " 10",
-//                        style = MaterialTheme.typography.labelSmall,
-//                        color = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-//                    Spacer(modifier = Modifier.width(8.dp))
-//                    Icon(
-//                        Icons.Outlined.FavoriteBorder,
-//                        null,
-//                        Modifier.size(12.dp),
-//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-//                    Text(
-//                        " 25",
-//                        style = MaterialTheme.typography.labelSmall,
-//                        color = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
+
+            Column(modifier = Modifier.height(105.dp).background(color = MaterialTheme.colorScheme.onTertiary)) {
+                Text(
+                    text = news.Date ?: "",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = news.Title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    //fontWeight = FontWeight.Bold,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AsyncImage(
-                        model = news.Icon ?: news.Image,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = news.Source,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = news.Source,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

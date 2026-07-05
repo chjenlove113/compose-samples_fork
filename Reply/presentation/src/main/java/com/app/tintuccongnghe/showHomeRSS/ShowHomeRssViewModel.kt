@@ -114,7 +114,8 @@ class ShowHomeRssViewModel @Inject constructor(
                                                         siteGroup = site.GROUP,
                                                         siteKind = site.Kind,
                                                         updDate = currentTime,
-                                                        content = contentValue
+                                                        content = contentValue,
+                                                        siteName = site.Name
                                                     )
                                                 )
                                             }

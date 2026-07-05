@@ -35,6 +35,7 @@ fun com.app.tintuccongnghe.domain.models.News.toNewsEntity(): com.app.tintuccong
         Date = Date ?: "",
         Source = Source,
         Link = Link ?: "",
+        SiteName = App_Site_Name,
         Kind = Kind ?: "",
         CreatedAt = Calendar.getInstance().time
     )
@@ -60,7 +61,7 @@ fun com.app.tintuccongnghe.data.local.entities.News.toNewsModel(): com.app.tintu
         App_Category_TextColor = "",
         App_Category_BackgroundColor = "",
         App_Site_Slug = "",
-        App_Site_Name = "",
+        App_Site_Name = SiteName ?: "",
         Icon = "",
         App_Site_TextColor = "",
         App_Site_BackgroundColor = "",

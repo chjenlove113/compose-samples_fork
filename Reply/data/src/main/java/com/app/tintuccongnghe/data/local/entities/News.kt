@@ -15,7 +15,7 @@ data class News(
     val Date: String,
     val Source: String,
     val Link: String,
-
+    val SiteName: String? = null,
 
     val Kind: String,
     val CreatedAt: Date?,
