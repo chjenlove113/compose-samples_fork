@@ -106,7 +106,19 @@ class AppUserSiteViewModel @Inject constructor(
         }
     }
 
-    fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean, otherCanSee: Boolean) {
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) {
+        if (id == 0) {
+            val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" }
+            if (rssSiteCount >= 10) {
+                _uiState.update { it.copy(error = "You have reached the limit of 10 RSS sites.") }
+                return
+            }
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -118,6 +130,7 @@ class AppUserSiteViewModel @Inject constructor(
                     Status = isActive,
                     OtherCanSee = otherCanSee,
                     Kind = kind,
+                    GROUP = group,
                     IdentityId = currentIdentityId,
                     AppIdEncrypt = AppContants.app_Id
                 )
@@ -134,7 +147,7 @@ class AppUserSiteViewModel @Inject constructor(
         }
     }
 
-    fun deleteSite(id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean, otherCanSee: Boolean) {
+    fun deleteSite(id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -146,6 +159,7 @@ class AppUserSiteViewModel @Inject constructor(
                     Status = isActive,
                     OtherCanSee = otherCanSee,
                     Kind = kind,
+                    GROUP = group,
                     IdentityId = currentIdentityId,
                     AppIdEncrypt = AppContants.app_Id
                 )

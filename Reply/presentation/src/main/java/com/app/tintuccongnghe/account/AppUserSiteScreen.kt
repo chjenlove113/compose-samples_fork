@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,12 +35,31 @@ fun AppUserSiteScreen(
     var showDialog by remember { mutableStateOf(false) }
     var showLoginRequiredDialog by remember { mutableStateOf(false) }
     var selectedSite by remember { mutableStateOf<AppUserSite?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            if (uiState.sites.isNotEmpty() && !it.contains("limit", ignoreCase = true)) {
+                snackbarHostState.showSnackbar(it)
+                viewModel.clearError()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.user_sites)) },
                 actions = {
+                    val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
+                    if (rssCount >= 10) {
+                        Text(
+                            text = "Limit 10/10 reached",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                    }
                     IconButton(onClick = {
                         if (uiState.isLoggedIn) {
                             selectedSite = null
@@ -52,71 +72,74 @@ fun AppUserSiteScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (uiState.error != null) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = uiState.error!!,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { viewModel.retryLoad() }) {
-                        Text(stringResource(R.string.retry))
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (uiState.isLoading && uiState.sites.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
-                }
-            } else if (uiState.sites.isEmpty()) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(stringResource(R.string.no_sites_found))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { viewModel.retryLoad() }) {
-                        Text(stringResource(R.string.retry))
-                    }
-                }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    uiState.sites.forEach { (kind, sites) ->
-                        stickyHeader {
-                            HeaderItem(kind)
-                        }
-                        items(sites, key = { "${kind}_${it.GROUP}_${it.Id}" }) { site ->
-                            SiteListItem(
-                                site = site,
-                                onToggleActive = {
-                                    if (uiState.isLoggedIn) {
-                                        viewModel.toggleActive(site)
-                                    } else {
-                                        showLoginRequiredDialog = true
-                                    }
-                                },
-                                onEdit = {
-                                    if (uiState.isLoggedIn) {
-                                        selectedSite = site
-                                        showDialog = true
-                                    } else {
-                                        showLoginRequiredDialog = true
-                                    }
-                                },
-                                onSync = {
-                                    if (uiState.isLoggedIn) {
-                                        viewModel.syncSite(site)
-                                    } else {
-                                        showLoginRequiredDialog = true
-                                    }
-                                },
-                                isSyncing = uiState.syncingSiteIds.contains(site.Id),
-                                onNavigateToRss = onNavigateToRss
+                } else if (uiState.error != null && uiState.sites.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = uiState.error!!,
+                                color = MaterialTheme.colorScheme.error
                             )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { viewModel.retryLoad() }) {
+                                Text(stringResource(R.string.retry))
+                            }
+                        }
+                    }
+                } else if (uiState.sites.isEmpty() && !uiState.isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(stringResource(R.string.no_sites_found))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { viewModel.retryLoad() }) {
+                                Text(stringResource(R.string.retry))
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        uiState.sites.forEach { (kind, sites) ->
+                            stickyHeader {
+                                HeaderItem(kind)
+                            }
+                            items(sites, key = { "${kind}_${it.GROUP}_${it.Id}" }) { site ->
+                                SiteListItem(
+                                    site = site,
+                                    onToggleActive = {
+                                        if (uiState.isLoggedIn) {
+                                            viewModel.toggleActive(site)
+                                        } else {
+                                            showLoginRequiredDialog = true
+                                        }
+                                    },
+                                    onEdit = {
+                                        if (uiState.isLoggedIn) {
+                                            selectedSite = site
+                                            showDialog = true
+                                        } else {
+                                            showLoginRequiredDialog = true
+                                        }
+                                    },
+                                    onSync = {
+                                        if (uiState.isLoggedIn) {
+                                            viewModel.syncSite(site)
+                                        } else {
+                                            showLoginRequiredDialog = true
+                                        }
+                                    },
+                                    isSyncing = uiState.syncingSiteIds.contains(site.Id),
+                                    onNavigateToRss = onNavigateToRss
+                                )
+                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                            }
                         }
                     }
                 }
@@ -146,15 +169,17 @@ fun AppUserSiteScreen(
     }
 
     if (showDialog) {
+        val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
         SiteDialog(
             site = selectedSite,
+            rssCount = rssCount,
             onDismiss = { showDialog = false },
-            onConfirm = { id, name, url, icon, kind, isActive, otherCanSee ->
-                viewModel.createOrUpdateSite(id, name, url, icon, kind, isActive, otherCanSee)
+            onConfirm = { id, name, url, icon, kind, group, isActive, otherCanSee ->
+                viewModel.createOrUpdateSite(id, name, url, icon, kind, group, isActive, otherCanSee)
                 showDialog = false
             },
-            onDelete = { id, name, url, icon, kind, isActive, otherCanSee ->
-                viewModel.deleteSite(id, name, url, icon, kind, isActive, otherCanSee)
+            onDelete = { id, name, url, icon, kind, group, isActive, otherCanSee ->
+                viewModel.deleteSite(id, name, url, icon, kind, group, isActive, otherCanSee)
                 showDialog = false
             }
         )
@@ -266,9 +291,10 @@ private fun formatTime(timestamp: Long): String {
 @Composable
 fun SiteDialog(
     site: AppUserSite? = null,
+    rssCount: Int = 0,
     onDismiss: () -> Unit,
-    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean, otherCanSee: Boolean) -> Unit,
-    onDelete: (id: Int, name: String, url: String, icon: String, kind: String, isActive: Boolean, otherCanSee: Boolean) -> Unit
+    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) -> Unit,
+    onDelete: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) -> Unit
 ) {
     val isEdit = site != null
     var name by remember { mutableStateOf(site?.Name ?: "") }
@@ -375,17 +401,31 @@ fun SiteDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (site != null && site.GROUP == "1") {
+                    val group = site.GROUP
                     TextButton(
-                        onClick = { onDelete(site.Id, name, url, icon, kind, isActive, otherCanSee) },
+                        onClick = { onDelete(site.Id, name, url, icon, kind, group, isActive, otherCanSee) },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
                         Text(stringResource(R.string.delete))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
+                
+                if (!isEdit && rssCount >= 10) {
+                    Text(
+                        text = "Limit 10/10 reached",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+
                 Button(
-                    onClick = { onConfirm(site?.Id ?: 0, name, url, icon, kind, isActive, otherCanSee) },
-                    enabled = name.isNotBlank() && url.isNotBlank()
+                    onClick = { 
+                        val group = site?.GROUP ?: "1" // Default to 1 for new RSS sites
+                        onConfirm(site?.Id ?: 0, name, url, icon, kind, group, isActive, otherCanSee) 
+                    },
+                    enabled = name.isNotBlank() && url.isNotBlank() && (isEdit || rssCount < 10)
                 ) {
                     Text(if (isEdit) stringResource(R.string.update) else stringResource(R.string.add))
                 }

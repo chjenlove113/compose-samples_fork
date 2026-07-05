@@ -40,6 +40,7 @@ data class AppUserSiteCreateRequest(
     val Status: Boolean,
     val OtherCanSee: Boolean,
     val Kind: String,
+    val GROUP: String,
     val IdentityId: String,
     val AppIdEncrypt: String
 )

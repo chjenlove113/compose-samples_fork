@@ -24,6 +24,12 @@ interface AppUserSiteDao {
     @Update
     suspend fun update(site: AppUserSiteEntity)
 
+    @Delete
+    suspend fun delete(site: AppUserSiteEntity)
+
+    @Query("DELETE FROM app_user_sites WHERE Id = :id AND `GROUP` = :group AND Kind = :kind")
+    suspend fun deleteById(id: Int, group: String, kind: String)
+
     @Query("DELETE FROM app_user_sites WHERE IdentityId = :identityId AND AppIdEncrypt = :appId")
     suspend fun deleteSites(identityId: String, appId: String)
 }

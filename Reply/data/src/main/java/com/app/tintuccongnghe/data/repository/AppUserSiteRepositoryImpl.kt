@@ -56,6 +56,9 @@ class AppUserSiteRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse {
+        // Delete locally first for immediate UI update and clean local state
+        dao.deleteById(request.Id, request.GROUP, request.Kind)
+        // Then notify the server
         return service.deleteAppUserSite(request)
     }
 }

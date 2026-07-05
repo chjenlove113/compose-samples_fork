@@ -2,6 +2,7 @@ package com.app.tintuccongnghe.data.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.AppDbService
 import com.app.tintuccongnghe.data.local.IAppDbService
@@ -30,7 +31,12 @@ class DatabaseModule {
             context,
             AppDatabase::class.java,
             databaseName
-        ).fallbackToDestructiveMigration(dropAllTables = true)
+        ).addCallback(object : RoomDatabase.Callback() {
+            override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                super.onOpen(db)
+                db.execSQL("PRAGMA foreign_keys = ON;")
+            }
+        }).fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
 
