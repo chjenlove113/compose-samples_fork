@@ -23,9 +23,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,11 +53,19 @@ fun NewsByTagIdScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSaved by viewModel.isSaved.collectAsStateWithLifecycle()
+    // 1. Create and track the scroll behavior state
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            // 2. Attach the nested scroll connection to the Scaffold modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text(text = stringResource(R.string.tag_title_format, tagSlug)) },
+                // 3. Pass the scroll behavior directly to your TopAppBar
+                scrollBehavior = scrollBehavior,
+                title = { Text(text = stringResource(R.string.tag_title_format, tagSlug), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -75,6 +86,7 @@ fun NewsByTagIdScreen(
                         )
                     }
                 }
+
             )
         }
     ) { paddingValues ->
