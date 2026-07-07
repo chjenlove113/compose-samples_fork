@@ -37,6 +37,13 @@ fun AppUserSiteScreen(
     var selectedSite by remember { mutableStateOf<AppUserSite?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Filter sites to exclude those with GROUP == "0"
+    val nonGroup0Sites = remember(uiState.sites) {
+        uiState.sites.mapValues { (_, sites) ->
+            sites.filter { it.GROUP != "0" }
+        }.filter { it.value.isNotEmpty() }
+    }
+
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
             if (uiState.sites.isNotEmpty() && !it.contains("limit", ignoreCase = true)) {
@@ -77,11 +84,11 @@ fun AppUserSiteScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (uiState.isLoading && uiState.sites.isEmpty()) {
+                if (uiState.isLoading && nonGroup0Sites.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
-                } else if (uiState.error != null && uiState.sites.isEmpty()) {
+                } else if (uiState.error != null && nonGroup0Sites.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
@@ -94,7 +101,7 @@ fun AppUserSiteScreen(
                             }
                         }
                     }
-                } else if (uiState.sites.isEmpty() && !uiState.isLoading) {
+                } else if (nonGroup0Sites.isEmpty() && !uiState.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(stringResource(R.string.no_sites_found))
@@ -106,7 +113,7 @@ fun AppUserSiteScreen(
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        uiState.sites.forEach { (kind, sites) ->
+                        nonGroup0Sites.forEach { (kind, sites) ->
                             stickyHeader {
                                 HeaderItem(kind)
                             }
@@ -355,9 +362,9 @@ fun SiteDialog(
                     label = { Text(stringResource(R.string.kind)) },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -385,9 +392,9 @@ fun SiteDialog(
                                 onCheckedChange = { isActive = it }
                             )
                         }
-                        
+
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -429,7 +436,7 @@ fun SiteDialog(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                
+
                 if (!isEdit && rssCount >= 10) {
                     Text(
                         text = "Limit 10/10 reached",
@@ -440,9 +447,9 @@ fun SiteDialog(
                 }
 
                 Button(
-                    onClick = { 
+                    onClick = {
                         val group = site?.GROUP ?: "1" // Default to 1 for new RSS sites
-                        onConfirm(site?.Id ?: 0, name, url, icon, kind, group, isActive, otherCanSee) 
+                        onConfirm(site?.Id ?: 0, name, url, icon, kind, group, isActive, otherCanSee)
                     },
                     enabled = name.isNotBlank() && url.isNotBlank() && (isEdit || rssCount < 10)
                 ) {

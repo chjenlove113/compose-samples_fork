@@ -81,6 +81,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.app.tintuccongnghe.domain.models.News
 import com.app.tintuccongnghe.account.AccountInfoScreen
 import com.app.tintuccongnghe.account.AppUserSiteScreen
+import com.app.tintuccongnghe.account.AppUserCategoryScreen
 import com.app.tintuccongnghe.account.LoginScreen
 import com.app.tintuccongnghe.account.RegisterScreen
 import com.app.tintuccongnghe.base.BottomNavigationBar
@@ -219,6 +220,7 @@ class MainActivity : ComponentActivity() {
                         AccountInfoScreen(
                             onNavigateToLogin = { navHost.navigate("login") },
                             onNavigateToUserSites = { navHost.navigate("user_sites") },
+                            onNavigateToUserCategories = { navHost.navigate("user_categories") },
                             onNavigateToFavorites = { navHost.navigate("screen_favorites") }
                         )
                     }
@@ -231,6 +233,17 @@ class MainActivity : ComponentActivity() {
                             onNavigateToRss = { id, group ->
                                 mainViewModel.setRssJump(id, group)
                                 navigateWithBackStackHandling("screen_rss", navHost)
+                            }
+                        )
+                    }
+
+                    composable(
+                        route = "user_categories"
+                    ) {
+                        AppUserCategoryScreen(
+                            onNavigateToLogin = { navHost.navigate("login") },
+                            onNavigateToCategoryItems = { id, group ->
+                                // Handle navigation if needed
                             }
                         )
                     }

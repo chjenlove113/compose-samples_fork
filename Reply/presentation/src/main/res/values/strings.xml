@@ -26,6 +26,8 @@
     <string name="facebook_client_token">4b3b0bb3503ded6150cb88f6c301365f</string>
 
     <string name="user_sites">User Sites</string>
+    <string name="user_categories">User Categories</string>
+    <string name="add_category">Add Category</string>
     <string name="add_site">Add Site</string>
     <string name="kind_format">Kind: %1$s</string>
     <string name="edit">Edit</string>

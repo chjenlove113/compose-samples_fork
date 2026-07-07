@@ -31,6 +31,7 @@ import java.util.Locale
 fun AccountInfoScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToUserSites: () -> Unit = {},
+    onNavigateToUserCategories: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel()
 ) {
@@ -65,7 +66,11 @@ fun AccountInfoScreen(
             onClick = onNavigateToFavorites
         )
         SettingItem(Icons.Default.NotificationsNone, "Notifications")
-        SettingItem(Icons.Default.Category, "Categories")
+        SettingItem(
+            icon = Icons.Default.Category, 
+            title = "Categories",
+            onClick = onNavigateToUserCategories
+        )
         SettingItem(
             icon = Icons.AutoMirrored.Filled.Article, 
             title = "Sources",
