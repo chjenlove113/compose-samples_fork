@@ -172,9 +172,9 @@ fun FavoriteListPane(
                         RssItemRow(
                             item = item.item,
                             isSelected = isSelected,
-                            onClick = { onItemClick(item) }
+                            onClick = { onItemClick(item) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     }
                 }
                 is FavoriteItem.Website -> {
@@ -194,7 +194,6 @@ fun FavoriteListPane(
                             onClick = { onItemClick(item) },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     }
                 }
             }

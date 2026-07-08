@@ -10,6 +10,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldDefaults
@@ -297,17 +299,35 @@ fun RSSFeedChildScreen(
 }
 
 @Composable
-fun RssItemRow(item: RssItemEntity, isSelected: Boolean = false, onClick: () -> Unit) {
-    ListItem(
-        modifier = Modifier.clickable { onClick() },
-        colors = ListItemDefaults.colors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+fun RssItemRow(
+    item: RssItemEntity,
+    modifier: Modifier = Modifier,
+    isSelected: Boolean = false,
+    onClick: () -> Unit
+) {
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    
+    val titleStyle = if (isExpanded) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
+    val bodyStyle = if (isExpanded) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
+    val labelStyle = if (isExpanded) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall
+    val padding = if (isExpanded) 16.dp else 12.dp
+
+    Card(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
         ),
-        headlineContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(padding)) {
+            Row(verticalAlignment = Alignment.Top) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = titleStyle,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -318,20 +338,49 @@ fun RssItemRow(item: RssItemEntity, isSelected: Boolean = false, onClick: () -> 
                         imageVector = Icons.Default.Favorite,
                         contentDescription = null,
                         tint = Color.Red,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(if (isExpanded) 24.dp else 20.dp).padding(start = 8.dp)
                     )
                 }
             }
-        },
-        supportingContent = {
-            item.description?.let {
+
+            val description = item.description
+            if (!description.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(if (isExpanded) 8.dp else 4.dp))
                 Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = description,
+                    style = bodyStyle,
                     maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(if (isExpanded) 16.dp else 12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = item.siteName ?: "RSS Feed",
+                    style = labelStyle,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+
+                val dateStr = item.pubDate?.let {
+                    java.text.SimpleDateFormat("dd/MM/yy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it))
+                } ?: ""
+                Text(
+                    text = dateStr,
+                    style = labelStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-    )
+    }
 }

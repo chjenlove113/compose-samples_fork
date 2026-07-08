@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -97,6 +98,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntryDecorator
 import androidx.navigation3.runtime.NavKey
@@ -524,11 +530,19 @@ fun ExploreContent(
 
 @Composable
 fun NewsListItem(
-    news: News, 
+    news: News,
+    modifier: Modifier = Modifier,
     selected: Boolean = false,
-    onClick: () -> Unit, 
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+    
+    val titleStyle = if (isExpanded) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
+    val bodyStyle = if (isExpanded) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
+    val labelStyle = if (isExpanded) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall
+    val padding = if (isExpanded) 16.dp else 8.dp
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -536,46 +550,86 @@ fun NewsListItem(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
             contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 2.dp),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 1.dp),
         border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Row(
             modifier = Modifier
-                .padding(12.dp)
+                .padding(padding)
                 .fillMaxWidth()
+                .height(IntrinsicSize.Max),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = news.Image,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+            Box(
                 modifier = Modifier
-                    .size(width = 140.dp, height = 105.dp)
+                    .weight(0.35f)
+                    .fillMaxHeight()
+                    .heightIn(min = if (isExpanded) 140.dp else 100.dp)
                     .clip(MaterialTheme.shapes.small)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
+            ) {
+                AsyncImage(
+                    model = news.Image,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
-            Column(modifier = Modifier.height(105.dp).background(color = MaterialTheme.colorScheme.onTertiary)) {
-                Text(
-                    text = news.Date ?: "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = news.Title,
-                    style = MaterialTheme.typography.titleMedium,
-                    //fontWeight = FontWeight.Bold,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = news.Source,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Spacer(modifier = Modifier.width(if (isExpanded) 20.dp else 12.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(0.65f)
+                    .fillMaxHeight()
+                    .padding(vertical = 2.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = news.Title,
+                        style = titleStyle,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = titleStyle.lineHeight
+                    )
+
+                    val shortDes = news.ShortDes
+                    if (!shortDes.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.height(if (isExpanded) 16.dp else 8.dp))
+                        Text(
+                            text = shortDes,
+                            style = bodyStyle,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(if (isExpanded) 16.dp else 8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text = news.Source,
+                        style = labelStyle,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = news.Date ?: "",
+                        style = labelStyle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -583,11 +637,19 @@ fun NewsListItem(
 
 @Composable
 fun NewsGridItem(
-    news: News, 
+    news: News,
+    modifier: Modifier = Modifier,
     selected: Boolean = false,
-    onClick: () -> Unit, 
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
+
+    val titleStyle = if (isExpanded) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall
+    val bodyStyle = if (isExpanded) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
+    val labelStyle = MaterialTheme.typography.labelSmall
+    val padding = if (isExpanded) 16.dp else 12.dp
+
     Card(
         onClick = onClick,
         modifier = modifier,
@@ -595,7 +657,8 @@ fun NewsGridItem(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
             contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 2.dp),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 4.dp else 1.dp),
         border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column {
@@ -605,62 +668,54 @@ fun NewsGridItem(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
+                    .aspectRatio(1.5f)
             )
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = news.Date ?: "",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-//                    Spacer(modifier = Modifier.weight(1f))
-//                    Icon(
-//                        Icons.Outlined.ChatBubbleOutline,
-//                        null,
-//                        Modifier.size(10.dp),
-//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-//                    Text(
-//                        " 5",
-//                        style = MaterialTheme.typography.labelSmall,
-//                        color = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-//                    Spacer(modifier = Modifier.width(4.dp))
-//                    Icon(
-//                        Icons.Outlined.FavoriteBorder,
-//                        null,
-//                        Modifier.size(10.dp),
-//                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-//                    Text(
-//                        " 12",
-//                        style = MaterialTheme.typography.labelSmall,
-//                        color = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .height(IntrinsicSize.Min)
+            ) {
                 Text(
                     text = news.Title,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = titleStyle,
                     fontWeight = FontWeight.Bold,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     minLines = 3
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-//                    AsyncImage(
-//                        model = news.Icon ?: news.Image,
-//                        contentDescription = null,
-//                        modifier = Modifier
-//                            .size(16.dp)
-//                            .clip(CircleShape)
-//                    )
-//                    Spacer(modifier = Modifier.width(4.dp))
+
+                val shortDes = news.ShortDes
+                if (!shortDes.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(if (isExpanded) 8.dp else 4.dp))
+                    Text(
+                        text = shortDes,
+                        style = bodyStyle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        minLines = 2
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(if (isExpanded) 16.dp else 12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = news.Source,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = labelStyle,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = news.Date ?: "",
+                        style = labelStyle,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
