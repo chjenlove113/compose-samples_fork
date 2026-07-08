@@ -33,6 +33,7 @@ fun AccountInfoScreen(
     onNavigateToUserSites: () -> Unit = {},
     onNavigateToUserCategories: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel()
 ) {
     val authInfo by viewModel.authInfo.collectAsStateWithLifecycle()
@@ -65,7 +66,11 @@ fun AccountInfoScreen(
             title = "Bookmarks",
             onClick = onNavigateToFavorites
         )
-        SettingItem(Icons.Default.NotificationsNone, "Notifications")
+        SettingItem(
+            icon = Icons.Default.NotificationsNone, 
+            title = "Notifications",
+            onClick = onNavigateToNotifications
+        )
         SettingItem(
             icon = Icons.Default.Category, 
             title = "Categories",

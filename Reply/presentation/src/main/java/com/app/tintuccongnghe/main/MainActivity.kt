@@ -82,6 +82,7 @@ import com.app.tintuccongnghe.domain.models.News
 import com.app.tintuccongnghe.account.AccountInfoScreen
 import com.app.tintuccongnghe.account.AppUserSiteScreen
 import com.app.tintuccongnghe.account.AppUserCategoryScreen
+import com.app.tintuccongnghe.account.NotificationsScreen
 import com.app.tintuccongnghe.account.LoginScreen
 import com.app.tintuccongnghe.account.RegisterScreen
 import com.app.tintuccongnghe.base.BottomNavigationBar
@@ -221,7 +222,21 @@ class MainActivity : ComponentActivity() {
                             onNavigateToLogin = { navHost.navigate("login") },
                             onNavigateToUserSites = { navHost.navigate("user_sites") },
                             onNavigateToUserCategories = { navHost.navigate("user_categories") },
-                            onNavigateToFavorites = { navHost.navigate("screen_favorites") }
+                            onNavigateToFavorites = { navHost.navigate("screen_favorites") },
+                            onNavigateToNotifications = { navHost.navigate("notifications") }
+                        )
+                    }
+
+                    composable(
+                        route = "notifications"
+                    ) {
+                        NotificationsScreen(
+                            onBack = { navHost.popBackStack() },
+                            onNotificationClick = { newsJson ->
+                                // newsJson in Entity is already a JSON string of NewsNotificationPayload
+                                val encoded = Uri.encode(newsJson)
+                                navHost.navigate("news_detail/$encoded")
+                            }
                         )
                     }
 

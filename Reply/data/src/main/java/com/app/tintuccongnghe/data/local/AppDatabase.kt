@@ -17,8 +17,10 @@ import com.app.tintuccongnghe.data.local.entities.News_Tag
 import com.app.tintuccongnghe.data.local.entities.SavedTagSlug
 import com.app.tintuccongnghe.data.local.entities.AppUserSiteEntity
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
+import com.app.tintuccongnghe.data.local.entities.NotificationEntity
+import com.app.tintuccongnghe.data.local.dao.NotificationDao
 
-@Database(entities = [News_Tag::class, News_Site::class, News::class, AuthEntity::class, SavedTagSlug::class, AppUserSiteEntity::class, RssItemEntity::class], version = 13)
+@Database(entities = [News_Tag::class, News_Site::class, News::class, AuthEntity::class, SavedTagSlug::class, AppUserSiteEntity::class, RssItemEntity::class, NotificationEntity::class], version = 14)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun newsTagDao(): NewsTagDao
@@ -27,4 +29,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun authDao(): AuthDao
     abstract fun appUserSiteDao(): AppUserSiteDao
     abstract fun rssItemDao(): RssItemDao
+    abstract fun notificationDao(): NotificationDao
 }

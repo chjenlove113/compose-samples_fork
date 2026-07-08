@@ -1,4 +1,4 @@
-package com.app.tintuccongnghe.presentation.notifications
+package com.app.tintuccongnghe.notifications
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -18,6 +18,11 @@ import com.app.tintuccongnghe.domain.models.News
 import com.app.tintuccongnghe.presentation.R
 import com.app.tintuccongnghe.main.MainActivity
 import com.app.tintuccongnghe.main.NewsNotificationPayload
+import com.app.tintuccongnghe.data.local.AppDatabase
+import com.app.tintuccongnghe.data.local.entities.NotificationEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -26,7 +31,7 @@ object NotificationHelper {
     private const val CHANNEL_NAME = "News Notifications"
 
     @SuppressLint("MissingPermission")
-    fun showNotification(context: Context, news: News, tabKey: String? = null) {
+    fun showNotification(context: Context, news: News, appDatabase: AppDatabase, tabKey: String? = null) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -85,5 +90,17 @@ object NotificationHelper {
         }
         
         NotificationManagerCompat.from(context).notify(news.Id, notification)
+
+        // Save to database
+        CoroutineScope(Dispatchers.IO).launch {
+            appDatabase.notificationDao().insertNotification(
+                NotificationEntity(
+                    title = news.Title,
+                    body = news.ShortDes,
+                    newsJson = Json.encodeToString(payload),
+                    timestamp = System.currentTimeMillis()
+                )
+            )
+        }
     }
 }

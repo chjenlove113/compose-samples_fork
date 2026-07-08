@@ -1,39 +1,37 @@
-package com.app.tintuccongnghe.presentation.notifications
+package com.app.tintuccongnghe.notifications
 
 import android.util.Log
-/*
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.app.tintuccongnghe.domain.models.News
+import com.app.tintuccongnghe.data.local.AppDatabase
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.json.Json
+import javax.inject.Inject
 
-/**
- * Skeleton for Firebase Messaging Service.
- * To use this, add 'com.google.firebase:firebase-messaging' dependency
- * and register this service in AndroidManifest.xml.
- */
+@AndroidEntryPoint
 class NewsMessagingService : FirebaseMessagingService() {
+
+    @Inject
+    lateinit var appDatabase: AppDatabase
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         
-        // Check if message contains a data payload.
-        remoteMessage.data.isNotEmpty().let {
+        if (remoteMessage.data.isNotEmpty()) {
             Log.d(TAG, "Message data payload: ${remoteMessage.data}")
             
-            // Assuming the 'news' object is sent as a JSON string in the 'news_data' field
             val newsJson = remoteMessage.data["news_data"]
             if (newsJson != null) {
                 try {
                     val news = Json.decodeFromString<News>(newsJson)
-                    NotificationHelper.showNotification(this, news)
+                    NotificationHelper.showNotification(this, news, appDatabase)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing news data", e)
                 }
             }
         }
 
-        // Also check if message contains a notification payload.
         remoteMessage.notification?.let {
             Log.d(TAG, "Message Notification Body: ${it.body}")
         }
@@ -41,11 +39,9 @@ class NewsMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         Log.d(TAG, "Refreshed token: $token")
-        // Send token to your server if needed
     }
 
     companion object {
         private const val TAG = "NewsMessagingService"
     }
 }
-*/
