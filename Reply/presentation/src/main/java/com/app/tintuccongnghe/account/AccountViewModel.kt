@@ -9,6 +9,7 @@ import com.app.tintuccongnghe.domain.usecases.GetFontScaleUseCase
 import com.app.tintuccongnghe.domain.usecases.GetNightModeUseCase
 import com.app.tintuccongnghe.domain.usecases.LogoutUseCase
 import com.app.tintuccongnghe.domain.usecases.SetFontScaleUseCase
+import com.app.tintuccongnghe.domain.usecases.SetLanguageUseCase
 import com.app.tintuccongnghe.domain.usecases.SetNightModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,7 +26,8 @@ class AccountViewModel @Inject constructor(
     getNightModeUseCase: GetNightModeUseCase,
     private val setNightModeUseCase: SetNightModeUseCase,
     getFontScaleUseCase: GetFontScaleUseCase,
-    private val setFontScaleUseCase: SetFontScaleUseCase
+    private val setFontScaleUseCase: SetFontScaleUseCase,
+    private val setLanguageUseCase: SetLanguageUseCase
 ) : ViewModel() {
 
     val authInfo: StateFlow<LoginResponse?> = getAuthInfoUseCase()
@@ -58,6 +60,12 @@ class AccountViewModel @Inject constructor(
     fun setFontScale(scale: Float) {
         viewModelScope.launch {
             setFontScaleUseCase(scale)
+        }
+    }
+
+    fun setLanguage(language: String) {
+        viewModelScope.launch {
+            setLanguageUseCase(language)
         }
     }
 

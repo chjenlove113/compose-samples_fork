@@ -34,6 +34,7 @@ fun AccountInfoScreen(
     onNavigateToUserCategories: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToLanguage: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel()
 ) {
     val authInfo by viewModel.authInfo.collectAsStateWithLifecycle()
@@ -60,7 +61,7 @@ fun AccountInfoScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        SettingItem(Icons.Default.TextFields, "Language")
+        SettingItem(Icons.Default.TextFields, "Language", onClick = onNavigateToLanguage)
         SettingItem(
             icon = Icons.Default.BookmarkBorder, 
             title = "Bookmarks",

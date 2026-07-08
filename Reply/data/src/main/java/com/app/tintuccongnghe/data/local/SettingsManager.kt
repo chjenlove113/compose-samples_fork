@@ -22,6 +22,7 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
         val NIGHT_MODE = booleanPreferencesKey("night_mode")
         val FONT_SCALE = floatPreferencesKey("font_scale")
         val VIEW_MODE = androidx.datastore.preferences.core.stringPreferencesKey("view_mode")
+        val LANGUAGE = androidx.datastore.preferences.core.stringPreferencesKey("language")
     }
 
     val nightModeFlow: Flow<Boolean> = dataStore.data.map { preferences ->
@@ -34,6 +35,10 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
 
     val viewModeFlow: Flow<String> = dataStore.data.map { preferences ->
         preferences[PreferencesKeys.VIEW_MODE] ?: "list"
+    }
+
+    val languageFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.LANGUAGE] ?: "en"
     }
 
     suspend fun setNightMode(enabled: Boolean) {
@@ -51,6 +56,12 @@ class SettingsManager @Inject constructor(@ApplicationContext context: Context) 
     suspend fun setViewMode(mode: String) {
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.VIEW_MODE] = mode
+        }
+    }
+
+    suspend fun setLanguage(language: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LANGUAGE] = language
         }
     }
 }

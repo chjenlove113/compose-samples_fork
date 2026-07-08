@@ -11,6 +11,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val nightModeFlow: Flow<Boolean> = settingsManager.nightModeFlow
     override val fontScaleFlow: Flow<Float> = settingsManager.fontScaleFlow
     override val viewModeFlow: Flow<String> = settingsManager.viewModeFlow
+    override val languageFlow: Flow<String> = settingsManager.languageFlow
 
     override suspend fun setNightMode(enabled: Boolean) {
         settingsManager.setNightMode(enabled)
@@ -22,5 +23,9 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun setViewMode(mode: String) {
         settingsManager.setViewMode(mode)
+    }
+
+    override suspend fun setLanguage(language: String) {
+        settingsManager.setLanguage(language)
     }
 }

@@ -80,6 +80,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.app.tintuccongnghe.domain.models.News
 import com.app.tintuccongnghe.account.AccountInfoScreen
+import com.app.tintuccongnghe.account.LanguageScreen
 import com.app.tintuccongnghe.account.AppUserSiteScreen
 import com.app.tintuccongnghe.account.AppUserCategoryScreen
 import com.app.tintuccongnghe.account.NotificationsScreen
@@ -223,7 +224,16 @@ class MainActivity : ComponentActivity() {
                             onNavigateToUserSites = { navHost.navigate("user_sites") },
                             onNavigateToUserCategories = { navHost.navigate("user_categories") },
                             onNavigateToFavorites = { navHost.navigate("screen_favorites") },
-                            onNavigateToNotifications = { navHost.navigate("notifications") }
+                            onNavigateToNotifications = { navHost.navigate("notifications") },
+                            onNavigateToLanguage = { navHost.navigate("language") }
+                        )
+                    }
+
+                    composable(
+                        route = "language"
+                    ) {
+                        LanguageScreen(
+                            onBack = { navHost.popBackStack() }
                         )
                     }
 
