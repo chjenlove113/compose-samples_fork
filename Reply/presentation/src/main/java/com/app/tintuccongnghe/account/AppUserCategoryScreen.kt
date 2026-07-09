@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -28,6 +29,7 @@ import java.util.*
 @Composable
 fun AppUserCategoryScreen(
     viewModel: AppUserSiteViewModel = hiltViewModel(),
+    onBack: () -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToCategoryItems: (Int, String) -> Unit
 ) {
@@ -54,7 +56,12 @@ fun AppUserCategoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.user_categories)) }
+                title = { Text(stringResource(R.string.user_categories)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

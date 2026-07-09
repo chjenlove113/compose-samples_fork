@@ -83,18 +83,18 @@ fun AccountInfoScreen(
             onClick = onNavigateToUserSites
         )
 
-        SettingItem(
-            icon = Icons.Default.BugReport,
-            title = "Cause Crash",
-            onClick = { crashlytics.log("User triggered fatal crash.")
-                throw RuntimeException("Test Crash for Firebase Crashlytics") }
-        )
-        
-        SettingSwitchItem(
-            icon = Icons.Default.FilterHdr, 
-            title = "HD Image", 
-            checked = true
-        )
+//        SettingItem(
+//            icon = Icons.Default.BugReport,
+//            title = "Cause Crash",
+//            onClick = { crashlytics.log("User triggered fatal crash.")
+//                throw RuntimeException("Test Crash for Firebase Crashlytics") }
+//        )
+//
+//        SettingSwitchItem(
+//            icon = Icons.Default.FilterHdr,
+//            title = "HD Image",
+//            checked = true
+//        )
         SettingSwitchItem(
             icon = Icons.Default.NightlightRound, 
             title = "Night Mode", 

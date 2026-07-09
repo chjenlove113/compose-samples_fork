@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -23,11 +24,22 @@ import com.app.tintuccongnghe.domain.models.AppUserSite
 import com.app.tintuccongnghe.presentation.R
 import java.text.SimpleDateFormat
 import java.util.*
+import android.app.Activity
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.app.tintuccongnghe.components.loadInterstitialAd
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AppUserSiteScreen(
     viewModel: AppUserSiteViewModel = hiltViewModel(),
+    onBack: () -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToRss: (Int, String) -> Unit
 ) {
@@ -36,6 +48,15 @@ fun AppUserSiteScreen(
     var showLoginRequiredDialog by remember { mutableStateOf(false) }
     var selectedSite by remember { mutableStateOf<AppUserSite?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val context = LocalContext.current
+    var interstitialAd by remember { mutableStateOf<InterstitialAd?>(null) }
+
+    LaunchedEffect(Unit) {
+        loadInterstitialAd(context) { ad ->
+            interstitialAd = ad
+        }
+    }
 
     // Filter sites to exclude those with GROUP == "0"
     val nonGroup0Sites = remember(uiState.sites) {
@@ -57,6 +78,11 @@ fun AppUserSiteScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.user_sites)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
                 actions = {
                     val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
                     if (rssCount >= 10) {
@@ -69,8 +95,26 @@ fun AppUserSiteScreen(
                     }
                     IconButton(onClick = {
                         if (uiState.isLoggedIn) {
-                            selectedSite = null
-                            showDialog = true
+                            if (interstitialAd != null) {
+                                interstitialAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
+                                    override fun onAdDismissedFullScreenContent() {
+                                        interstitialAd = null
+                                        loadInterstitialAd(context) { newAd -> interstitialAd = newAd }
+                                        selectedSite = null
+                                        showDialog = true
+                                    }
+
+                                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                                        interstitialAd = null
+                                        selectedSite = null
+                                        showDialog = true
+                                    }
+                                }
+                                interstitialAd?.show(context as Activity)
+                            } else {
+                                selectedSite = null
+                                showDialog = true
+                            }
                         } else {
                             showLoginRequiredDialog = true
                         }
