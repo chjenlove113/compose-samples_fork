@@ -16,6 +16,8 @@ import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 
 @Composable
 fun AddSiteWithInterstitialAd(
@@ -70,6 +72,26 @@ fun loadInterstitialAd(context: Context, onAdLoaded: (InterstitialAd?) -> Unit) 
             }
 
             override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                onAdLoaded(null)
+            }
+        }
+    )
+}
+
+fun loadRewardedAd(context: Context, onAdLoaded: (RewardedAd?) -> Unit) {
+    val adRequest = AdRequest.Builder().build()
+    RewardedAd.load(
+        context,
+        "ca-app-pub-3940256099942544/5224354917", // Test ID
+        adRequest,
+        object : RewardedAdLoadCallback() {
+            override fun onAdLoaded(ad: RewardedAd) {
+                Log.d("AdMob", "Rewarded Ad loaded.")
+                onAdLoaded(ad)
+            }
+
+            override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                Log.e("AdMob", "Rewarded Ad failed to load: ${loadAdError.message}")
                 onAdLoaded(null)
             }
         }

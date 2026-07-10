@@ -1,6 +1,7 @@
 package com.app.tintuccongnghe.components
 
 import android.content.Intent
+import android.app.Activity
 import android.net.Uri
 import android.util.Log
 import android.view.View
@@ -90,6 +91,9 @@ import com.app.tintuccongnghe.domain.models.NewsChildItem
 import com.app.tintuccongnghe.domain.models.NewsTag
 import com.app.tintuccongnghe.main.MainViewModel
 import com.app.tintuccongnghe.utils.AppContants
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.AdError
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -110,6 +114,8 @@ fun NewsDetailScreen(
     val isSaved by viewModel.isSaved.collectAsStateWithLifecycle()
     val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    var rewardedAd by remember { mutableStateOf<RewardedAd?>(null) }
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
@@ -133,6 +139,12 @@ fun NewsDetailScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        loadRewardedAd(context) { ad ->
+            rewardedAd = ad
+        }
+    }
+
     // 1. Create and remember the scroll behavior
     var scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     //val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
@@ -153,6 +165,26 @@ fun NewsDetailScreen(
         scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior (rememberTopAppBarState())
     }
 
+    fun showRewardedAdAndToggle(news: News) {
+        if (rewardedAd != null) {
+            rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
+                override fun onAdDismissedFullScreenContent() {
+                    rewardedAd = null
+                    loadRewardedAd(context) { ad -> rewardedAd = ad }
+                }
+
+                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                    rewardedAd = null
+                    loadRewardedAd(context) { ad -> rewardedAd = ad }
+                }
+            }
+            rewardedAd?.show(context as Activity) { rewardItem ->
+                Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
+            }
+        }
+        viewModel.toggleSave(news)
+    }
+
 
     Scaffold(
         topBar = {
@@ -165,7 +197,7 @@ fun NewsDetailScreen(
                 },
                 actions = {
                     if (!isCompact) {
-                        IconButton(onClick = { viewModel.toggleSave(news) }) {
+                        IconButton(onClick = { showRewardedAdAndToggle(news) }) {
                             Icon(
                                 imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = if (isSaved) "Remove from favorites" else "Save to favorites"
@@ -216,7 +248,7 @@ fun NewsDetailScreen(
                             DropdownMenuItem(
                                 text = { Text(if (isSaved) "Remove from favorites" else "Save to favorites") },
                                 onClick = {
-                                    viewModel.toggleSave(news)
+                                    showRewardedAdAndToggle(news)
                                     expanded = false
                                 },
                                 leadingIcon = {
@@ -283,6 +315,9 @@ fun NewsDetailScreen(
                 // 3. Pass the behavior to the TopAppBar
                 scrollBehavior = scrollBehavior
             )
+        },
+        bottomBar = {
+            AdMobBannerAd(modifier= Modifier.padding(8.dp))
         },
         floatingActionButton = {
             AnimatedVisibility(

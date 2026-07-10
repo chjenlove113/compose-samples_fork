@@ -3,6 +3,7 @@ package com.app.tintuccongnghe
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.google.android.gms.ads.MobileAds
 import com.facebook.FacebookSdk
 import com.facebook.appevents.AppEventsLogger
 import com.app.tintuccongnghe.work.WorkScheduler
@@ -24,6 +25,7 @@ class NewsApplication : Application(), Configuration.Provider {
         super.onCreate()
         FacebookSdk.sdkInitialize(applicationContext)
         AppEventsLogger.activateApp(this)
+        MobileAds.initialize(this) {}
         
         WorkScheduler.scheduleRssRefresh(this)
     }
