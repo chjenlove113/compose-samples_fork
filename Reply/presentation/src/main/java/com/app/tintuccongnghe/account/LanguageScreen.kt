@@ -40,7 +40,7 @@ fun LanguageScreen(
                 .padding(16.dp)
         ) {
             LanguageOption("English", "en") { scope.launch { viewModel.setLanguage("en") } }
-            LanguageOption("Việt Nam", "vi") { scope.launch { viewModel.setLanguage("vi") } }
+            LanguageOption("Vietnamese", "vi") { scope.launch { viewModel.setLanguage("vi") } }
         }
     }
 }

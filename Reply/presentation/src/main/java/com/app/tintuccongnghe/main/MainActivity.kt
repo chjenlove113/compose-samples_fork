@@ -66,6 +66,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.app.tintuccongnghe.theme.ContrastAwareReplyTheme
 import androidx.activity.viewModels
+import androidx.compose.material.icons.filled.RssFeed
+import androidx.compose.material.icons.filled.Tag
 
 private sealed interface TopLevelRoute1 {
     val icon: ImageVector
@@ -499,7 +501,7 @@ private fun navigationSuiteItems(
         label = { Text("#RSS") },
         icon = {
             Icon(
-                imageVector = AppDestinations.SHOPPING.icon, contentDescription = "RSS NEWS"
+                imageVector = Icons.Default.RssFeed, contentDescription = "RSS NEWS"
             )
         },
     )
@@ -514,7 +516,7 @@ private fun navigationSuiteItems(
         label = { Text("#TAG") },
         icon = {
             Icon(
-                imageVector = Icons.Default.Face, contentDescription = "TAG"
+                imageVector = Icons.Default.Tag, contentDescription = "TAG"
             )
         },
     )
