@@ -592,15 +592,22 @@ fun NewsDetailScreen(
                         )
                     }
                     if (child.MediaUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = child.MediaUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .padding(vertical = 8.dp),
-                            contentScale = ContentScale.Crop
-                        )
+                        if (child.Kind == "2") {
+                            VideoPlayer(
+                                videoUrl = child.MediaUrl,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        } else {
+                            AsyncImage(
+                                model = child.MediaUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .padding(vertical = 8.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
                     if (child.Content.isNotEmpty()) {
                         Text(
