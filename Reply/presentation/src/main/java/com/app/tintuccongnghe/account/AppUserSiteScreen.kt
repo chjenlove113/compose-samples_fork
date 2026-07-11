@@ -272,7 +272,6 @@ fun SiteListItem(
     onNavigateToRss: (Int, String) -> Unit
 ) {
     ListItem(
-        modifier = Modifier.clickable { onNavigateToRss(site.Id, site.GROUP) },
         headlineContent = { Text(site.Name) },
         supportingContent = {
             Column {
@@ -301,36 +300,49 @@ fun SiteListItem(
                     )
                 }
 
-                if (site.GROUP == "1" && site.Url.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = onSync,
-                        enabled = !isSyncing,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        if (isSyncing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Syncing...", style = MaterialTheme.typography.labelMedium)
-                        } else {
-                            Text("Sync News", style = MaterialTheme.typography.labelMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (site.AllowEdit) {
+                        Button(
+                            onClick = { onNavigateToRss(site.Id, site.GROUP) },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("Go to News", style = MaterialTheme.typography.labelMedium)
                         }
                     }
-                }
 
-                if (site.GROUP == "2") {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = onCopy,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text("Copy site", style = MaterialTheme.typography.labelMedium)
+                    if (site.GROUP == "1" && site.Url.isNotBlank()) {
+                        Button(
+                            onClick = onSync,
+                            enabled = !isSyncing,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Syncing...", style = MaterialTheme.typography.labelMedium)
+                            } else {
+                                Text("Sync News", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+
+                    if (site.GROUP == "2") {
+                        Button(
+                            onClick = onCopy,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("Copy site", style = MaterialTheme.typography.labelMedium)
+                        }
                     }
                 }
             }

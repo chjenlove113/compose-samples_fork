@@ -1,29 +1,40 @@
 package com.app.tintuccongnghe.showHomeRSS
 
 import android.content.Intent
+import android.net.Uri
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloseFullscreen
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,7 +44,7 @@ import com.app.tintuccongnghe.main.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun ShowHomeRSSFeedDetailScreen(
     item: RssItemEntity,
@@ -44,6 +55,9 @@ fun ShowHomeRSSFeedDetailScreen(
     rssViewModel: ShowHomeRssViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
 ) {
     val context = LocalContext.current
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+    
     val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
     val rssUiState by rssViewModel.uiState.collectAsStateWithLifecycle()
     val colorScheme = MaterialTheme.colorScheme
@@ -63,6 +77,9 @@ fun ShowHomeRSSFeedDetailScreen(
         } ?: ""
     }
 
+    var showFontScaleSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -80,11 +97,26 @@ fun ShowHomeRSSFeedDetailScreen(
                             tint = if (currentItem.isFavorite) Color.Red else LocalContentColor.current
                         )
                     }
-                    IconButton(onClick = onToggleFullScreen) {
-                        Icon(
-                            if (isFullScreen) Icons.Default.CloseFullscreen else Icons.Default.OpenInFull,
-                            contentDescription = if (isFullScreen) "Exit Full Screen" else "Expand to Full Screen"
-                        )
+                    IconButton(onClick = {
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, "${currentItem.title}\n\n${currentItem.link}")
+                            type = "text/plain"
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share news via"))
+                    }) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
+                    }
+                    IconButton(onClick = { showFontScaleSheet = true }) {
+                        Icon(imageVector = Icons.Default.FormatSize, contentDescription = "Change Font Scale")
+                    }
+                    if (!isCompact) {
+                        IconButton(onClick = onToggleFullScreen) {
+                            Icon(
+                                if (isFullScreen) Icons.Default.CloseFullscreen else Icons.Default.OpenInFull,
+                                contentDescription = if (isFullScreen) "Exit Full Screen" else "Expand to Full Screen"
+                            )
+                        }
                     }
                     IconButton(onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, currentItem.link.toUri())
@@ -96,6 +128,60 @@ fun ShowHomeRSSFeedDetailScreen(
             )
         }
     ) { paddingValues ->
+        if (showFontScaleSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showFontScaleSheet = false },
+                sheetState = sheetState,
+                containerColor = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp, start = 24.dp, end = 24.dp, top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Font Size",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = String.format(Locale.getDefault(), "%.1fx", fontScale),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Slider(
+                        value = fontScale,
+                        onValueChange = {
+                            // Snap to nearest 0.2 step
+                            val snappedValue = Math.round(it * 5) / 5.0f
+                            mainViewModel.setFontScale(snappedValue)
+                        },
+                        valueRange = 0.6f..1.4f,
+                        steps = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("A", fontSize = 12.sp)
+                        Text("A", fontSize = 20.sp)
+                    }
+                }
+            }
+        }
         Column(
             modifier = Modifier
                 .padding(paddingValues)
