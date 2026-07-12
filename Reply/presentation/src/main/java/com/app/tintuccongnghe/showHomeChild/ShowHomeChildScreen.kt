@@ -18,9 +18,13 @@ import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
 import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -195,6 +199,7 @@ fun DynamicTabLayoutScreen(
         val list = mutableListOf<Triple<String, String, String>>() // Name, Slug, Key
         if ((appSiteCateByGroup?.size ?: 0) > 1) {
             list.add(Triple("All_" + appSite, "", ""))
+            //list.add(Triple("All", "", ""))
         }
         // neu appSite là All thì không cần load cate
         if(appSite != ""){
@@ -211,7 +216,15 @@ fun DynamicTabLayoutScreen(
     val showTabs = tabDefinitions.size > 1
 
     if (showTabs) {
-        val pagerState = rememberPagerState(pageCount = { tabDefinitions.size })
+
+        var selectedTabKey by rememberSaveable { mutableStateOf("") }
+
+        val initialPageIndex = remember(tabDefinitions) {
+            val index = tabDefinitions.indexOfFirst { it.second == selectedTabKey }
+            if (index >= 0) index else 0
+        }
+
+        val pagerState = rememberPagerState(pageCount = { tabDefinitions.size }, initialPage = initialPageIndex)
         val scope = rememberCoroutineScope()
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -224,7 +237,7 @@ fun DynamicTabLayoutScreen(
                                 pagerState.animateScrollToPage(index)
                             }
                         },
-                        text = { Text(text = tab.first, maxLines = 1) }
+                        text = { Text(text = tab.first.split("_")[0], maxLines = 1) }
                     )
                 }
             }
@@ -233,7 +246,7 @@ fun DynamicTabLayoutScreen(
                 state = pagerState,
                 modifier = Modifier.weight(1f),
                 key = { index ->
-                    val tabKey = tabDefinitions.getOrNull(index)?.third
+                    val tabKey = tabDefinitions.getOrNull(index)?.second
                     if (tabKey.isNullOrEmpty()) "tab_$index" else tabKey
                 }
             ) { page ->
@@ -246,10 +259,27 @@ fun DynamicTabLayoutScreen(
                     onNewsClick = onNewsClick,
                     onTabSelected = onTabSelected,
                     itemsListHeader = itemsListHeader,
-                    selectedNews = selectedNews
+                    selectedNews = selectedNews, showAppCategory = true, onTabSelectedCategory = {
+                        key -> selectedTabKey = key
+                    }
                 )
             }
         }
+        // Synchronize external changes to selectedTabKey00 with pager
+        LaunchedEffect(selectedTabKey) {
+            val targetIndex = tabDefinitions.indexOfFirst { it.second == selectedTabKey }
+            if (targetIndex >= 0 && pagerState.currentPage != targetIndex) {
+                pagerState.animateScrollToPage(targetIndex)
+            }
+        }
+        // Synchronize pager swipes back to selectedTabKey00
+        LaunchedEffect(pagerState.currentPage) {
+            val currentKey = tabDefinitions.getOrNull(pagerState.currentPage)?.second
+            if (currentKey != null) {
+                selectedTabKey = currentKey
+            }
+        }
+
     } else {
         val tabDef = tabDefinitions[0]
         ShowHomeChildTabPage(
@@ -260,7 +290,7 @@ fun DynamicTabLayoutScreen(
             onNewsClick = onNewsClick,
             onTabSelected = onTabSelected,
             itemsListHeader = itemsListHeader,
-            selectedNews = selectedNews
+            selectedNews = selectedNews, false,{}
         )
     }
 }
@@ -274,7 +304,9 @@ fun ShowHomeChildTabPage(
     onNewsClick: (News) -> Unit,
     onTabSelected: (String) -> Unit = {},
     itemsListHeader: List<News>?,
-    selectedNews: News? = null
+    selectedNews: News? = null,
+    showAppCategory: Boolean = false,
+    onTabSelectedCategory: (String) -> Unit = {},
 ) {
     val appSiteModel = remember(tabSlug, tabKey, parentAppSite, tabName) {
         ItemDetailSite(
@@ -298,6 +330,6 @@ fun ShowHomeChildTabPage(
         onTabSelected = onTabSelected,
         siteSlug = tabSlug, 
         itemsListHeader = itemsListHeader,
-        selectedNews = selectedNews
+        selectedNews = selectedNews, showAppCategory = showAppCategory, onTabSelectedCategory = onTabSelectedCategory
     )
 }

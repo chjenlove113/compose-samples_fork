@@ -253,7 +253,9 @@ fun NewsItemAdv(
     onNewsClick: (News) -> Unit,
     modifier: Modifier = Modifier,
     onTabSelected: (String) -> Unit = {},
-    selected: Boolean = false
+    selected: Boolean = false,
+    showAppCategory: Boolean = false,
+    onTabSelectedCategory: (String) -> Unit = {}
 ) {
     androidx.compose.material3.Card(
         onClick = { onNewsClick(news) },
@@ -301,15 +303,25 @@ fun NewsItemAdv(
                             .padding(20.dp,0.dp,0.dp,12.dp)
                         ) {
                             Text(
-                                text = news.App_Site_Name ?: "",
+                                text = (if (showAppCategory) news.App_Category_Name else news.App_Site_Name) ?: "",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSecondary,
                                 modifier = Modifier
                                     .background(MaterialTheme.colorScheme.secondary.copy(0.8f), shape = CircleShape)
                                     .clip(CircleShape)
-                                    .clickable { news.App_Site_Slug?.let { onTabSelected(it)
-                                        Log.d("news.App_Site_Slug?.let { onTabSelected(it)",it.toString())
-                                    } }
+                                    .clickable {
+                                        if(showAppCategory){
+                                            news.App_Category_Slug?.let {
+                                                onTabSelectedCategory(it)
+                                                Log.d("news.App_Category_Slug?.let { onTabSelected(it)",it.toString())
+                                            }
+                                        }else{
+                                            news.App_Site_Slug?.let {
+                                                onTabSelected(it)
+                                                Log.d("news.App_Site_Slug?.let { onTabSelected(it)",it.toString())
+                                            }
+                                         }
+                                    }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }

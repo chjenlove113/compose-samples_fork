@@ -76,7 +76,9 @@ fun ShowHomeChildCateScreen(
     onTabSelected: (String) -> Unit = {},
     siteSlug: String = "",
     itemsListHeader: List<News>?,
-    selectedNews: News? = null
+    selectedNews: News? = null,
+    showAppCategory: Boolean = false,
+    onTabSelectedCategory: (String) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
 
@@ -144,7 +146,8 @@ fun ShowHomeChildCateScreen(
                                         news = news,
                                         onNewsClick = onNewsClick,
                                         onTabSelected = onTabSelected,
-                                        selected = isSelected
+                                        selected = isSelected,
+                                        showAppCategory = showAppCategory, onTabSelectedCategory = onTabSelectedCategory
                                     )
                                 }else{
                                     NewsItem(
