@@ -525,8 +525,8 @@ fun NewsDetailScreen(
                                     .replace("#SURFACE", colorScheme.surfaceVariant.toHtmlHex().substring(1))
                                     .replace("#PRIMARY", colorScheme.primary.toHtmlHex().substring(1))
                                     .replace("#FONT_SIZE", scaledFontSize.toString())
-                                    .replace("#PADDING_H", "8")
-                                    .replace("#PADDING_V", "8")
+                                    .replace("#PADDING_H", "0")
+                                    .replace("#PADDING_V", "0")
                                     .replace("#CONTENT", state.data)
                             } catch (e: Exception) {
                                 Log.e("NewsDetail", "Error loading template", e)

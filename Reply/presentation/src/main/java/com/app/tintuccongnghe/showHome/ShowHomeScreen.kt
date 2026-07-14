@@ -854,7 +854,7 @@ fun AutoAdvancePager(
         PagerIndicator(
             pageCount = pageItems.size, 
             currentPageIndex = pagerState.currentPage,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp)
         )
     }
 }
