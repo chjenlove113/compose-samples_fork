@@ -37,6 +37,8 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.credentials.CustomCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 @Composable
@@ -206,13 +208,30 @@ fun LoginScreen(
                                 request = request
                             )
                             val credential = result.credential
-                            if (credential is GoogleIdTokenCredential) {
-                                viewModel.socialLogin(
-                                    provider = "Google",
-                                    idToken = credential.idToken,
-                                    email = credential.id ?: "",
-                                    username = credential.displayName ?: "Google User"
-                                )
+                            when (credential) {
+                                is CustomCredential -> {
+                                    if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                                        try {
+                                            // Use googleIdTokenCredential and extract the ID for server-side validation.
+                                            val googleIdTokenCredential = GoogleIdTokenCredential
+                                                .createFrom(credential.data)
+
+                                            viewModel.socialLogin(
+                                                provider = "Google",
+                                                idToken = googleIdTokenCredential.idToken,
+                                                email = googleIdTokenCredential.id ?: "",
+                                                username = googleIdTokenCredential.id ?: "Google User"
+                                            )
+
+                                        } catch (e: GoogleIdTokenParsingException) {
+                                        }
+                                    } else {
+                                        // Catch any unrecognized credential type here.
+                                    }
+                                }
+
+                                else -> {
+                                }
                             }
                             FirebaseCrashlytics.getInstance().log("LoginScreen: Login with Google successfully")
                         } catch (e: GetCredentialException) {
