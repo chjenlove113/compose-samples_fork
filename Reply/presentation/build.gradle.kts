@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.compose)
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+    id("kotlin-parcelize")
     kotlin("plugin.serialization") version "2.1.21"
 
     // Make sure that you have the Google services Gradle plugin

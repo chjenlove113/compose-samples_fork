@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
@@ -35,9 +36,10 @@ import com.app.tintuccongnghe.showHomeRSS.ShowHomeRSSFeedDetailScreen
 import com.app.tintuccongnghe.components.NewsDetailScreen
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ShowHomeFavoriteScreen(
+    onBack: () -> Unit = {},
     viewModel: ShowHomeFavoriteViewModel = hiltViewModel(),
     mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalActivity.current as ComponentActivity)
 ) {
@@ -76,77 +78,91 @@ fun ShowHomeFavoriteScreen(
         currentDestination = navigator.currentDestination
     )
 
-    if (uiState.favorites.isEmpty() && !uiState.isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "No favorites yet.",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Favorites") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
             )
         }
-        return
-    }
-
-    ListDetailPaneScaffold(
-        directive = currentScaffoldDirective,
-        value = scaffoldValue,
-        listPane = {
-            AnimatedPane {
-                FavoriteListPane(
-                    favorites = uiState.favorites,
-                    selectedRssItem = uiState.selectedRssItem,
-                    selectedWebsiteNews = uiState.selectedWebsiteNews,
-                    onItemClick = { item ->
-                        scope.launch {
-                            isFullScreen = false 
-                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            if (uiState.favorites.isEmpty() && !uiState.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "No favorites yet.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                ListDetailPaneScaffold(
+                    directive = currentScaffoldDirective,
+                    value = scaffoldValue,
+                    listPane = {
+                        AnimatedPane {
+                            FavoriteListPane(
+                                favorites = uiState.favorites,
+                                selectedRssItem = uiState.selectedRssItem,
+                                selectedWebsiteNews = uiState.selectedWebsiteNews,
+                                onItemClick = { item ->
+                                    scope.launch {
+                                        isFullScreen = false
+                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+                                    }
+                                }
+                            )
+                        }
+                    },
+                    detailPane = {
+                        AnimatedPane {
+                            when (currentDetail) {
+                                is FavoriteItem.LocalRss -> {
+                                    ShowHomeRSSFeedDetailScreen(
+                                        item = currentDetail.item,
+                                        onBack = {
+                                            scope.launch {
+                                                isFullScreen = false
+                                                navigator.navigateBack()
+                                            }
+                                        },
+                                        isFullScreen = isFullScreen,
+                                        onToggleFullScreen = {
+                                            isFullScreen = !isFullScreen
+                                        }
+                                    )
+                                }
+                                is FavoriteItem.Website -> {
+                                    NewsDetailScreen(
+                                        news = currentDetail.news,
+                                        onBack = {
+                                            scope.launch {
+                                                isFullScreen = false
+                                                navigator.navigateBack()
+                                            }
+                                        },
+                                        onExpand = {
+                                            isFullScreen = !isFullScreen
+                                        },
+                                        showExpandButton = true
+                                    )
+                                }
+                                else -> {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("Select an article to view details")
+                                    }
+                                }
+                            }
                         }
                     }
                 )
             }
-        },
-        detailPane = {
-            AnimatedPane {
-                when (currentDetail) {
-                    is FavoriteItem.LocalRss -> {
-                        ShowHomeRSSFeedDetailScreen(
-                            item = currentDetail.item,
-                            onBack = {
-                                scope.launch {
-                                    isFullScreen = false
-                                    navigator.navigateBack()
-                                }
-                            },
-                            isFullScreen = isFullScreen,
-                            onToggleFullScreen = {
-                                isFullScreen = !isFullScreen
-                            }
-                        )
-                    }
-                    is FavoriteItem.Website -> {
-                        NewsDetailScreen(
-                            news = currentDetail.news,
-                            onBack = {
-                                scope.launch {
-                                    isFullScreen = false
-                                    navigator.navigateBack()
-                                }
-                            },
-                            onExpand = {
-                                isFullScreen = !isFullScreen
-                            },
-                            showExpandButton = true
-                        )
-                    }
-                    else -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Select an article to view details")
-                        }
-                    }
-                }
-            }
         }
-    )
+    }
 }
 
 @Composable

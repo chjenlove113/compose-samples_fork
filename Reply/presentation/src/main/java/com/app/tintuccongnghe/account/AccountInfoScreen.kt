@@ -113,12 +113,16 @@ fun AccountInfoScreen(
             SettingItem(
                 icon = Icons.AutoMirrored.Filled.Logout,
                 title = "Log Out",
-                onClick = { showLogoutSheet = true }
+                onClick = { showLogoutSheet = true },
+                textColor = MaterialTheme.colorScheme.primary,
+                iconColor = MaterialTheme.colorScheme.primary
             )
             SettingItem(
                 icon = Icons.Default.DeleteForever,
                 title = "Delete account",
-                onClick = { showDeleteAccountSheet = true }
+                onClick = { showDeleteAccountSheet = true },
+                textColor = MaterialTheme.colorScheme.error,
+                iconColor = MaterialTheme.colorScheme.error
             )
         }
     }
@@ -139,7 +143,7 @@ fun AccountInfoScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Logout,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(48.dp)
                 )
                 
@@ -181,11 +185,11 @@ fun AccountInfoScreen(
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
+                            containerColor = MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Log Out", color = MaterialTheme.colorScheme.onError)
+                        Text("Log Out", color = MaterialTheme.colorScheme.onPrimary)
                     }
                 }
             }
@@ -366,7 +370,9 @@ fun UserInfoBanner(authInfo: LoginResponse) {
 fun SettingItem(
     icon: ImageVector,
     title: String,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    textColor: Color = Color.Unspecified,
+    iconColor: Color = Color.Gray
 ) {
     Row(
         modifier = Modifier
@@ -379,18 +385,19 @@ fun SettingItem(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = Color.Gray
+            tint = iconColor
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = title,
             modifier = Modifier.weight(1f),
-            fontSize = 16.sp
+            fontSize = 16.sp,
+            color = textColor
         )
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = Color.Gray
+            tint = iconColor
         )
     }
 }

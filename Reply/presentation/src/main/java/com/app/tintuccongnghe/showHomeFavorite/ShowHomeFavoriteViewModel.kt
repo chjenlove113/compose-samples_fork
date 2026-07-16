@@ -2,6 +2,7 @@ package com.app.tintuccongnghe.showHomeFavorite
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.os.Parcelable
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import com.app.tintuccongnghe.data.mappers.toNewsModel
@@ -9,10 +10,13 @@ import com.app.tintuccongnghe.domain.models.News
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
 import javax.inject.Inject
 
-sealed class FavoriteItem {
+sealed class FavoriteItem : Parcelable {
+    @Parcelize
     data class LocalRss(val item: RssItemEntity) : FavoriteItem()
+    @Parcelize
     data class Website(val news: News) : FavoriteItem()
 }
 

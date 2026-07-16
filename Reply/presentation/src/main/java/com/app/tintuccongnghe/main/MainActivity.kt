@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = "screen_favorites"
                     ) {
-                        ShowHomeFavoriteScreen()
+                        ShowHomeFavoriteScreen(onBack = { navHost.popBackStack() })
                     }
 
                     composable(
