@@ -15,6 +15,6 @@ interface AuthService {
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
-    @POST("api/Auth/Delete")
+    @POST("api/Auth/BlockUser")
     suspend fun deleteAccount(@Body request: DeleteAccountRequest): Any
 }
