@@ -12,8 +12,11 @@ import com.app.tintuccongnghe.domain.usecases.SetFontScaleUseCase
 import com.app.tintuccongnghe.domain.usecases.SetLanguageUseCase
 import com.app.tintuccongnghe.domain.usecases.SetNightModeUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -51,6 +54,9 @@ class AccountViewModel @Inject constructor(
             initialValue = 1.0f
         )
 
+    private val _message = MutableSharedFlow<String>()
+    val message: SharedFlow<String> = _message.asSharedFlow()
+
     fun toggleNightMode(enabled: Boolean) {
         viewModelScope.launch {
             setNightModeUseCase(enabled)
@@ -77,7 +83,8 @@ class AccountViewModel @Inject constructor(
 
     fun deleteAccount() {
         viewModelScope.launch {
-            deleteAccountUseCase()
+            val response = deleteAccountUseCase()
+            _message.emit(response.Message ?: if (response.Success) "Account deleted successfully" else "Failed to delete account")
         }
     }
 }

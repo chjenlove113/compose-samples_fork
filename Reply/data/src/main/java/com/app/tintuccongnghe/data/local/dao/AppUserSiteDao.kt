@@ -32,4 +32,7 @@ interface AppUserSiteDao {
 
     @Query("DELETE FROM app_user_sites WHERE IdentityId = :identityId AND AppIdEncrypt = :appId")
     suspend fun deleteSites(identityId: String, appId: String)
+
+    @Query("DELETE FROM app_user_sites")
+    suspend fun deleteAll()
 }

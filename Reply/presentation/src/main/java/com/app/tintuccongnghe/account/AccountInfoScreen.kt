@@ -44,86 +44,86 @@ fun AccountInfoScreen(
     var showLogoutSheet by remember { mutableStateOf(false) }
     var showDeleteAccountSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.message.collect { msg ->
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
 
     val crashlytics = Firebase.crashlytics
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
-        if (authInfo == null) {
-            LoginBanner(onNavigateToLogin)
-        } else {
-            UserInfoBanner(authInfo!!)
-        }
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
+            if (authInfo == null) {
+                LoginBanner(onNavigateToLogin)
+            } else {
+                UserInfoBanner(authInfo!!)
+            }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        SettingItem(Icons.Default.TextFields, "Language", onClick = onNavigateToLanguage)
-        SettingItem(
-            icon = Icons.Default.BookmarkBorder, 
-            title = "Bookmarks",
-            onClick = onNavigateToFavorites
-        )
-        SettingItem(
-            icon = Icons.Default.NotificationsNone, 
-            title = "Notifications",
-            onClick = onNavigateToNotifications
-        )
-        SettingItem(
-            icon = Icons.Default.Category, 
-            title = "Categories",
-            onClick = onNavigateToUserCategories
-        )
-        SettingItem(
-            icon = Icons.AutoMirrored.Filled.Article, 
-            title = "Sources",
-            onClick = onNavigateToUserSites
-        )
-
-//        SettingItem(
-//            icon = Icons.Default.BugReport,
-//            title = "Cause Crash",
-//            onClick = { crashlytics.log("User triggered fatal crash.")
-//                throw RuntimeException("Test Crash for Firebase Crashlytics") }
-//        )
-//
-//        SettingSwitchItem(
-//            icon = Icons.Default.FilterHdr,
-//            title = "HD Image",
-//            checked = true
-//        )
-        SettingSwitchItem(
-            icon = Icons.Default.NightlightRound, 
-            title = "Night Mode", 
-            checked = nightMode,
-            onCheckedChange = { viewModel.toggleNightMode(it) }
-        )
-
-        SettingSliderItem(
-            icon = Icons.Default.FormatSize,
-            title = "Font Size",
-            value = fontScale,
-            onValueChange = { viewModel.setFontScale(it) }
-        )
-        
-        if (authInfo != null) {
+            SettingItem(Icons.Default.TextFields, "Language", onClick = onNavigateToLanguage)
             SettingItem(
-                icon = Icons.AutoMirrored.Filled.Logout,
-                title = "Log Out",
-                onClick = { showLogoutSheet = true },
-                textColor = MaterialTheme.colorScheme.primary,
-                iconColor = MaterialTheme.colorScheme.primary
+                icon = Icons.Default.BookmarkBorder,
+                title = "Bookmarks",
+                onClick = onNavigateToFavorites
             )
             SettingItem(
-                icon = Icons.Default.DeleteForever,
-                title = "Delete account",
-                onClick = { showDeleteAccountSheet = true },
-                textColor = MaterialTheme.colorScheme.error,
-                iconColor = MaterialTheme.colorScheme.error
+                icon = Icons.Default.NotificationsNone,
+                title = "Notifications",
+                onClick = onNavigateToNotifications
             )
+            SettingItem(
+                icon = Icons.Default.Category,
+                title = "Categories",
+                onClick = onNavigateToUserCategories
+            )
+            SettingItem(
+                icon = Icons.AutoMirrored.Filled.Article,
+                title = "Sources",
+                onClick = onNavigateToUserSites
+            )
+
+            SettingSwitchItem(
+                icon = Icons.Default.NightlightRound,
+                title = "Night Mode",
+                checked = nightMode,
+                onCheckedChange = { viewModel.toggleNightMode(it) }
+            )
+
+            SettingSliderItem(
+                icon = Icons.Default.FormatSize,
+                title = "Font Size",
+                value = fontScale,
+                onValueChange = { viewModel.setFontScale(it) }
+            )
+
+            if (authInfo != null) {
+                SettingItem(
+                    icon = Icons.AutoMirrored.Filled.Logout,
+                    title = "Log Out",
+                    onClick = { showLogoutSheet = true },
+                    textColor = MaterialTheme.colorScheme.primary,
+                    iconColor = MaterialTheme.colorScheme.primary
+                )
+                SettingItem(
+                    icon = Icons.Default.DeleteForever,
+                    title = "Delete account",
+                    onClick = { showDeleteAccountSheet = true },
+                    textColor = MaterialTheme.colorScheme.error,
+                    iconColor = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 

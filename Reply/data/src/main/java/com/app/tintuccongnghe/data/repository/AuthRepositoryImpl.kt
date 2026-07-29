@@ -5,6 +5,7 @@ import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.AuthEntity
 import com.app.tintuccongnghe.domain.models.AccessToken
 import com.app.tintuccongnghe.domain.models.DeleteAccountRequest
+import com.app.tintuccongnghe.domain.models.DeleteAccountResponse
 import com.app.tintuccongnghe.domain.models.LoginRequest
 import com.app.tintuccongnghe.domain.models.LoginResponse
 import com.app.tintuccongnghe.domain.models.RegisterRequest
@@ -41,23 +42,27 @@ class AuthRepositoryImpl @Inject constructor(
         appDatabase.authDao().clearAuth()
     }
 
-    override suspend fun deleteAccount(): Boolean {
-        val authInfo = getAuthInfo().firstOrNull() ?: return false
-        // Perform local logout first to clear session state immediately
-        logout()
+    override suspend fun deleteAccount(): DeleteAccountResponse {
+        val authInfo = getAuthInfo().firstOrNull() ?: return DeleteAccountResponse(Success = false, Message = "User not logged in")
         return try {
-            authService.deleteAccount(
+            val response = authService.deleteAccount(
                 DeleteAccountRequest(
                     IdentityId = authInfo.IdentityId,
                     Email = authInfo.Email,
                     UserName = authInfo.UserName
                 )
             )
-            true
+            if (response.Success) {
+                logout()
+                appDatabase.appUserSiteDao().deleteAll()
+                appDatabase.rssItemDao().deleteAll()
+            }
+            response
         } catch (e: Exception) {
-            false
+            DeleteAccountResponse(Success = false, Message = e.message)
         }
     }
+
 
     override suspend fun register(request: RegisterRequest): RegisterResponse {
         val response = authService.register(request)

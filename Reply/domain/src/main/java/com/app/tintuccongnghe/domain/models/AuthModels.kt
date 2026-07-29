@@ -48,3 +48,8 @@ data class DeleteAccountRequest(
     val Email: String,
     val UserName: String
 )
+
+data class DeleteAccountResponse(
+    val Success: Boolean,
+    val Message: String? = null
+)

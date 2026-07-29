@@ -1,35 +1,30 @@
-# Adaptive UI Implementation for AccountInfoScreen
+# Implementation Plan - Add Feedback Message for Account Deletion
 
-This plan outlines the changes to make `AccountInfoScreen.kt` adaptive for different screen sizes (phones, tablets, and foldables).
+Update `AccountViewModel` and `AccountInfoScreen` to display a message to the user after attempting to delete their account.
 
 ## User Review Required
 
 > [!NOTE]
-> The adaptive design will focus on improving readability and usability on larger screens (Expanded width) by limiting the content width and potentially adjusting the layout of banners and settings items.
+> The feedback message will be displayed using a `Snackbar` at the bottom of the screen.
 
 ## Proposed Changes
 
-### Component: Presentation
+### Presentation Layer
+
+#### [MODIFY] [AccountViewModel.kt](file:///E:/Projects/AndroidStudio/Projects/compose-samples_fork/Reply/presentation/src/main/java/com/app/tintuccongnghe/account/AccountViewModel.kt)
+- Update `deleteAccount()` to be a `suspend` function or use a callback/event pattern to return the `DeleteAccountResponse`.
+- Alternatively, expose a `SharedFlow` or `Channel` for "UI events" like showing a message.
+- Let's expose a `SharedFlow<String>` for messages.
 
 #### [MODIFY] [AccountInfoScreen.kt](file:///E:/Projects/AndroidStudio/Projects/compose-samples_fork/Reply/presentation/src/main/java/com/app/tintuccongnghe/account/AccountInfoScreen.kt)
-
-1.  **Import Adaptive Libraries:** Add imports for `androidx.compose.material3.adaptive` and `androidx.window.core.layout.WindowWidthSizeClass`.
-2.  **Get Adaptive Info:** Use `currentWindowAdaptiveInfo()` to obtain the current `WindowSizeClass`.
-3.  **Layout Adjustments:**
-    *   **Root Container:** Update the main `Column` to be centered and have a maximum width on `EXPANDED` screens to avoid extremely long lines of text and wide buttons.
-    *   **Banners:** Update `LoginBanner` and `UserInfoBanner` to adjust their height or internal layout for wider screens. For example, on wide screens, they could be wider or have more horizontal padding.
-    *   **Settings Items:** Maintain a single column but with a constrained width for better focus on tablets.
-4.  **Preview Support:** Add/Update previews for different screen sizes (Compact, Medium, Expanded) to verify the adaptive behavior.
+- Add `SnackbarHostState` to the screen.
+- Observe the message flow from `AccountViewModel` and show a snackbar.
+- Update the `Delete` button click handler to trigger the deletion and wait for the result (if using a direct call) or just trigger it.
 
 ## Verification Plan
 
 ### Automated Tests
 - Build the project to ensure no compilation errors.
-- (Optional) Run UI tests if any exist for this screen.
 
 ### Manual Verification
-- Deploy the app and test on:
-    - Phone (Compact)
-    - Tablet (Expanded)
-    - Foldable (Medium/Expanded)
-- Verify that on large screens, the content is not overly stretched and remains legible.
+- Trigger account deletion and verify that a message appears (e.g., "Account deleted successfully" or an error message).
