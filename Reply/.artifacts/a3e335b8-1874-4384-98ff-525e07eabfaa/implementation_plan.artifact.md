@@ -1,30 +1,65 @@
-# Implementation Plan - Add Feedback Message for Account Deletion
+# Analysis & Implementation Plan - Fix Push Notifications (FCM)
 
-Update `AccountViewModel` and `AccountInfoScreen` to display a message to the user after attempting to delete their account.
+## Root Causes Identified
 
-## User Review Required
+1. **`NewsMessagingService` is NOT registered in `AndroidManifest.xml`**:
+   Firebase Cloud Messaging requires declaring `FirebaseMessagingService` with an intent-filter for `com.google.firebase.MESSAGING_EVENT`. Without this in the manifest, FCM cannot invoke `NewsMessagingService` when messages arrive.
 
-> [!NOTE]
-> The feedback message will be displayed using a `Snackbar` at the bottom of the screen.
+2. **`POST_NOTIFICATIONS` permission is missing from `AndroidManifest.xml`**:
+   On Android 13+ (API level 33+), notifications require the `android.permission.POST_NOTIFICATIONS` permission in `AndroidManifest.xml`. `NotificationHelper.kt` explicitly checks for this permission and aborts if missing.
+
+3. **Missing Runtime Permission Request**:
+   On Android 13+, the app needs to request `POST_NOTIFICATIONS` permission from the user at runtime.
+
+4. **Missing FCM Registration Token / Topic Subscription**:
+   To receive messages from Firebase Console or backend, the app should either subscribe to a topic (e.g., `"all"` or `"news"`) or obtain/log the FCM registration token on startup.
+
+5. **Payload Parsing in `NewsMessagingService`**:
+   Currently, `NewsMessagingService` only handles custom `news_data` data payloads. If notifications are sent directly from the Firebase Console (using `remoteMessage.notification`), they were not displaying a local notification when the app is in the foreground.
+
+---
 
 ## Proposed Changes
 
-### Presentation Layer
+### Manifest & Permissions
 
-#### [MODIFY] [AccountViewModel.kt](file:///E:/Projects/AndroidStudio/Projects/compose-samples_fork/Reply/presentation/src/main/java/com/app/tintuccongnghe/account/AccountViewModel.kt)
-- Update `deleteAccount()` to be a `suspend` function or use a callback/event pattern to return the `DeleteAccountResponse`.
-- Alternatively, expose a `SharedFlow` or `Channel` for "UI events" like showing a message.
-- Let's expose a `SharedFlow<String>` for messages.
+#### [MODIFY] [AndroidManifest.xml (app)](file:///E:/Projects/AndroidStudio/Projects/compose-samples_fork/Reply/app/src/main/AndroidManifest.xml) & [AndroidManifest.xml (presentation)](file:///E:/Projects/AndroidStudio/Projects/compose-samples_fork/Reply/presentation/src/main/AndroidManifest.xml)
+- Add `<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />`.
+- Declare `NewsMessagingService`:
+  ```xml
+  <service
+      android:name="com.app.tintuccongnghe.notifications.NewsMessagingService"
+      android:exported="false">
+      <intent-filter>
+          <action android:name="com.google.firebase.MESSAGING_EVENT" />
+      </intent-filter>
+  </service>
+  ```
 
-#### [MODIFY] [AccountInfoScreen.kt](file:///E:/Projects/AndroidStudio/Projects/compose-samples_fork/Reply/presentation/src/main/java/com/app/tintuccongnghe/account/AccountInfoScreen.kt)
-- Add `SnackbarHostState` to the screen.
-- Observe the message flow from `AccountViewModel` and show a snackbar.
-- Update the `Delete` button click handler to trigger the deletion and wait for the result (if using a direct call) or just trigger it.
+---
+
+### MainActivity & Permissions Setup
+
+#### [MODIFY] [MainActivity.kt](file:///E:/Projects/AndroidStudio/Projects/compose-samples_fork/Reply/presentation/src/main/java/com/app/tintuccongnghe/main/MainActivity.kt)
+- Request `POST_NOTIFICATIONS` runtime permission on Android 13+ (API level 33+).
+- Subscribe to FCM topic `"all"` and log FCM token for testing.
+
+---
+
+### Notification Handling
+
+#### [MODIFY] [NewsMessagingService.kt](file:///E:/Projects/AndroidStudio/Projects/compose-samples_fork/Reply/presentation/src/main/java/com/app/tintuccongnghe/notifications/NewsMessagingService.kt)
+- Add handling for `remoteMessage.notification` fallback (creating a dummy `News` object or showing notification if `news_data` key is absent).
+
+---
 
 ## Verification Plan
 
-### Automated Tests
-- Build the project to ensure no compilation errors.
+### Automated Build Verification
+- Execute `gradle_build("presentation:assembleDebug")` to ensure everything compiles without errors.
 
-### Manual Verification
-- Trigger account deletion and verify that a message appears (e.g., "Account deleted successfully" or an error message).
+### Manual Testing Instructions
+1. Run app on device/emulator (Android 13+).
+2. Verify notification permission prompt appears and accept it.
+3. Check Logcat for `NewsMessagingService: Refreshed token: ...` or FCM topic subscription logs.
+4. Send a test message from Firebase Console to verify notification delivery.

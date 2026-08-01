@@ -68,6 +68,13 @@ import com.app.tintuccongnghe.theme.ContrastAwareReplyTheme
 import androidx.activity.viewModels
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Tag
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
 
 private sealed interface TopLevelRoute1 {
     val icon: ImageVector
@@ -95,11 +102,25 @@ enum class AppDestinations(
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
 
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Log.d("MainActivity", "Notification permission granted")
+        } else {
+            Log.d("MainActivity", "Notification permission denied")
+        }
+    }
+
     @SuppressLint("RestrictedApi")
     @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        
+        askNotificationPermission()
+        initFcm()
+
 //        enableEdgeToEdge()
         setContent {
             val nightMode by mainViewModel.nightMode.collectAsStateWithLifecycle()
@@ -388,6 +409,40 @@ class MainActivity : ComponentActivity() {
 
 
             }
+        }
+    }
+
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                Log.d("MainActivity", "Notification permission already granted")
+            } else {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    private fun initFcm() {
+        FirebaseMessaging.getInstance().subscribeToTopic("all")
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d("MainActivity", "Subscribed to 'all' topic")
+                } else {
+                    Log.e("MainActivity", "Failed to subscribe to 'all' topic", task.exception)
+                }
+            }
+
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("MainActivity", "Fetching FCM registration token failed", task.exception)
+                return@addOnCompleteListener
+            }
+
+            // Get new FCM registration token
+            val token = task.result
+            Log.d("MainActivity", "FCM registration token: $token")
         }
     }
 }

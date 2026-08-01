@@ -342,7 +342,7 @@ fun UserInfoBanner(authInfo: LoginResponse) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = authInfo.UserName?.take(1)?.uppercase() ?: "U",
-                        style = MaterialTheme.typography.headlineLarge,
+                        style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
@@ -353,7 +353,7 @@ fun UserInfoBanner(authInfo: LoginResponse) {
             Column {
                 Text(
                     text = authInfo.UserName ?: "User",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(

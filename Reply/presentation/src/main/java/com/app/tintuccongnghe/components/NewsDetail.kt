@@ -89,6 +89,7 @@ import com.app.tintuccongnghe.presentation.R
 import com.app.tintuccongnghe.base.UiState
 import com.app.tintuccongnghe.domain.models.NewsChildItem
 import com.app.tintuccongnghe.domain.models.NewsTag
+import com.app.tintuccongnghe.domain.util.isValidUrl
 import com.app.tintuccongnghe.main.MainViewModel
 import com.app.tintuccongnghe.utils.AppContants
 import com.google.android.gms.ads.rewarded.RewardedAd
@@ -406,14 +407,16 @@ fun NewsDetailScreen(
                 .verticalScroll(scrollState)
         ) {
             news.Image?.let { imageUrl ->
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(250.dp),
-                    contentScale = ContentScale.Crop
-                )
+                if(imageUrl != ""){
+                    AsyncImage(
+                        model = if(isValidUrl(imageUrl)) imageUrl else AppContants.baseUrlUI + imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
 
             Column(modifier = Modifier.padding(16.dp)) {
@@ -429,7 +432,7 @@ fun NewsDetailScreen(
                     verticalAlignment = Alignment.CenterVertically) {
 
                     Text(
-                        text = news.Date ?: "",
+                        text = news.Date ?: "N/A",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.outline
                     )

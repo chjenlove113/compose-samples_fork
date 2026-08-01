@@ -29,12 +29,35 @@ class NewsMessagingService : FirebaseMessagingService() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing news data", e)
                 }
+            } else {
+                remoteMessage.notification?.let { notification ->
+                    val fallbackNews = News(
+                        Id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
+                        Title = notification.title ?: "Notification",
+                        ShortDes = notification.body ?: "",
+                        Html = notification.body ?: "",
+                        Date = "",
+                        Source = "Push Notification"
+                    )
+                    NotificationHelper.showNotification(this, fallbackNews, appDatabase)
+                }
+            }
+        } else {
+            remoteMessage.notification?.let { notification ->
+                Log.d(TAG, "Message Notification Body: ${notification.body}")
+                val fallbackNews = News(
+                    Id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
+                    Title = notification.title ?: "Notification",
+                    ShortDes = notification.body ?: "",
+                    Html = notification.body ?: "",
+                    Date = "",
+                    Source = "Push Notification"
+                )
+                NotificationHelper.showNotification(this, fallbackNews, appDatabase)
             }
         }
 
-        remoteMessage.notification?.let {
-            Log.d(TAG, "Message Notification Body: ${it.body}")
-        }
+
     }
 
     override fun onNewToken(token: String) {
