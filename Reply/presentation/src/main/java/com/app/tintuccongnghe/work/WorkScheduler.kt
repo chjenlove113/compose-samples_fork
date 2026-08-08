@@ -23,4 +23,20 @@ object WorkScheduler {
             refreshRequest
         )
     }
+
+    fun refreshRssNow(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val refreshRequest = OneTimeWorkRequestBuilder<RssRefreshWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            RSS_WORK_NAME + "_manual",
+            ExistingWorkPolicy.REPLACE,
+            refreshRequest
+        )
+    }
 }

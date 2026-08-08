@@ -53,6 +53,7 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import com.app.tintuccongnghe.domain.models.News
+import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import com.app.tintuccongnghe.account.AccountInfoScreen
 import com.app.tintuccongnghe.account.AppUserSiteScreen
 import com.app.tintuccongnghe.account.AppUserCategoryScreen
@@ -69,6 +70,7 @@ import androidx.activity.viewModels
 import androidx.compose.material.icons.filled.RssFeed
 import androidx.compose.material.icons.filled.Tag
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -118,6 +120,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         
+        handleIntent(intent)
         askNotificationPermission()
         initFcm()
 
@@ -138,6 +141,13 @@ class MainActivity : ComponentActivity() {
             val navHost = rememberNavController()
             val navBackStackEntry by navHost.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
+
+            val rssItemJump by mainViewModel.rssItemJump.collectAsStateWithLifecycle()
+            LaunchedEffect(rssItemJump) {
+                if (rssItemJump != null) {
+                    navigateWithBackStackHandling("screen_rss", navHost)
+                }
+            }
 
             NavigationSuiteScaffold(
                 navigationSuiteItems = navigationSuiteItems(currentDestination, navHost)
@@ -409,6 +419,24 @@ class MainActivity : ComponentActivity() {
 
 
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val rssItem = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent?.getParcelableExtra("rss_item", RssItemEntity::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent?.getParcelableExtra<RssItemEntity>("rss_item")
+        }
+        rssItem?.let { 
+            mainViewModel.setRssItemJump(it)
+            mainViewModel.setRssJump(it.siteId, it.siteGroup)
         }
     }
 

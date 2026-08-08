@@ -17,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import androidx.glance.appwidget.updateAll
+import com.app.tintuccongnghe.widget.RssWidget
 
 @HiltWorker
 class RssRefreshWorker @AssistedInject constructor(
@@ -67,6 +69,9 @@ class RssRefreshWorker @AssistedInject constructor(
                                             ?: entry.modules?.filterIsInstance<com.rometools.rome.feed.module.DCModule>()?.firstOrNull()?.description
                                             ?: entry.description?.value
 
+                                        val imageUrl = entry.enclosures?.firstOrNull()?.url
+                                            ?: extractImageFromHtml(contentValue ?: "")
+
                                         itemsToInsert.add(
                                             RssItemEntity(
                                                 title = entry.title ?: "",
@@ -78,7 +83,8 @@ class RssRefreshWorker @AssistedInject constructor(
                                                 siteKind = site.Kind,
                                                 updDate = currentTime,
                                                 content = contentValue,
-                                                siteName = site.Name
+                                                siteName = site.Name,
+                                                imageUrl = imageUrl
                                             )
                                         )
                                     }
@@ -104,6 +110,12 @@ class RssRefreshWorker @AssistedInject constructor(
             }
         }
         Log.d("RssRefreshWorker", "Finished RSS refresh")
+        RssWidget().updateAll(applicationContext)
         Result.success()
+    }
+
+    private fun extractImageFromHtml(html: String): String? {
+        val imgRegex = "<img[^>]+src\\s*=\\s*['\"]([^'\"]+)['\"][^>]*>".toRegex(RegexOption.IGNORE_CASE)
+        return imgRegex.find(html)?.groupValues?.get(1)
     }
 }

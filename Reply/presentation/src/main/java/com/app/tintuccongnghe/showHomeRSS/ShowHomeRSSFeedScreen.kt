@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
@@ -51,9 +52,20 @@ fun ShowHomeRSSFeedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val rssJump by mainViewModel.rssJump.collectAsStateWithLifecycle()
+    val rssItemJump by mainViewModel.rssItemJump.collectAsStateWithLifecycle()
     val navigator = rememberListDetailPaneScaffoldNavigator<Any>()
     val scope = rememberCoroutineScope()
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
+
+    // Handle RSS item jump from widget
+    LaunchedEffect(rssItemJump) {
+        val item = rssItemJump
+        if (item != null) {
+            isFullScreen = false
+            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+            mainViewModel.clearRssItemJump()
+        }
+    }
 
     // Handle system back button
     BackHandler(navigator.canNavigateBack() || isFullScreen) {
@@ -276,8 +288,26 @@ fun RSSFeedChildScreen(
     )
 ) {
     val pagingItems = viewModel.rssItemsPagingData.collectAsLazyPagingItems()
+    val listState = rememberLazyListState()
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    // Scroll to selected item when it changes from a jump or navigation
+    LaunchedEffect(selectedItem) {
+        if (selectedItem != null) {
+            // Find the item index in the paging data
+            for (i in 0 until pagingItems.itemCount) {
+                val item = pagingItems.peek(i)
+                if (item != null && item.link == selectedItem.link) {
+                    listState.animateScrollToItem(i)
+                    break
+                }
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        state = listState
+    ) {
         items(
             count = pagingItems.itemCount,
             key = pagingItems.itemKey { "${it.link}_${it.siteId}_${it.siteGroup}_${it.siteKind}" },

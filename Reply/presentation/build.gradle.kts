@@ -46,6 +46,12 @@ android {
     buildFeatures {
         compose = true
     }
+
+    packaging {
+        resources {
+            excludes += "rome-utils-2.1.0.jar"
+        }
+    }
 }
 
 dependencies {
@@ -96,6 +102,7 @@ dependencies {
     implementation(libs.hilt.ext.work)
     ksp(libs.hilt.ext.compiler)
     implementation(libs.rometools.rome)
+    implementation(libs.rometools.modules)
     implementation(libs.okhttp3)
 
     implementation("androidx.activity:activity-compose:1.10.0")
@@ -121,6 +128,10 @@ dependencies {
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
 
     implementation(libs.androidx.paging.compose)
+
+    implementation(libs.androidx.glance)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
 
     // Import the BoM for the Firebase platform
     implementation(platform("com.google.firebase:firebase-bom:34.15.0"))

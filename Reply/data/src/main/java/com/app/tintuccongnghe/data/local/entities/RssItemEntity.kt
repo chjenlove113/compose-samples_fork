@@ -31,5 +31,6 @@ data class RssItemEntity(
     val updDate: Long? = null,
     val content: String? = null,
     val siteName: String? = null,
+    val imageUrl: String? = null,
     val isFavorite: Boolean = false
 ) : Parcelable

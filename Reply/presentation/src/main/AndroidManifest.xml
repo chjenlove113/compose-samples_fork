@@ -77,5 +77,18 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+        <receiver
+            android:name="com.app.tintuccongnghe.widget.RssWidgetReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:label="RSS Widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/rss_widget_info" />
+        </receiver>
+
     </application>
 </manifest>

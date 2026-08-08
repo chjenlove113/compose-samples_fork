@@ -7,6 +7,7 @@ import com.app.tintuccongnghe.domain.usecases.GetNightModeUseCase
 import com.app.tintuccongnghe.domain.usecases.SetFontScaleUseCase
 import kotlinx.serialization.Serializable
 import com.app.tintuccongnghe.domain.models.News
+import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,6 +36,9 @@ class MainViewModel @Inject constructor(
     private val _rssJump = MutableStateFlow<RssJump?>(null)
     val rssJump = _rssJump.asStateFlow()
 
+    private val _rssItemJump = MutableStateFlow<RssItemEntity?>(null)
+    val rssItemJump = _rssItemJump.asStateFlow()
+
     private val _selectedNews = MutableStateFlow<News?>(null)
     val selectedNews = _selectedNews.asStateFlow()
 
@@ -60,6 +64,14 @@ class MainViewModel @Inject constructor(
 
     fun clearRssJump() {
         _rssJump.update { null }
+    }
+
+    fun setRssItemJump(item: RssItemEntity?) {
+        _rssItemJump.value = item
+    }
+
+    fun clearRssItemJump() {
+        _rssItemJump.value = null
     }
 
     val nightMode: StateFlow<Boolean> = getNightModeUseCase()
