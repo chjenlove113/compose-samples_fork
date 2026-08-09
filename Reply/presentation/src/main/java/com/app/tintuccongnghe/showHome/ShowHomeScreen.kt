@@ -113,11 +113,13 @@ import androidx.navigation3.ui.NavDisplay
 import coil3.compose.AsyncImage
 import com.app.tintuccongnghe.domain.models.AppSite
 import com.app.tintuccongnghe.components.NewsDetailScreen
+import com.app.tintuccongnghe.domain.util.isValidUrl
 import com.app.tintuccongnghe.newsByTagId.NewsByTagIdScreen
 import com.app.tintuccongnghe.newsByTagId.NewsByTagViewModel
 import com.app.tintuccongnghe.newsTag.ExtraPaneScreen
 import com.app.tintuccongnghe.showHomeChild.ShowHomeChildScreen
 import com.app.tintuccongnghe.showHomeChild.ShowHomeChildViewModel
+import com.app.tintuccongnghe.utils.AppContants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -413,17 +415,17 @@ fun ExploreContent(
     ) {
         item {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Featured posts",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(
-                    modifier = Modifier.padding(bottom = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
+//                Text(
+//                    text = "Featured posts",
+//                    style = MaterialTheme.typography.titleMedium,
+//                    fontWeight = FontWeight.Bold,
+//                    color = MaterialTheme.colorScheme.onBackground
+//                )
+//                Spacer(modifier = Modifier.height(8.dp))
+//                HorizontalDivider(
+//                    modifier = Modifier.padding(bottom = 16.dp),
+//                    color = MaterialTheme.colorScheme.outlineVariant
+//                )
                 
                 AutoAdvancePager(
                     allEventCategories.LstNewsHeader ?: emptyList(),
@@ -568,12 +570,17 @@ fun NewsListItem(
                     .heightIn(min = if (isExpanded) 140.dp else 100.dp)
                     .clip(MaterialTheme.shapes.small)
             ) {
-                AsyncImage(
-                    model = news.Image,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                news.Image?.let {
+                        imageUrl ->
+                    if(imageUrl!=""){
+                        AsyncImage(
+                            model = if(isValidUrl(imageUrl)) imageUrl else AppContants.baseUrlUI + imageUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.width(if (isExpanded) 20.dp else 12.dp))
@@ -662,14 +669,20 @@ fun NewsGridItem(
         border = if (selected) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Column {
-            AsyncImage(
-                model = news.Image,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1.5f)
-            )
+            news.Image?.let {
+                        imageUrl ->
+                    if(imageUrl.isNotEmpty()){
+                        AsyncImage(
+                            model = if(isValidUrl(imageUrl)) imageUrl else AppContants.baseUrlUI + imageUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1.5f)
+                        )
+                    }
+                }
+
             Column(
                 modifier = Modifier
                     .padding(padding)
@@ -795,13 +808,16 @@ fun AutoAdvancePager(
             Box(Modifier.fillMaxSize().clickable {
                 onEventClickNewsItem(newsItem)
             }) {
-                AsyncImage(
-                    model = newsItem.Image,
-                    contentDescription = newsItem.Title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-
+                newsItem.Image?.let { imageUrl ->
+                    if(imageUrl.isNotEmpty()){
+                        AsyncImage(
+                            model = if(isValidUrl(imageUrl)) imageUrl else AppContants.baseUrlUI + imageUrl,
+                            contentDescription = newsItem.Title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
