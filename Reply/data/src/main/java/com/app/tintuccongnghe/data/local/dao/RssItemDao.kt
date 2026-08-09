@@ -36,6 +36,9 @@ interface RssItemDao {
     @Query("SELECT * FROM rss_items ORDER BY pubDate DESC LIMIT 8")
     suspend fun getLatestRssItems(): List<RssItemEntity>
 
+    @Query("SELECT * FROM rss_items WHERE siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind ORDER BY pubDate DESC LIMIT 8")
+    suspend fun getLatestRssItemsForSite(siteId: Int, siteGroup: String, siteKind: String): List<RssItemEntity>
+
     @Query("DELETE FROM rss_items")
     fun deleteAll()
 }
