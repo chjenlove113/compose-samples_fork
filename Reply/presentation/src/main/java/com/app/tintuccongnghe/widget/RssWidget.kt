@@ -4,6 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -24,7 +29,6 @@ import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -44,6 +48,7 @@ import androidx.glance.text.TextStyle
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.currentState
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.AppUserSiteEntity
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
@@ -54,17 +59,17 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 
-class RssWidget : GlanceAppWidget() {
+object RssWidgetPrefs {
+    val SelectedSiteIdKey = intPreferencesKey("selected_site_id")
+    val SelectedSiteGroupKey = stringPreferencesKey("selected_site_group")
+    val SelectedSiteKindKey = stringPreferencesKey("selected_site_kind")
+    
+    val SiteIdParam = ActionParameters.Key<Int>("siteId")
+    val SiteGroupParam = ActionParameters.Key<String>("siteGroup")
+    val SiteKindParam = ActionParameters.Key<String>("siteKind")
+}
 
-    companion object {
-        val SelectedSiteIdKey = intPreferencesKey("selected_site_id")
-        val SelectedSiteGroupKey = stringPreferencesKey("selected_site_group")
-        val SelectedSiteKindKey = stringPreferencesKey("selected_site_kind")
-        
-        val SiteIdParam = ActionParameters.Key<Int>("siteId")
-        val SiteGroupParam = ActionParameters.Key<String>("siteGroup")
-        val SiteKindParam = ActionParameters.Key<String>("siteKind")
-    }
+class RssWidget : GlanceAppWidget() {
 
     @EntryPoint
     @InstallIn(SingletonComponent::class)
@@ -79,24 +84,30 @@ class RssWidget : GlanceAppWidget() {
             WidgetEntryPoint::class.java
         )
         
-        // In Glance 1.1.x, getAppWidgetState<Preferences> is used for standard state
-        val prefs = getAppWidgetState<Preferences>(context, id)
-        val selectedSiteId = prefs[SelectedSiteIdKey]
-        val selectedSiteGroup = prefs[SelectedSiteGroupKey]
-        val selectedSiteKind = prefs[SelectedSiteKindKey]
-
         val siteDao = entryPoint.appDatabase().appUserSiteDao()
         val rssItemDao = entryPoint.appDatabase().rssItemDao()
         
+        // Fetch sites once during setup
         val allSites = siteDao.getAllSites().filter { it.GROUP == "1" }
-        
-        val items = if (selectedSiteId != null && selectedSiteGroup != null && selectedSiteKind != null) {
-            rssItemDao.getLatestRssItemsForSite(selectedSiteId, selectedSiteGroup, selectedSiteKind)
-        } else {
-            rssItemDao.getLatestRssItems()
-        }
 
         provideContent {
+            val prefs = currentState<Preferences>()
+            val selectedSiteId = prefs[RssWidgetPrefs.SelectedSiteIdKey]
+            val selectedSiteGroup = prefs[RssWidgetPrefs.SelectedSiteGroupKey]
+            val selectedSiteKind = prefs[RssWidgetPrefs.SelectedSiteKindKey]
+
+            // State to hold items for the current tab
+            var items by remember { mutableStateOf<List<RssItemEntity>>(emptyList()) }
+
+            // Reactive data loading: Re-query Room whenever the selected tab changes
+            LaunchedEffect(selectedSiteId, selectedSiteGroup, selectedSiteKind) {
+                items = if (selectedSiteId != null && selectedSiteGroup != null && selectedSiteKind != null) {
+                    rssItemDao.getLatestRssItemsForSite(selectedSiteId, selectedSiteGroup, selectedSiteKind)
+                } else {
+                    rssItemDao.getLatestRssItems()
+                }
+            }
+
             RssWidgetContent(
                 items = items,
                 sites = allSites,
@@ -157,7 +168,6 @@ class RssWidget : GlanceAppWidget() {
                     modifier = GlanceModifier.fillMaxWidth().padding(bottom = 12.dp),
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
-                    // "All" tab
                     TabItem(
                         text = "Tất cả",
                         isSelected = selectedSiteId == null,
@@ -173,9 +183,9 @@ class RssWidget : GlanceAppWidget() {
                             isSelected = selectedSiteId == site.Id,
                             onClick = actionRunCallback<SelectSiteActionCallback>(
                                 parameters = actionParametersOf(
-                                    SiteIdParam to site.Id,
-                                    SiteGroupParam to site.GROUP,
-                                    SiteKindParam to site.Kind
+                                    RssWidgetPrefs.SiteIdParam to site.Id,
+                                    RssWidgetPrefs.SiteGroupParam to site.GROUP,
+                                    RssWidgetPrefs.SiteKindParam to site.Kind
                                 )
                             )
                         )
@@ -231,61 +241,54 @@ class RssWidget : GlanceAppWidget() {
 
     @Composable
     private fun RssItemRow(item: RssItemEntity) {
-        val intent = Intent()
-        intent.setAction(Intent.ACTION_VIEW)
-        intent.setData(Uri.parse("reply://rss_detail"))
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("reply://rss_detail"))
         intent.setClassName("com.app.tintuccongnghe", "com.app.tintuccongnghe.main.MainActivity")
         intent.putExtra("rss_item", item)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-        Column(
+        Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
                 .background(GlanceTheme.colors.secondaryContainer)
                 .cornerRadius(12.dp)
                 .padding(8.dp)
-                .clickable(actionStartActivity(intent))
+                .clickable(actionStartActivity(intent)),
+            verticalAlignment = Alignment.Vertical.CenterVertically
         ) {
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Vertical.CenterVertically
-            ) {
-                Column(modifier = GlanceModifier.defaultWeight()) {
-                    Text(
-                        text = item.title,
-                        style = TextStyle(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp,
-                            color = GlanceTheme.colors.onSecondaryContainer
-                        ),
-                        maxLines = 2
+            Column(modifier = GlanceModifier.defaultWeight()) {
+                Text(
+                    text = item.title,
+                    style = TextStyle(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = GlanceTheme.colors.onSecondaryContainer
+                    ),
+                    maxLines = 2
+                )
+                Text(
+                    text = item.siteName ?: "RSS",
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        color = GlanceTheme.colors.onSurfaceVariant
                     )
-                    Spacer(modifier = GlanceModifier.height(4.dp))
-                    Text(
-                        text = item.siteName ?: "RSS",
-                        style = TextStyle(
-                            fontSize = 11.sp,
-                            color = GlanceTheme.colors.onSurfaceVariant
-                        )
+                )
+            }
+            
+            if (item.imageUrl != null) {
+                Box(
+                    modifier = GlanceModifier
+                        .padding(start = 8.dp)
+                        .size(48.dp)
+                        .background(GlanceTheme.colors.surfaceVariant)
+                        .cornerRadius(8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_launcher_foreground),
+                        contentDescription = null,
+                        modifier = GlanceModifier.size(24.dp),
+                        colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant)
                     )
-                }
-                
-                if (item.imageUrl != null) {
-                    Spacer(modifier = GlanceModifier.width(8.dp))
-                    Box(
-                        modifier = GlanceModifier
-                            .size(50.dp)
-                            .background(GlanceTheme.colors.surfaceVariant)
-                            .cornerRadius(8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            provider = ImageProvider(R.drawable.ic_launcher_foreground),
-                            contentDescription = null,
-                            modifier = GlanceModifier.size(24.dp),
-                            colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant)
-                        )
-                    }
                 }
             }
         }
@@ -298,19 +301,19 @@ class SelectSiteActionCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        val siteId = parameters[RssWidget.SiteIdParam]
-        val siteGroup = parameters[RssWidget.SiteGroupParam]
-        val siteKind = parameters[RssWidget.SiteKindParam]
+        val siteId = parameters[RssWidgetPrefs.SiteIdParam]
+        val siteGroup = parameters[RssWidgetPrefs.SiteGroupParam]
+        val siteKind = parameters[RssWidgetPrefs.SiteKindParam]
 
         updateAppWidgetState(context, glanceId) { prefs ->
             if (siteId != null && siteGroup != null && siteKind != null) {
-                prefs[RssWidget.SelectedSiteIdKey] = siteId
-                prefs[RssWidget.SelectedSiteGroupKey] = siteGroup
-                prefs[RssWidget.SelectedSiteKindKey] = siteKind
+                prefs[RssWidgetPrefs.SelectedSiteIdKey] = siteId
+                prefs[RssWidgetPrefs.SelectedSiteGroupKey] = siteGroup
+                prefs[RssWidgetPrefs.SelectedSiteKindKey] = siteKind
             } else {
-                prefs.remove(RssWidget.SelectedSiteIdKey)
-                prefs.remove(RssWidget.SelectedSiteGroupKey)
-                prefs.remove(RssWidget.SelectedSiteKindKey)
+                prefs.remove(RssWidgetPrefs.SelectedSiteIdKey)
+                prefs.remove(RssWidgetPrefs.SelectedSiteGroupKey)
+                prefs.remove(RssWidgetPrefs.SelectedSiteKindKey)
             }
         }
         RssWidget().update(context, glanceId)
