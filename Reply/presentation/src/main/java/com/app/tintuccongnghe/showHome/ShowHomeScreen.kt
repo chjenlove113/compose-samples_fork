@@ -411,7 +411,7 @@ fun ExploreContent(
         state = listState,
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
     ) {
         item {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -442,7 +442,7 @@ fun ExploreContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -485,7 +485,7 @@ fun ExploreContent(
                 stickyHeader {
                     Box(modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.background)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
                         .padding(horizontal = 16.dp)) {
                         ExploreHeader(category.Key, category.Name, category.Slug, onEventClickSiteName, onTabSelected)
                     }

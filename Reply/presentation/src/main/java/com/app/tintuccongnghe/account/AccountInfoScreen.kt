@@ -75,7 +75,7 @@ fun AccountInfoScreen(
             SettingItem(Icons.Default.TextFields, "Language", onClick = onNavigateToLanguage)
             SettingItem(
                 icon = Icons.Default.BookmarkBorder,
-                title = "Bookmarks",
+                title = "Bookmarks/ Favorites",
                 onClick = onNavigateToFavorites
             )
             SettingItem(
@@ -85,12 +85,12 @@ fun AccountInfoScreen(
             )
             SettingItem(
                 icon = Icons.Default.Category,
-                title = "Categories",
+                title = "Home Categories",
                 onClick = onNavigateToUserCategories
             )
             SettingItem(
                 icon = Icons.AutoMirrored.Filled.Article,
-                title = "Sources",
+                title = "RSS Website Sources",
                 onClick = onNavigateToUserSites
             )
 
@@ -284,7 +284,7 @@ fun LoginBanner(onLoginClick: () -> Unit) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Overwhelmed\nwith irrelevant news?",
+                    text = "Logging in unlocks extra features",
                     color = Color.White,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
