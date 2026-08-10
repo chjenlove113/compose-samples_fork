@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.padding
@@ -124,13 +125,14 @@ class MainActivity : ComponentActivity() {
         askNotificationPermission()
         initFcm()
 
-//        enableEdgeToEdge()
+        enableEdgeToEdge()
         setContent {
             val nightMode by mainViewModel.nightMode.collectAsStateWithLifecycle()
             val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
 
             ContrastAwareReplyTheme(
                 darkTheme = nightMode,
+                dynamicColor = true,
                 fontScale = fontScale
             ) {
                 val navController = rememberNavController()

@@ -281,7 +281,7 @@ fun selectSchemeForContrast(isDark: Boolean,): ColorScheme {
 fun ContrastAwareReplyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false,
+    dynamicColor: Boolean = true,
     fontScale: Float = 1.0f,
     content: @Composable() () -> Unit
 ) {
