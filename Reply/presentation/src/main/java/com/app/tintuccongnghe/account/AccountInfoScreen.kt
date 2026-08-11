@@ -1,5 +1,6 @@
 package com.app.tintuccongnghe.account
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -83,16 +84,19 @@ fun AccountInfoScreen(
                 title = "Notifications",
                 onClick = onNavigateToNotifications
             )
-            SettingItem(
-                icon = Icons.Default.Category,
-                title = "Home Categories",
-                onClick = onNavigateToUserCategories
-            )
-            SettingItem(
-                icon = Icons.AutoMirrored.Filled.Article,
-                title = "RSS Website Sources",
-                onClick = onNavigateToUserSites
-            )
+
+            if(authInfo != null){
+                SettingItem(
+                    icon = Icons.Default.Category,
+                    title = "Home Categories",
+                    onClick = onNavigateToUserCategories
+                )
+                SettingItem(
+                    icon = Icons.AutoMirrored.Filled.Article,
+                    title = "RSS Website Sources",
+                    onClick = onNavigateToUserSites
+                )
+            }
 
             SettingSwitchItem(
                 icon = Icons.Default.NightlightRound,
@@ -273,7 +277,7 @@ fun LoginBanner(onLoginClick: () -> Unit) {
             .fillMaxWidth()
             .height(160.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1976D2))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer )
     ) {
         Row(
             modifier = Modifier
@@ -285,7 +289,7 @@ fun LoginBanner(onLoginClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Logging in unlocks extra features",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 24.sp
@@ -293,27 +297,12 @@ fun LoginBanner(onLoginClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = onLoginClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 24.dp)
                 ) {
-                    Text(text = "Login", color = Color.Black)
+                    Text(text = "Login", color = MaterialTheme.colorScheme.onPrimary)
                 }
-            }
-            
-            // Placeholder for the illustration in the image
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Newspaper,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    tint = Color.White.copy(alpha = 0.8f)
-                )
             }
         }
     }
