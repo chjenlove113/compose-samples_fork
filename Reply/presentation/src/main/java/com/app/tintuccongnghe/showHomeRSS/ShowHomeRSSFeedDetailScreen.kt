@@ -5,6 +5,7 @@ import android.net.Uri
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -186,7 +187,7 @@ fun ShowHomeRSSFeedDetailScreen(
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .fillMaxSize()
+                .fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer)
                 .verticalScroll(rememberScrollState())
                 .padding(contentPadding)
         ) {

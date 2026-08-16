@@ -354,6 +354,10 @@ fun ExploreContent(
     onTabSelected: (String) -> Unit
 ) {
     val listState = rememberLazyListState()
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val pagePadding = if (
+        adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT || selectedNews?.Id != null
+    ) 8.dp else 16.dp
 
     LaunchedEffect(selectedNews) {
         if (selectedNews != null) {
@@ -414,7 +418,7 @@ fun ExploreContent(
             .background(MaterialTheme.colorScheme.surfaceContainer)
     ) {
         item {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(pagePadding)) {
 //                Text(
 //                    text = "Featured posts",
 //                    style = MaterialTheme.typography.titleMedium,
@@ -443,7 +447,7 @@ fun ExploreContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = pagePadding, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -486,7 +490,7 @@ fun ExploreContent(
                     Box(modifier = Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surfaceContainer)
-                        .padding(horizontal = 16.dp)) {
+                        .padding(horizontal = pagePadding)) {
                         ExploreHeader(category.Key, category.Name, category.Slug, onEventClickSiteName, onTabSelected)
                     }
                 }
@@ -497,7 +501,7 @@ fun ExploreContent(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(horizontal = pagePadding, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             val rowItems = chunks[index]
@@ -517,11 +521,14 @@ fun ExploreContent(
                 } else {
                     items(categoryNews.size) { index ->
                         val news = categoryNews[index]
+                        val hadSelectedItem = selectedNews?.Id != null
                         NewsListItem(
                             news = news,
                             selected = news.Id == selectedNews?.Id,
                             onClick = { onEventClick(news) },
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            bHadDetail = hadSelectedItem,
+                            modifier = Modifier.padding(horizontal = pagePadding, vertical = 8.dp)
+
                         )
                     }
                 }
@@ -535,7 +542,8 @@ fun NewsListItem(
     news: News,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    bHadDetail: Boolean = false
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
@@ -543,7 +551,7 @@ fun NewsListItem(
     val titleStyle = if (isExpanded) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
     val bodyStyle = if (isExpanded) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
     val labelStyle = if (isExpanded) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall
-    val padding = if (isExpanded) 16.dp else 8.dp
+    val padding = if (isExpanded && !bHadDetail) 16.dp else 8.dp
 
     Card(
         onClick = onClick,
@@ -583,7 +591,7 @@ fun NewsListItem(
                 }
             }
 
-            Spacer(modifier = Modifier.width(if (isExpanded) 20.dp else 12.dp))
+            Spacer(modifier = Modifier.width(if (isExpanded && !bHadDetail) 20.dp else 12.dp))
 
             Column(
                 modifier = Modifier
@@ -604,7 +612,7 @@ fun NewsListItem(
 
                     val shortDes = news.ShortDes
                     if (!shortDes.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(if (isExpanded) 16.dp else 8.dp))
+                        Spacer(modifier = Modifier.height(if (isExpanded && !bHadDetail) 16.dp else 8.dp))
                         Text(
                             text = shortDes,
                             style = bodyStyle,
@@ -614,7 +622,7 @@ fun NewsListItem(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(if (isExpanded) 16.dp else 8.dp))
+                Spacer(modifier = Modifier.height(if (isExpanded && !bHadDetail) 16.dp else 8.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

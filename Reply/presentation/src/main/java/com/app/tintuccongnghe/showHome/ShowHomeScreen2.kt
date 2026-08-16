@@ -156,6 +156,11 @@ fun ShowHomeScreen2(
     onTabAutoSelected: () -> Unit = {},
     onTabSelected: (String) -> Unit = {}
 ) {
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val pagePadding = if (
+        adaptiveInfo.windowSizeClass.windowWidthSizeClass == androidx.window.core.layout.WindowWidthSizeClass.COMPACT
+    ) 8.dp else 16.dp
+
     when (uiState) {
         is UiState.Loading -> {
             ShowLoading()
@@ -330,7 +335,10 @@ fun ShowHomeScreen2(
 
                         Column {
                             // Tab Row implementation - Use pagerState.currentPage directly to avoid feedback loops
-                            ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
+                            ScrollableTabRow(
+                                selectedTabIndex = pagerState.currentPage,
+                                edgePadding = pagePadding
+                            ) {
                                 tabs.forEachIndexed { index, tab ->
                                     Tab(
                                         selected = pagerState.currentPage == index,

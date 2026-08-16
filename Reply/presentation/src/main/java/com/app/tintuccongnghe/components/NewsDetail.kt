@@ -120,6 +120,7 @@ fun NewsDetailScreen(
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+    val pagePadding = if (isCompact) 8.dp else 16.dp
 
     // Optimize M3 colors
     val colorScheme = MaterialTheme.colorScheme
@@ -419,7 +420,7 @@ fun NewsDetailScreen(
                 }
             }
 
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(pagePadding)) {
                 Text(
                     text = news.Title,
                     style = MaterialTheme.typography.headlineMedium,
@@ -577,7 +578,7 @@ fun NewsDetailScreen(
                         Text(
                             text = "Error loading content: ${state.message}",
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(pagePadding)
                         )
                     }
                 }

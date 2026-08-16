@@ -208,6 +208,7 @@ fun FavoriteListPane(
                             news = item.news,
                             selected = isSelected,
                             onClick = { onItemClick(item) },
+                            bHadDetail = selectedRssItem?.link != null,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }

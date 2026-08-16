@@ -1,6 +1,7 @@
 package com.app.tintuccongnghe.showHomeForYou
 
 import android.util.Log
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
@@ -101,6 +102,7 @@ import com.app.tintuccongnghe.showHomeChild.ShowHomeChildScreen
 import com.app.tintuccongnghe.showHomeChild.ShowHomeChildViewModel
 import com.app.tintuccongnghe.showHome.ShowHomeRoute
 import com.app.tintuccongnghe.showHome.ItemDetailSite
+import com.app.tintuccongnghe.main.MainViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.firebase.crashlytics.crashlytics
@@ -128,10 +130,18 @@ data object ExtraScreenForYou : NavKey
 @Composable
 fun ShowHomeForYouRoute(
     viewModel: ShowHomeForYouViewModel = hiltViewModel(),
-    onNavigateToLogin: () -> Unit = {}
+    onNavigateToLogin: () -> Unit = {},
+    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = androidx.compose.ui.platform.LocalContext.current as ComponentActivity)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ShowHomeForYouScreen(uiState, viewModel, onNavigateToLogin = onNavigateToLogin)
+    val selectedNews by mainViewModel.selectedNews.collectAsStateWithLifecycle()
+    ShowHomeForYouScreen(
+        uiState = uiState,
+        viewModel = viewModel,
+        selectedNews = selectedNews,
+        onClearSelectedNews = { mainViewModel.selectNews(null) },
+        onNavigateToLogin = onNavigateToLogin
+    )
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -139,9 +149,16 @@ fun ShowHomeForYouRoute(
 fun ShowHomeForYouScreen(
     uiState: ShowHomeForYouUiState,
     viewModel: ShowHomeForYouViewModel?,
+    selectedNews: News? = null,
+    onClearSelectedNews: () -> Unit = {},
     onTabSelected: (String) -> Unit = {},
     onNavigateToLogin: () -> Unit = {}
 ) {
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val pagePadding = if (
+        adaptiveInfo.windowSizeClass.windowWidthSizeClass == androidx.window.core.layout.WindowWidthSizeClass.COMPACT
+    ) 8.dp else 16.dp
+
     if (!uiState.isLoggedIn) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -149,7 +166,7 @@ fun ShowHomeForYouScreen(
                     text = "You must be logged in to see personalized content.",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(pagePadding)
                 )
                 Button(onClick = {
                     onNavigateToLogin()
@@ -183,6 +200,13 @@ fun ShowHomeForYouScreen(
 
             val currentDestination = navigator.currentDestination
             val currentSelectedItem = currentDestination?.contentKey
+
+            LaunchedEffect(selectedNews) {
+                if (selectedNews != null) {
+                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, selectedNews)
+                    onClearSelectedNews()
+                }
+            }
 
             // Keep track of the last selected items for each pane
             var lastSelectedNews by remember { mutableStateOf<News?>(null) }
@@ -227,7 +251,7 @@ fun ShowHomeForYouScreen(
                     AnimatedPane{
                         var selectedTabKey00 by rememberSaveable { mutableStateOf("home") }
 
-                        val tabs = remember(data.data) {
+                        val tabs = remember(data.data, currentSelectedItem) {
                             val tabsItem = arrayListOf<TabItem>()
                             tabsItem.add(TabItem(key = "home", title = "Home", screen = {
                                 ShowHomeRoute(
@@ -238,7 +262,8 @@ fun ShowHomeForYouScreen(
                                     },
                                     onTabSelected = { key ->
                                         selectedTabKey00 = key
-                                    }
+                                    },
+                                    selectedNews = currentSelectedItem as? News
                                 )
                             }))
 
@@ -263,7 +288,8 @@ fun ShowHomeForYouScreen(
                                         },
                                         onTabSelected = { key ->
                                             selectedTabKey00 = key
-                                        }
+                                        },
+                                        selectedNews = currentSelectedItem as? News
                                     )
                                 })
                             )
@@ -291,7 +317,8 @@ fun ShowHomeForYouScreen(
                                             },
                                             onTabSelected = { key ->
                                                 selectedTabKey00 = key
-                                            }
+                                            },
+                                            selectedNews = currentSelectedItem as? News
                                         )
                                     })
                                 )
@@ -308,7 +335,10 @@ fun ShowHomeForYouScreen(
 
                         Column {
                             // Tab Row implementation - Use pagerState.currentPage directly to avoid feedback loops
-                            ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
+                            ScrollableTabRow(
+                                selectedTabIndex = pagerState.currentPage,
+                                edgePadding = pagePadding
+                            ) {
                                 tabs.forEachIndexed { index, tab ->
                                     Tab(
                                         selected = pagerState.currentPage == index,

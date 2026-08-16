@@ -28,6 +28,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,7 +118,7 @@ fun ShowError(
 /**
  * A modern, expressive News Item card following Material 3 design principles.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun NewsItem(
     news: News,
@@ -123,11 +126,14 @@ fun NewsItem(
     modifier: Modifier = Modifier,
     selected: Boolean = false
 ) {
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val pagePadding = if (adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT) 8.dp else 16.dp
+
     androidx.compose.material3.Card(
         onClick = { onNewsClick(news) },
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = pagePadding, vertical = 8.dp),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
@@ -140,7 +146,7 @@ fun NewsItem(
                 if(imageUrl != ""){
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth().padding(16.dp)
+                            .fillMaxWidth().padding(pagePadding)
                             .height(200.dp)
                     ) {
                         if (!isValidUrl(imageUrl)){
@@ -189,7 +195,7 @@ fun NewsItem(
             
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
+                    .padding(pagePadding)
             ) {
                 Text(
                     text = news.Title,
@@ -246,7 +252,7 @@ fun NewsItem(
 /**
  * A modern, expressive News Item card following Material 3 design principles.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun NewsItemAdv(
     news: News,
@@ -257,11 +263,14 @@ fun NewsItemAdv(
     showAppCategory: Boolean = false,
     onTabSelectedCategory: (String) -> Unit = {}
 ) {
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val pagePadding = if (adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT) 8.dp else 16.dp
+
     androidx.compose.material3.Card(
         onClick = { onNewsClick(news) },
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = pagePadding, vertical = 8.dp),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
@@ -275,7 +284,7 @@ fun NewsItemAdv(
                 if(imageUrl != ""){
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth().padding(16.dp)
+                            .fillMaxWidth().padding(pagePadding)
                             .height(200.dp)
                     ) {
                         if (!isValidUrl(imageUrl)){
@@ -352,7 +361,7 @@ fun NewsItemAdv(
 
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
+                    .padding(pagePadding)
             ) {
                 Text(
                     text = news.Title,
