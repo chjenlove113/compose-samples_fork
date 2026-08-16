@@ -140,7 +140,7 @@ fun NewsItem(
                 if(imageUrl != ""){
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxWidth().padding(16.dp)
                             .height(200.dp)
                     ) {
                         if (!isValidUrl(imageUrl)){
@@ -149,7 +149,7 @@ fun NewsItem(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(MaterialTheme.shapes.extraLarge),
+                                    .clip(MaterialTheme.shapes.medium),
                                 contentScale = ContentScale.Crop
                             )
                         }else{
@@ -158,7 +158,7 @@ fun NewsItem(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(MaterialTheme.shapes.extraLarge),
+                                    .clip(MaterialTheme.shapes.medium),
                                 contentScale = ContentScale.Crop
                             )
                         }
@@ -275,7 +275,7 @@ fun NewsItemAdv(
                 if(imageUrl != ""){
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxWidth().padding(16.dp)
                             .height(200.dp)
                     ) {
                         if (!isValidUrl(imageUrl)){
@@ -284,7 +284,7 @@ fun NewsItemAdv(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(MaterialTheme.shapes.extraLarge),
+                                    .clip(MaterialTheme.shapes.medium),
                                 contentScale = ContentScale.Crop
                             )
                         }else{
@@ -293,7 +293,7 @@ fun NewsItemAdv(
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(MaterialTheme.shapes.extraLarge),
+                                    .clip(MaterialTheme.shapes.medium),
                                 contentScale = ContentScale.Crop
                             )
                         }

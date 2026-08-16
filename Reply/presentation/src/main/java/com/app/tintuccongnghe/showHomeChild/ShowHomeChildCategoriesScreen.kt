@@ -1,5 +1,6 @@
 package com.app.tintuccongnghe.showHomeChild
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -126,6 +127,7 @@ fun ShowHomeChildCateScreen(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize() // Ensure LazyColumn fills the space to capture gestures
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
                     ) {
                         item(key = "header") {
                             AutoAdvancePager(

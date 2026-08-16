@@ -401,7 +401,7 @@ fun NewsDetailScreen(
         }
         Column(
             modifier = Modifier
-                .padding(paddingValues)
+                .padding(paddingValues).background(MaterialTheme.colorScheme.surfaceContainer)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
 //                .verticalScroll(rememberScrollState())
                 .verticalScroll(scrollState)
@@ -522,7 +522,7 @@ fun NewsDetailScreen(
                                 val scaledFontSize = (baseFontSize * fontScale).toInt()
 
                                 context.assets.open("news_template_v0.html").bufferedReader().use { it.readText() }
-                                    .replace("#BG_COLOR", colorScheme.background.toHtmlHex().substring(1))
+                                    .replace("#BG_COLOR", colorScheme.surfaceContainer.toHtmlHex().substring(1))
                                     .replace("#TEXT_PRIMARY", colorScheme.onBackground.toHtmlHex().substring(1))
                                     .replace("#TEXT_SECONDARY", colorScheme.onSurfaceVariant.toHtmlHex().substring(1))
                                     .replace("#SURFACE", colorScheme.surfaceVariant.toHtmlHex().substring(1))

@@ -1,5 +1,6 @@
 package com.app.tintuccongnghe.newsTag
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -154,7 +155,9 @@ fun NewsTagScreen(
                     backStack = backStack,
                     modifier = Modifier
                         .padding(paddingValues)
-                        .consumeWindowInsets(WindowInsets.statusBars),
+                        .consumeWindowInsets(WindowInsets.statusBars)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                    ,
                     onBack = { 
                         backStack.removeLastOrNull() 
                     },
