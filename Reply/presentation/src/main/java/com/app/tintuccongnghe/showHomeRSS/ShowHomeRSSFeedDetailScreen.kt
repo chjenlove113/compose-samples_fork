@@ -57,6 +57,7 @@ fun ShowHomeRSSFeedDetailScreen(
     val context = LocalContext.current
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
+    val contentPadding = if (isCompact) 8.dp else 16.dp
     
     val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
     val rssUiState by rssViewModel.uiState.collectAsStateWithLifecycle()
@@ -187,7 +188,7 @@ fun ShowHomeRSSFeedDetailScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(contentPadding)
         ) {
             Text(
                 text = currentItem.title,

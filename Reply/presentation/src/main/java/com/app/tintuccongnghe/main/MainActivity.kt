@@ -151,6 +151,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val targetRoute by mainViewModel.targetRoute.collectAsStateWithLifecycle()
+            LaunchedEffect(targetRoute) {
+                val route = targetRoute
+                if (route != null) {
+                    navigateWithBackStackHandling(route, navHost)
+                    mainViewModel.clearTargetRoute()
+                }
+            }
+
             NavigationSuiteScaffold(
                 navigationSuiteItems = navigationSuiteItems(currentDestination, navHost)
 
@@ -281,7 +290,8 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = "login",
                         deepLinks = listOf(
-                            navDeepLink { uriPattern = "reply://github-auth?code={code}" }
+                            navDeepLink { uriPattern = "reply://github-auth?code={code}" },
+                            navDeepLink { uriPattern = "reply://login" }
                         )
                     ) { backStackEntry ->
                         val githubCode = backStackEntry.arguments?.getString("code")
@@ -430,6 +440,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
+        if (intent?.data?.host == "login" || intent?.getStringExtra("navigate_route") == "login") {
+            mainViewModel.setTargetRoute("login")
+        }
         val rssItem = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent?.getParcelableExtra("rss_item", RssItemEntity::class.java)
         } else {

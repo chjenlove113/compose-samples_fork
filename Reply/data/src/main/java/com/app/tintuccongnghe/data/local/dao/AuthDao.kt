@@ -15,6 +15,9 @@ interface AuthDao {
     @Query("SELECT * FROM auth_info LIMIT 1")
     fun getAuthInfo(): Flow<AuthEntity?>
 
+    @Query("SELECT * FROM auth_info LIMIT 1")
+    suspend fun getAuthInfoDirect(): AuthEntity?
+
     @Query("DELETE FROM auth_info")
     suspend fun clearAuth()
 }

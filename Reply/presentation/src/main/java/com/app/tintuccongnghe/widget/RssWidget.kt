@@ -44,6 +44,7 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -84,6 +85,7 @@ class RssWidget : GlanceAppWidget() {
             WidgetEntryPoint::class.java
         )
         
+        val authDao = entryPoint.appDatabase().authDao()
         val siteDao = entryPoint.appDatabase().appUserSiteDao()
         val rssItemDao = entryPoint.appDatabase().rssItemDao()
         
@@ -96,11 +98,13 @@ class RssWidget : GlanceAppWidget() {
             val selectedSiteGroup = prefs[RssWidgetPrefs.SelectedSiteGroupKey]
             val selectedSiteKind = prefs[RssWidgetPrefs.SelectedSiteKindKey]
 
-            // State to hold items for the current tab
+            // State to hold items for the current tab and auth status
             var items by remember { mutableStateOf<List<RssItemEntity>>(emptyList()) }
+            var isLoggedIn by remember { mutableStateOf(true) }
 
             // Reactive data loading: Re-query Room whenever the selected tab changes
             LaunchedEffect(selectedSiteId, selectedSiteGroup, selectedSiteKind) {
+                isLoggedIn = authDao.getAuthInfoDirect() != null
                 items = if (selectedSiteId != null && selectedSiteGroup != null && selectedSiteKind != null) {
                     rssItemDao.getLatestRssItemsForSite(selectedSiteId, selectedSiteGroup, selectedSiteKind)
                 } else {
@@ -111,7 +115,8 @@ class RssWidget : GlanceAppWidget() {
             RssWidgetContent(
                 items = items,
                 sites = allSites,
-                selectedSiteId = selectedSiteId
+                selectedSiteId = selectedSiteId,
+                isLoggedIn = isLoggedIn
             )
         }
     }
@@ -120,7 +125,8 @@ class RssWidget : GlanceAppWidget() {
     private fun RssWidgetContent(
         items: List<RssItemEntity>,
         sites: List<AppUserSiteEntity>,
-        selectedSiteId: Int?
+        selectedSiteId: Int?,
+        isLoggedIn: Boolean
     ) {
         GlanceTheme {
             Column(
@@ -197,16 +203,46 @@ class RssWidget : GlanceAppWidget() {
                         modifier = GlanceModifier.fillMaxSize().defaultWeight(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Không có tin tức nào",
-                            style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant)
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = if (isLoggedIn) "Không có tin tức nào" else "Vui lòng đăng nhập để xem tin tức",
+                                style = TextStyle(
+                                    color = GlanceTheme.colors.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            )
+                            
+                            if (!isLoggedIn) {
+                                Spacer(modifier = GlanceModifier.height(12.dp))
+                                val loginIntent = Intent(Intent.ACTION_VIEW, Uri.parse("reply://login"))
+                                loginIntent.setClassName("com.app.tintuccongnghe", "com.app.tintuccongnghe.main.MainActivity")
+                                loginIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+                                Box(
+                                    modifier = GlanceModifier
+                                        .background(GlanceTheme.colors.primary)
+                                        .cornerRadius(16.dp)
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                        .clickable(actionStartActivity(loginIntent))
+                                ) {
+                                    Text(
+                                        text = "Đăng nhập",
+                                        style = TextStyle(
+                                            color = GlanceTheme.colors.onPrimary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
                 } else {
                     LazyColumn(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
                         items(items) { item ->
-                            RssItemRow(item)
-                            Spacer(modifier = GlanceModifier.height(8.dp))
+                            Column {
+                                RssItemRow(item)
+                                Spacer(modifier = GlanceModifier.height(8.dp))
+                            }
                         }
                     }
                 }

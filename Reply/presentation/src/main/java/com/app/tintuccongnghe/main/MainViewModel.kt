@@ -39,11 +39,22 @@ class MainViewModel @Inject constructor(
     private val _rssItemJump = MutableStateFlow<RssItemEntity?>(null)
     val rssItemJump = _rssItemJump.asStateFlow()
 
+    private val _targetRoute = MutableStateFlow<String?>(null)
+    val targetRoute = _targetRoute.asStateFlow()
+
     private val _selectedNews = MutableStateFlow<News?>(null)
     val selectedNews = _selectedNews.asStateFlow()
 
     private val _targetTab = MutableStateFlow<String?>(null)
     val targetTab = _targetTab.asStateFlow()
+
+    fun setTargetRoute(route: String?) {
+        _targetRoute.value = route
+    }
+
+    fun clearTargetRoute() {
+        _targetRoute.value = null
+    }
 
     fun selectNews(news: News?, tabKey: String? = null) {
         _selectedNews.value = news

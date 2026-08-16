@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.app.tintuccongnghe.domain.models.LoginRequest
 import com.app.tintuccongnghe.domain.models.RegisterRequest
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
@@ -32,7 +33,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import com.facebook.login.LoginResult
 import com.facebook.login.LoginManager
 import com.facebook.FacebookException
-import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -239,25 +239,36 @@ fun LoginScreen(
                             FirebaseCrashlytics.getInstance().recordException(e)
                         }
                     }
-                }
+                },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFF4285F4)
+                )
             ) {
                 Text("Google")
             }
-            OutlinedButton(
+            Button(
                 onClick = {
                     facebookLauncher.launch(listOf("email", "public_profile"))
-                }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1877F2),
+                    contentColor = Color.White
+                )
             ) {
                 Text("Facebook")
             }
-            OutlinedButton(
+            Button(
                 onClick = {
                     val clientId = "YOUR_GITHUB_CLIENT_ID"
                     val redirectUri = "reply://github-auth"
                     val url = "https://github.com/login/oauth/authorize?client_id=$clientId&scope=user:email&redirect_uri=$redirectUri"
                     val customTabsIntent = CustomTabsIntent.Builder().build()
                     customTabsIntent.launchUrl(context, Uri.parse(url))
-                }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF24292E),
+                    contentColor = Color.White
+                )
             ) {
                 Text("GitHub")
             }
