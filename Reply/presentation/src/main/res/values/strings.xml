@@ -21,6 +21,10 @@
     <string name="back_button_content_description">Back</string>
     <string name="unsave_tag_content_description">Unsave Tag</string>
     <string name="save_tag_content_description">Save Tag</string>
+    <string name="news_tags_title">Explore topics</string>
+    <string name="news_tag_article_count">%1$d articles</string>
+    <string name="news_tag_empty_news_title">No articles found</string>
+    <string name="news_tag_empty_news_message">Try another topic or check again later.</string>
 
     <string name="facebook_app_id">1217019803774262</string>
     <string name="facebook_client_token">4b3b0bb3503ded6150cb88f6c301365f</string>

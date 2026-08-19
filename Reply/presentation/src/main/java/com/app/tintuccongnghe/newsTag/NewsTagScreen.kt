@@ -1,232 +1,75 @@
 package com.app.tintuccongnghe.newsTag
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as rowItems
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.navigation3.ListDetailSceneStrategy
-import androidx.compose.material3.adaptive.navigation3.rememberListDetailSceneStrategy
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
+import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
+import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.NavDisplay
-import com.app.tintuccongnghe.domain.models.News
-import com.app.tintuccongnghe.domain.models.NewsTag
-import com.app.tintuccongnghe.presentation.R
+import com.app.tintuccongnghe.base.NewsItem
 import com.app.tintuccongnghe.base.ShowError
 import com.app.tintuccongnghe.base.ShowLoading
 import com.app.tintuccongnghe.base.UiState
-import com.app.tintuccongnghe.base.calculateBottomNavigationBarHeight
 import com.app.tintuccongnghe.components.NewsDetailScreen
-import com.app.tintuccongnghe.newsByTagId.NewsByTagIdScreen
+import com.app.tintuccongnghe.domain.models.News
+import com.app.tintuccongnghe.domain.models.NewsTag
 import com.app.tintuccongnghe.newsByTagId.NewsByTagViewModel
+import com.app.tintuccongnghe.presentation.R
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Contextual
-import kotlinx.serialization.Serializable
-import java.util.Map.entry
 
-// Define our navigation keys for list, detail, and an extra pane
-@Serializable
-data object ItemsList : NavKey
-
-@Serializable
-data class ItemDetail(val tagSlug: String) : NavKey
-
-@Serializable
-data class NewsDetailKey(val news: News) : NavKey
-
-@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun NewsTagRoute(
     viewModel: NewsTagViewModel = hiltViewModel()
-){
-
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    NewsTagScreen(uiState, viewModel)
-}
-
-@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
-@Composable
-fun NewsTagScreen(
-    uiState: UiState<List<NewsTag>>,
-    viewModel: NewsTagViewModel?
 ) {
-    when (uiState) {
-        is UiState.Loading -> {
-            ShowLoading()
-        }
-
-        is UiState.Error -> {
-            ShowError(
-                text = stringResource(R.string.something_went_wrong),
-                retryEnabled = true
-            ) { viewModel?.fetchNewsTag() }
-        }
-
-        is UiState.Success -> {
-            val backStack = rememberNavBackStack(ItemsList)
-            val listDetailStrategy = rememberListDetailSceneStrategy<Any>()
-            
-            // Derive the currently selected tag slug from the backstack source of truth
-            val selectedTagSlug by remember(backStack) {
-                derivedStateOf {
-                    var lastTag: String? = null
-                    for (navKey in backStack) {
-                        if (navKey is ItemDetail) {
-                            lastTag = navKey.tagSlug
-                        }
-                    }
-                    lastTag
-                }
-            }
-            
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text("Explore Tags", style = MaterialTheme.typography.titleLarge) }
-                    )
-                }
-            ) { paddingValues ->
-                NavDisplay(
-                    entryDecorators = listOf(
-                        rememberSaveableStateHolderNavEntryDecorator(),
-                        rememberViewModelStoreNavEntryDecorator()
-                    ),
-                    backStack = backStack,
-                    modifier = Modifier
-                        .padding(paddingValues)
-                        .consumeWindowInsets(WindowInsets.statusBars)
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                    ,
-                    onBack = { 
-                        backStack.removeLastOrNull() 
-                    },
-                    sceneStrategies = listOf(listDetailStrategy),
-
-                    entryProvider = entryProvider {
-                        entry<ItemsList>(
-                            metadata = ListDetailSceneStrategy.listPane(
-                                detailPlaceholder = {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            "Select a tag to see related news",
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            )
-                        ) {
-                            NewsTagList(
-                                tags = uiState.data,
-                                selectedTagSlug = selectedTagSlug
-                            ) { tag ->
-                                val slug = tag.Slug.toString()
-                                // Guard against redundant navigation if already selected
-                                if (selectedTagSlug != slug) {
-                                    backStack.add(ItemDetail(slug))
-                                    FirebaseCrashlytics.getInstance().log("User selected tag: $slug")
-                                }
-                            }
-                        }
-                        entry<ItemDetail>(
-                            metadata = ListDetailSceneStrategy.detailPane()
-                        ) { detailKey ->
-                            val tagViewModel = hiltViewModel<NewsByTagViewModel, NewsByTagViewModel.Factory>(
-                                key = detailKey.tagSlug,
-                                creationCallback = { factory -> factory.create(detailKey.tagSlug) }
-                            )
-                            NewsByTagIdScreen(
-                                tagSlug = detailKey.tagSlug,
-                                viewModel = tagViewModel,
-                                onBack = { backStack.removeLastOrNull() },
-                                onNewsClick = { news ->
-                                    backStack.add(NewsDetailKey(news))
-                                }
-                            )
-                        }
-                        entry<NewsDetailKey>(
-                            metadata = ListDetailSceneStrategy.extraPane()
-                        ) { detailKey ->
-                            ExtraPaneScreen(
-                                news = detailKey.news,
-                                onBack = { backStack.removeLastOrNull() },
-                                onTagClick = { tagSlug ->
-                                    // Guard against redundant navigation
-                                    if (selectedTagSlug != tagSlug) {
-                                        backStack.add(ItemDetail(tagSlug))
-                                    }
-                                }
-                            )
-                        }
-                    }
-                )
-            }
-        }
-    }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    NewsTagScreen(uiState = uiState, viewModel = viewModel)
 }
 
 @Composable
@@ -239,48 +82,392 @@ fun ExtraPaneScreen(
     NewsDetailScreen(
         news = news,
         onBack = onBack,
-        onExpand = { /* Handle expand if needed */ },
+        onExpand = {},
         showExpandButton = false,
         onTagClick = onTagClick,
         modifier = modifier
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-fun NewsTagList(
-    tags: List<NewsTag>,
-    selectedTagSlug: String?,
-    onTagClick: (NewsTag) -> Unit
+fun NewsTagScreen(
+    uiState: UiState<List<NewsTag>>,
+    viewModel: NewsTagViewModel?
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-    ) {
-        Text(
-            text = "Popular Tags",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 16.dp)
+    when (uiState) {
+        is UiState.Loading -> ShowLoading()
+
+        is UiState.Error -> ShowError(
+            text = uiState.message,
+            retryEnabled = true,
+            retryClicked = { viewModel?.fetchNewsTag() }
         )
-        
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
+
+        is UiState.Success -> {
+            val tags = uiState.data
+            var selectedTagSlug by rememberSaveable(tags.map(NewsTag::Slug)) {
+                mutableStateOf(tags.firstOrNull()?.Slug)
+            }
+            val selectedTag = tags.firstOrNull {
+                it.Slug == selectedTagSlug
+            } ?: tags.firstOrNull()
+
+            if (selectedTag == null) {
+                EmptyTagFeed()
+                return
+            }
+
+            val paneNavigator = rememberListDetailPaneScaffoldNavigator<News>()
+            val coroutineScope = rememberCoroutineScope()
+            val currentDestination = paneNavigator.currentDestination
+            val selectedNews = currentDestination?.contentKey
+            var lastSelectedNews by remember { mutableStateOf<News?>(null) }
+            var isDetailFullScreen by remember { mutableStateOf(false) }
+
+            LaunchedEffect(currentDestination) {
+                if (currentDestination?.pane == ListDetailPaneScaffoldRole.Detail) {
+                    lastSelectedNews = currentDestination.contentKey
+                }
+            }
+
+            val scaffoldValue = when {
+                selectedNews == null -> ThreePaneScaffoldValue(
+                    primary = PaneAdaptedValue.Hidden,
+                    secondary = PaneAdaptedValue.Expanded,
+                    tertiary = PaneAdaptedValue.Hidden
+                )
+                isDetailFullScreen -> ThreePaneScaffoldValue(
+                    primary = PaneAdaptedValue.Expanded,
+                    secondary = PaneAdaptedValue.Hidden,
+                    tertiary = PaneAdaptedValue.Hidden
+                )
+                else -> paneNavigator.scaffoldValue
+            }
+            val newsViewModel =
+                hiltViewModel<NewsByTagViewModel, NewsByTagViewModel.Factory>(
+                    key = selectedTag.Slug,
+                    creationCallback = { factory -> factory.create(selectedTag.Slug) }
+                )
+            val newsUiState by newsViewModel.uiState.collectAsStateWithLifecycle()
+            val isSaved by newsViewModel.isSaved.collectAsStateWithLifecycle()
+
+            BackHandler(
+                enabled = paneNavigator.canNavigateBack() || isDetailFullScreen
+            ) {
+                if (isDetailFullScreen) {
+                    isDetailFullScreen = false
+                } else {
+                    coroutineScope.launch { paneNavigator.navigateBack() }
+                }
+            }
+
+            ListDetailPaneScaffold(
+                directive = paneNavigator.scaffoldDirective,
+                value = scaffoldValue,
+                listPane = {
+                    AnimatedPane {
+                        NewsTagFeed(
+                            tags = tags,
+                            selectedTag = selectedTag,
+                            newsUiState = newsUiState,
+                            isSelectedTagSaved = isSaved,
+                            onTagSelected = { tag ->
+                                selectedTagSlug = tag.Slug
+                                if (selectedNews != null) {
+                                    isDetailFullScreen = false
+                                    coroutineScope.launch { paneNavigator.navigateBack() }
+                                }
+                                FirebaseCrashlytics.getInstance()
+                                    .log("User selected tag: ${tag.Slug}")
+                            },
+                            onToggleSavedTag = newsViewModel::toggleSaveTag,
+                            onRetry = newsViewModel::fetchNewsByTag,
+                            selectedNewsId = selectedNews?.Id,
+                            onNewsClick = { news ->
+                                coroutineScope.launch {
+                                    paneNavigator.navigateTo(
+                                        pane = ListDetailPaneScaffoldRole.Detail,
+                                        contentKey = news
+                                    )
+                                }
+                            }
+                        )
+                    }
+                },
+                detailPane = {
+                    AnimatedPane {
+                        (selectedNews ?: lastSelectedNews)?.let { news ->
+                            NewsDetailScreen(
+                                news = news,
+                                onBack = {
+                                    if (isDetailFullScreen) {
+                                        isDetailFullScreen = false
+                                    }
+                                    coroutineScope.launch { paneNavigator.navigateBack() }
+                                },
+                                onExpand = {
+                                    isDetailFullScreen = !isDetailFullScreen
+                                },
+                                showExpandButton =
+                                    paneNavigator.scaffoldDirective.maxHorizontalPartitions > 1,
+                                onTagClick = { tagSlug ->
+                                    tags.firstOrNull { it.Slug == tagSlug }?.let { tag ->
+                                        selectedTagSlug = tag.Slug
+                                    }
+                                    isDetailFullScreen = false
+                                    coroutineScope.launch { paneNavigator.navigateBack() }
+                                }
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Material 3 feed layout: tag filters stay in the top bar while the selected
+ * tag's articles fill an adaptive, vertically scrolling pane.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NewsTagFeed(
+    tags: List<NewsTag>,
+    selectedTag: NewsTag,
+    newsUiState: UiState<List<News>>,
+    isSelectedTagSaved: Boolean,
+    onTagSelected: (NewsTag) -> Unit,
+    onToggleSavedTag: () -> Unit,
+    onRetry: () -> Unit,
+    selectedNewsId: Int?,
+    onNewsClick: (News) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        topBar = {
+            TopAppBar(
+                title = { Text(text = stringResource(R.string.news_tags_title)) },
+                actions = {
+                    IconButton(onClick = onToggleSavedTag) {
+                        Icon(
+                            imageVector = if (isSelectedTagSaved) {
+                                Icons.Default.Favorite
+                            } else {
+                                Icons.Default.FavoriteBorder
+                            },
+                            contentDescription = stringResource(
+                                if (isSelectedTagSaved) {
+                                    R.string.unsave_tag_content_description
+                                } else {
+                                    R.string.save_tag_content_description
+                                }
+                            )
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            )
+        }
+    ) { scaffoldPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(scaffoldPadding)
+        ) {
+            NewsTagBar(
+                tags = tags,
+                selectedTagSlug = selectedTag.Slug,
+                onTagSelected = onTagSelected
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                when (newsUiState) {
+                    is UiState.Loading -> ShowLoading()
+                    is UiState.Error -> ShowError(
+                        text = newsUiState.message,
+                        retryEnabled = true,
+                        retryClicked = onRetry
+                    )
+                    is UiState.Success -> NewsFeedPane(
+                        selectedTag = selectedTag,
+                        news = newsUiState.data,
+                        selectedNewsId = selectedNewsId,
+                        onNewsClick = onNewsClick
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewsTagBar(
+    tags: List<NewsTag>,
+    selectedTagSlug: String,
+    onTagSelected: (NewsTag) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        rowItems(
+            items = tags,
+            key = NewsTag::TagId
+        ) { tag ->
+            FilterChip(
+                selected = tag.Slug == selectedTagSlug,
+                onClick = { onTagSelected(tag) },
+                label = {
+                    Text(
+                        text = tag.Title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun NewsFeedPane(
+    selectedTag: NewsTag,
+    news: List<News>,
+    selectedNewsId: Int?,
+    onNewsClick: (News) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 280.dp),
+            modifier = Modifier
+                .widthIn(max = 1280.dp)
+                .fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 8.dp,
+                top = 20.dp,
+                end = 8.dp,
+                bottom = 32.dp
+            ),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            tags.forEach { tag ->
-                val isSelected = tag.Slug.toString() == selectedTagSlug
-                
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onTagClick(tag) },
-                    label = { Text(tag.Title) },
-                    shape = RoundedCornerShape(16.dp)
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                FeedPaneHeader(
+                    selectedTag = selectedTag,
+                    articleCount = news.size
                 )
             }
+
+            if (news.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    EmptyNewsCard()
+                }
+            } else {
+                gridItems(
+                    items = news,
+                    key = { article -> article.Id }
+                ) { article ->
+                    NewsItem(
+                        news = article,
+                        onNewsClick = onNewsClick,
+                        selected = article.Id == selectedNewsId
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeedPaneHeader(
+    selectedTag: NewsTag,
+    articleCount: Int,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = selectedTag.Title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = selectedTag.Description?.takeIf(String::isNotBlank)
+                ?: stringResource(R.string.news_tag_article_count, articleCount),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun EmptyNewsCard(modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.news_tag_empty_news_title),
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                text = stringResource(R.string.news_tag_empty_news_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EmptyTagFeed(modifier: Modifier = Modifier) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(title = { Text(stringResource(R.string.news_tags_title)) })
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = Alignment.Center
+        ) {
+            EmptyNewsCard()
         }
     }
 }
