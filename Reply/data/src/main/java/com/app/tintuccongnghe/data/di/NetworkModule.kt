@@ -1,6 +1,7 @@
 package com.app.tintuccongnghe.data.di
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import com.app.tintuccongnghe.data.api.AppUserSiteService
 import com.app.tintuccongnghe.data.api.AuthService
 import com.app.tintuccongnghe.data.api.NewsDetailService
@@ -44,7 +45,12 @@ class NetworkModule {
     @Singleton
     fun provideOkHttpClient(@ApplicationContext context: Context): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor()
-        loggingInterceptor.level = HttpLoggingInterceptor.Level.BODY
+        val isDebug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        loggingInterceptor.level = if (isDebug) {
+            HttpLoggingInterceptor.Level.HEADERS
+        } else {
+            HttpLoggingInterceptor.Level.BASIC
+        }
 
         return OkHttpClient.Builder()
             .addInterceptor(HeaderInterceptor())
@@ -77,11 +83,11 @@ class NetworkModule {
         }
 
         return Retrofit.Builder()
-            .addConverterFactory(ScalarsConverterFactory.create())
-            .addConverterFactory(nullOnEmptyConverterFactory)
-            .addConverterFactory(GsonConverterFactory.create())
             .baseUrl(url)
             .client(provideOkHttpClient(context))
+            .addConverterFactory(nullOnEmptyConverterFactory)
+            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(ScalarsConverterFactory.create())
             .build()
     }
 

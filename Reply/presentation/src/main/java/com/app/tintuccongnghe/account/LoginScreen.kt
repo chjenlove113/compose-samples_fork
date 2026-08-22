@@ -257,21 +257,21 @@ fun LoginScreen(
             ) {
                 Text("Facebook")
             }
-            Button(
-                onClick = {
-                    val clientId = "YOUR_GITHUB_CLIENT_ID"
-                    val redirectUri = "reply://github-auth"
-                    val url = "https://github.com/login/oauth/authorize?client_id=$clientId&scope=user:email&redirect_uri=$redirectUri"
-                    val customTabsIntent = CustomTabsIntent.Builder().build()
-                    customTabsIntent.launchUrl(context, Uri.parse(url))
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF24292E),
-                    contentColor = Color.White
-                )
-            ) {
-                Text("GitHub")
-            }
+//            Button(
+//                onClick = {
+//                    val clientId = "YOUR_GITHUB_CLIENT_ID"
+//                    val redirectUri = "reply://github-auth"
+//                    val url = "https://github.com/login/oauth/authorize?client_id=$clientId&scope=user:email&redirect_uri=$redirectUri"
+//                    val customTabsIntent = CustomTabsIntent.Builder().build()
+//                    customTabsIntent.launchUrl(context, Uri.parse(url))
+//                },
+//                colors = ButtonDefaults.buttonColors(
+//                    containerColor = Color(0xFF24292E),
+//                    contentColor = Color.White
+//                )
+//            ) {
+//                Text("GitHub")
+//            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

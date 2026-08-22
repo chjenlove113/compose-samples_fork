@@ -24,7 +24,8 @@ import com.app.tintuccongnghe.widget.RssWidget
 class RssRefreshWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val appDatabase: AppDatabase
+    private val appDatabase: AppDatabase,
+    private val okHttpClient: OkHttpClient
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -34,14 +35,12 @@ class RssRefreshWorker @AssistedInject constructor(
         val sites = siteDao.getAllSites()
         Log.d("RssRefreshWorker", "Found ${sites.size} sites to check")
 
-        val client = OkHttpClient()
-
         sites.forEach { site ->
             try {
                 if(site.GROUP == "1" && site.Url != null && site.Url.isNotEmpty()){
                     Log.d("RssRefreshWorker", "Fetching RSS from: ${site.Url}")
                     val request = Request.Builder().url(site.Url).build()
-                    client.newCall(request).execute().use { response ->
+                    okHttpClient.newCall(request).execute().use { response ->
                         val currentTime = System.currentTimeMillis()
                         val nextTime = currentTime + TimeUnit.MINUTES.toMillis(15)
 

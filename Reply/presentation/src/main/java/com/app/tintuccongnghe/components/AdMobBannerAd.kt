@@ -13,7 +13,7 @@ import com.google.android.gms.ads.AdView
 @Composable
 fun AdMobBannerAd(
     modifier: Modifier = Modifier,
-    adUnitId: String = "ca-app-pub-3940256099942544/6300978111" // Test Banner ID
+    adUnitId: String = "ca-app-pub-5771910821521240/8588852614" // Test Banner ID: ca-app-pub-3940256099942544/6300978111
 ) {
     AndroidView(
         modifier = modifier.fillMaxWidth(),

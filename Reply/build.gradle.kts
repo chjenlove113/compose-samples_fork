@@ -22,10 +22,10 @@ plugins {
     alias(libs.plugins.kotlin.parcelize) apply false
     alias(libs.plugins.compose) apply false
     alias(libs.plugins.android.library) apply false
-    id("com.google.devtools.ksp") version "2.1.21-2.0.1" apply false
+    id("com.google.devtools.ksp") version "2.3.6" apply false
 
     alias(libs.plugins.hilt) apply false
-    kotlin("plugin.serialization") version "2.1.21" apply false
+    alias(libs.plugins.kotlin.serialization) apply false
 
     // Make sure that you have the Google services Gradle plugin 4.4.1+ dependency
     id("com.google.gms.google-services") version "4.5.0" apply false

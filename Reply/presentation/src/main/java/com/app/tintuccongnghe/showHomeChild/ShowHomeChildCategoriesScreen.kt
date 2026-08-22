@@ -149,13 +149,13 @@ fun ShowHomeChildCateScreen(
                                         onNewsClick = onNewsClick,
                                         onTabSelected = onTabSelected,
                                         selected = isSelected,
-                                        showAppCategory = showAppCategory, onTabSelectedCategory = onTabSelectedCategory
+                                        showAppCategory = showAppCategory, onTabSelectedCategory = onTabSelectedCategory, haveSelectedNews = selectedNews?.Id != null
                                     )
                                 }else{
                                     NewsItem(
                                         news = news,
                                         onNewsClick = onNewsClick,
-                                        selected = isSelected
+                                        selected = isSelected, haveSelectedNews = selectedNews?.Id != null
                                     )
                                 }
 

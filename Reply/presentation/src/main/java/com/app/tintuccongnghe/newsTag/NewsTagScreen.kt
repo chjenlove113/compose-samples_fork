@@ -59,6 +59,7 @@ import com.app.tintuccongnghe.base.UiState
 import com.app.tintuccongnghe.components.NewsDetailScreen
 import com.app.tintuccongnghe.domain.models.News
 import com.app.tintuccongnghe.domain.models.NewsTag
+import com.app.tintuccongnghe.newsByTagId.NewsByTagIdScreen
 import com.app.tintuccongnghe.newsByTagId.NewsByTagViewModel
 import com.app.tintuccongnghe.presentation.R
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -118,17 +119,27 @@ fun NewsTagScreen(
                 return
             }
 
-            val paneNavigator = rememberListDetailPaneScaffoldNavigator<News>()
+            val paneNavigator = rememberListDetailPaneScaffoldNavigator<Any>()
             val coroutineScope = rememberCoroutineScope()
             val currentDestination = paneNavigator.currentDestination
             val selectedNews = currentDestination?.contentKey
             var lastSelectedNews by remember { mutableStateOf<News?>(null) }
             var isDetailFullScreen by remember { mutableStateOf(false) }
+            var lastSelectedTag by remember { mutableStateOf<String?>(selectedTag?.Slug ) }
 
             LaunchedEffect(currentDestination) {
-                if (currentDestination?.pane == ListDetailPaneScaffoldRole.Detail) {
-                    lastSelectedNews = currentDestination.contentKey
+                when (currentDestination?.pane) {
+                    ListDetailPaneScaffoldRole.Detail -> lastSelectedNews = currentDestination.contentKey as? News
+                    ListDetailPaneScaffoldRole.Extra -> lastSelectedTag = currentDestination.contentKey as? String
+                    else -> {}
                 }
+
+//                if (currentDestination?.pane == ListDetailPaneScaffoldRole.Detail) {
+//                    lastSelectedNews = currentDestination.contentKey as? News
+//                }
+//                if (currentDestination?.pane == ListDetailPaneScaffoldRole.Extra) {
+//                    lastSelectedTag = currentDestination.contentKey as? String
+//                }
             }
 
             val scaffoldValue = when {
@@ -174,16 +185,12 @@ fun NewsTagScreen(
                             isSelectedTagSaved = isSaved,
                             onTagSelected = { tag ->
                                 selectedTagSlug = tag.Slug
-                                if (selectedNews != null) {
-                                    isDetailFullScreen = false
-                                    coroutineScope.launch { paneNavigator.navigateBack() }
-                                }
                                 FirebaseCrashlytics.getInstance()
                                     .log("User selected tag: ${tag.Slug}")
                             },
                             onToggleSavedTag = newsViewModel::toggleSaveTag,
                             onRetry = newsViewModel::fetchNewsByTag,
-                            selectedNewsId = selectedNews?.Id,
+                            selectedNewsId = (selectedNews as? News)?.Id,
                             onNewsClick = { news ->
                                 coroutineScope.launch {
                                     paneNavigator.navigateTo(
@@ -197,9 +204,10 @@ fun NewsTagScreen(
                 },
                 detailPane = {
                     AnimatedPane {
-                        (selectedNews ?: lastSelectedNews)?.let { news ->
+                        val newsToDisplay = (selectedNews as? News) ?: lastSelectedNews
+                        if (newsToDisplay != null) {
                             NewsDetailScreen(
-                                news = news,
+                                news = newsToDisplay,
                                 onBack = {
                                     if (isDetailFullScreen) {
                                         isDetailFullScreen = false
@@ -211,12 +219,77 @@ fun NewsTagScreen(
                                 },
                                 showExpandButton =
                                     paneNavigator.scaffoldDirective.maxHorizontalPartitions > 1,
-                                onTagClick = { tagSlug ->
-                                    tags.firstOrNull { it.Slug == tagSlug }?.let { tag ->
-                                        selectedTagSlug = tag.Slug
+                                onTagClick =
+                                    { tagSlug ->
+                                        coroutineScope.launch {
+                                            paneNavigator.navigateTo(
+                                                ListDetailPaneScaffoldRole.Extra,
+                                                tagSlug
+                                            )
+                                        }
                                     }
-                                    isDetailFullScreen = false
-                                    coroutineScope.launch { paneNavigator.navigateBack() }
+//                                    { tagSlug ->
+//                                    tags.firstOrNull { it.Slug == tagSlug }?.let { tag ->
+//                                        selectedTagSlug = tag.Slug
+//                                    }
+//                                    isDetailFullScreen = false
+//                                    coroutineScope.launch { paneNavigator.navigateBack() }
+//                                }
+                            )
+                        }
+//                        (selectedNews ?: lastSelectedNews)?.let { news ->
+//                            NewsDetailScreen(
+//                                news = news,
+//                                onBack = {
+//                                    if (isDetailFullScreen) {
+//                                        isDetailFullScreen = false
+//                                    }
+//                                    coroutineScope.launch { paneNavigator.navigateBack() }
+//                                },
+//                                onExpand = {
+//                                    isDetailFullScreen = !isDetailFullScreen
+//                                },
+//                                showExpandButton =
+//                                    paneNavigator.scaffoldDirective.maxHorizontalPartitions > 1,
+//                                onTagClick =
+//                                    { tagSlug ->
+//                                        coroutineScope.launch {
+//                                            paneNavigator.navigateTo(
+//                                                ListDetailPaneScaffoldRole.Extra,
+//                                                tagSlug
+//                                            )
+//                                        }
+//                                    }
+////                                    { tagSlug ->
+////                                    tags.firstOrNull { it.Slug == tagSlug }?.let { tag ->
+////                                        selectedTagSlug = tag.Slug
+////                                    }
+////                                    isDetailFullScreen = false
+////                                    coroutineScope.launch { paneNavigator.navigateBack() }
+////                                }
+//                            )
+//                        }
+                    }
+                },
+                extraPane = {
+                    AnimatedPane {
+                        if (selectedTagSlug != null) {
+                            val tagViewModel = hiltViewModel<NewsByTagViewModel, NewsByTagViewModel.Factory>(
+                                key = selectedTagSlug,
+                                creationCallback = { factory -> factory.create(selectedTagSlug!!) }
+                            )
+                            NewsByTagIdScreen(
+                                tagSlug = selectedTagSlug!!,
+                                viewModel = tagViewModel,
+                                onBack = {
+                                    coroutineScope.launch {
+                                        paneNavigator.navigateBack()
+                                    }
+                                },
+                                onNewsClick = { news ->
+                                    coroutineScope.launch {
+                                        paneNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail, news)
+                                    }
                                 }
                             )
                         }
@@ -247,7 +320,7 @@ fun NewsTagFeed(
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
                 title = { Text(text = stringResource(R.string.news_tags_title)) },
@@ -388,7 +461,7 @@ private fun NewsFeedPane(
                     NewsItem(
                         news = article,
                         onNewsClick = onNewsClick,
-                        selected = article.Id == selectedNewsId
+                        selected = article.Id == selectedNewsId, haveSelectedNews = true
                     )
                 }
             }

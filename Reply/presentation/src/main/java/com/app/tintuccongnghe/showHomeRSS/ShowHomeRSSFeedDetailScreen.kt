@@ -259,7 +259,7 @@ fun HtmlContent(
             }
         },
         update = { webView ->
-            val surface = colorScheme.surface.toHtmlHex()
+            val surface = colorScheme.surfaceContainer.toHtmlHex()
             val onSurface = colorScheme.onSurface.toHtmlHex()
             val primary = colorScheme.primary.toHtmlHex()
             val outline = colorScheme.outline.toHtmlHex()

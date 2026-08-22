@@ -575,7 +575,7 @@ fun NewsListItem(
                 modifier = Modifier
                     .weight(0.35f)
                     .fillMaxHeight()
-                    .heightIn(min = if (isExpanded) 140.dp else 100.dp)
+                    .heightIn(min = if (isExpanded && !bHadDetail) 140.dp else 100.dp)
                     .clip(MaterialTheme.shapes.small)
             ) {
                 news.Image?.let {
@@ -702,7 +702,6 @@ fun NewsGridItem(
                     fontWeight = FontWeight.Bold,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
-                    minLines = 3
                 )
 
                 val shortDes = news.ShortDes
@@ -714,7 +713,6 @@ fun NewsGridItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        minLines = 2
                     )
                 }
 

@@ -3,13 +3,13 @@ plugins {
     alias(libs.plugins.kotlin.android)
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
-    kotlin("plugin.serialization")
+    alias(libs.plugins.kotlin.serialization)
     id("kotlin-parcelize")
 }
 
 android {
     namespace = "com.app.tintuccongnghe.domain"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 21
@@ -47,7 +47,7 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.paging.compose)
 }

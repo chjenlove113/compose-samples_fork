@@ -4,7 +4,7 @@
 #####
 [versions]
 accompanist = "0.37.0"
-androidGradlePlugin = "8.9.2"
+androidGradlePlugin = "9.3.0"
 androidx-activity-compose = "1.10.0"
 androidx-appcompat = "1.7.0"
 androidx-compose-bom = "2025.02.00"
@@ -33,7 +33,7 @@ androix-test-uiautomator = "2.3.0"
 coil = "2.7.0"
 datastore = "1.1.2"
 # @keep
-compileSdk = "36"
+compileSdk = "37"
 coroutines = "1.10.1"
 google-maps = "18.2.0"
 googleid = "1.1.1"
@@ -44,7 +44,7 @@ horologist = "0.6.22"
 # @pin When updating to AGP 7.4.0-alpha10 and up we can update this https://developer.android.com/studio/write/java8-support#library-desugaring-versions
 jdkDesugar = "2.1.5"
 junit = "4.13.2"
-kotlin = "2.1.21"
+kotlin = "2.2.10"
 kotlinx-serialization-json = "1.7.3"
 kotlinx_immutable = "0.3.8"
 ksp = "2.1.21-2.0.1"
@@ -67,7 +67,6 @@ lifecycleViewmodelAndroid = "2.8.7"
 
 nav3Core = "1.1.0-rc01"
 lifecycleViewmodelNav3 = "2.10.0"
-kotlinSerialization = "2.1.21"
 kotlinxSerializationCore = "1.8.1"
 material3AdaptiveNav3 = "1.3.0-alpha09"
 
@@ -79,6 +78,7 @@ material3 = "1.4.0"
 materialIconsCoreAndroid = "1.7.8"
 firebaseCommon = "22.1.0"
 media3 = "1.5.1"
+adaptive = "1.3.0"
 [libraries]
 accompanist-adaptive = { module = "com.google.accompanist:accompanist-adaptive", version.ref = "accompanist" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
@@ -209,6 +209,7 @@ androidx-compose-material-icons-core-android = { group = "androidx.compose.mater
 firebase-common = { group = "com.google.firebase", name = "firebase-common", version.ref = "firebaseCommon" }
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+androidx-compose-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive", version.ref = "adaptive" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
@@ -227,6 +228,5 @@ secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugi
 version-catalog-update = { id = "nl.littlerobots.version-catalog-update", version.ref = "version-catalog-update" }
 
 # Optional plugins
-jetbrains-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinSerialization"}
 
 

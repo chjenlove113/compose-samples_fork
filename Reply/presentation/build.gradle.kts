@@ -5,7 +5,7 @@ plugins {
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
     id("kotlin-parcelize")
-    kotlin("plugin.serialization") version "2.1.21"
+    alias(libs.plugins.kotlin.serialization)
 
     // Make sure that you have the Google services Gradle plugin
     id("com.google.gms.google-services")
@@ -58,6 +58,7 @@ dependencies {
     implementation(project(":data"))
     implementation(project(":domain"))
     implementation(project(":utils"))
+    implementation(libs.androidx.compose.adaptive)
     implementation(libs.androidx.compose.material.icons.core.android)
     implementation(libs.androidx.compose.material.iconsExtended)
 
@@ -114,7 +115,7 @@ dependencies {
 
     implementation("androidx.navigation:navigation-compose:$nav_version")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+    implementation(libs.kotlinx.serialization.json)
 
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")

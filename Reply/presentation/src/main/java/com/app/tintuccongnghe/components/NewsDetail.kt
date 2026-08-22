@@ -83,10 +83,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
+import com.app.tintuccongnghe.base.AdaptiveMode
 import com.app.tintuccongnghe.domain.models.News
 import com.app.tintuccongnghe.presentation.R
 import com.app.tintuccongnghe.base.UiState
+import com.app.tintuccongnghe.base.currentAdaptiveMode
 import com.app.tintuccongnghe.domain.models.NewsChildItem
 import com.app.tintuccongnghe.domain.models.NewsTag
 import com.app.tintuccongnghe.domain.util.isValidUrl
@@ -120,7 +123,7 @@ fun NewsDetailScreen(
 
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
-    val pagePadding = if (isCompact) 8.dp else 16.dp
+
 
     // Optimize M3 colors
     val colorScheme = MaterialTheme.colorScheme
@@ -187,6 +190,7 @@ fun NewsDetailScreen(
         viewModel.toggleSave(news)
     }
 
+    val pagePadding = 8.dp
 
     Scaffold(
         topBar = {
@@ -198,7 +202,7 @@ fun NewsDetailScreen(
                     }
                 },
                 actions = {
-                    if (!isCompact) {
+                    if (1==1) {
                         IconButton(onClick = { showRewardedAdAndToggle(news) }) {
                             Icon(
                                 imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,

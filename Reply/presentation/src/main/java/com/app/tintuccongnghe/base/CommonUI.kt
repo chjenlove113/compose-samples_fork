@@ -29,9 +29,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.collectFoldingFeaturesAsState
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +49,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
+import androidx.window.layout.FoldingFeature
 import coil3.compose.AsyncImage
 import com.google.zxing.common.StringUtils
 import com.app.tintuccongnghe.domain.models.News
@@ -124,17 +129,18 @@ fun NewsItem(
     news: News,
     onNewsClick: (News) -> Unit,
     modifier: Modifier = Modifier,
-    selected: Boolean = false
+    selected: Boolean = false,
+    haveSelectedNews: Boolean = false
 ) {
-    val adaptiveInfo = currentWindowAdaptiveInfo()
-    val pagePadding = if (adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT) 8.dp else 16.dp
+    val adaptiveInfo = currentWindowAdaptiveInfoV2()
+    val pagePadding = if (adaptiveInfo.windowSizeClass.minWidthDp <= WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND || haveSelectedNews) 8.dp else 16.dp
 
     androidx.compose.material3.Card(
         onClick = { onNewsClick(news) },
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = pagePadding, vertical = 8.dp),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = if (pagePadding == 8.dp) MaterialTheme.shapes.large else MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
             contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
@@ -146,7 +152,7 @@ fun NewsItem(
                 if(imageUrl != ""){
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth().padding(pagePadding)
+                            .fillMaxWidth().padding( (if (pagePadding == 8.dp) 0.dp else pagePadding))
                             .height(200.dp)
                     ) {
                         if (!isValidUrl(imageUrl)){
@@ -261,17 +267,18 @@ fun NewsItemAdv(
     onTabSelected: (String) -> Unit = {},
     selected: Boolean = false,
     showAppCategory: Boolean = false,
-    onTabSelectedCategory: (String) -> Unit = {}
+    onTabSelectedCategory: (String) -> Unit = {},
+    haveSelectedNews: Boolean = false
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfo()
-    val pagePadding = if (adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT) 8.dp else 16.dp
+    val pagePadding = if (adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT || haveSelectedNews) 8.dp else 16.dp
 
     androidx.compose.material3.Card(
         onClick = { onNewsClick(news) },
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = pagePadding, vertical = 8.dp),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = if (pagePadding == 8.dp) MaterialTheme.shapes.large else MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
             contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
@@ -284,7 +291,7 @@ fun NewsItemAdv(
                 if(imageUrl != ""){
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth().padding(pagePadding)
+                            .fillMaxWidth().padding((if (pagePadding == 8.dp) 0.dp else pagePadding))
                             .height(200.dp)
                     ) {
                         if (!isValidUrl(imageUrl)){
@@ -413,5 +420,83 @@ fun NewsItemAdv(
                 }
             }
         }
+    }
+}
+enum class WindowMode {
+    COMPACT,
+    MEDIUM,
+    EXPANDED,
+    LARGE,
+    EXTRA_LARGE
+}
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+fun currentWindowMode(): WindowMode {
+    val sizeClass =
+        currentWindowAdaptiveInfoV2().windowSizeClass
+
+    return when {
+        sizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_EXTRA_LARGE_LOWER_BOUND
+        ) -> WindowMode.EXTRA_LARGE
+
+        sizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_LARGE_LOWER_BOUND
+        ) -> WindowMode.LARGE
+
+        sizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND
+        ) -> WindowMode.EXPANDED
+
+        sizeClass.isWidthAtLeastBreakpoint(
+            WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND
+        ) -> WindowMode.MEDIUM
+
+        else -> WindowMode.COMPACT
+    }
+}
+enum class AdaptiveMode {
+    COMPACT,           // Phone or closed foldable cover screen
+    MEDIUM,
+    EXPANDED,
+    LARGE,
+    EXTRA_LARGE,
+    FOLDABLE_FLAT,
+    FOLDABLE_BOOK,
+    FOLDABLE_TABLETOP
+}
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+@Composable
+fun currentAdaptiveMode(): AdaptiveMode {
+    val foldingFeatures by collectFoldingFeaturesAsState()
+    val fold = foldingFeatures.firstOrNull()
+
+    if (fold != null) {
+        when (fold.state) {
+            FoldingFeature.State.HALF_OPENED -> {
+                return when (fold.orientation) {
+                    FoldingFeature.Orientation.HORIZONTAL ->
+                        AdaptiveMode.FOLDABLE_TABLETOP
+
+                    FoldingFeature.Orientation.VERTICAL ->
+                        AdaptiveMode.FOLDABLE_BOOK
+
+                    else -> AdaptiveMode.FOLDABLE_FLAT
+                }
+            }
+
+            FoldingFeature.State.FLAT -> {
+                return AdaptiveMode.FOLDABLE_FLAT
+            }
+        }
+    }
+
+    return when (currentWindowMode()) {
+        WindowMode.COMPACT -> AdaptiveMode.COMPACT
+        WindowMode.MEDIUM -> AdaptiveMode.MEDIUM
+        WindowMode.EXPANDED -> AdaptiveMode.EXPANDED
+        WindowMode.LARGE -> AdaptiveMode.LARGE
+        WindowMode.EXTRA_LARGE -> AdaptiveMode.EXTRA_LARGE
     }
 }

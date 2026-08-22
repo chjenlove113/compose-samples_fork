@@ -64,7 +64,7 @@ fun loadInterstitialAd(context: Context, onAdLoaded: (InterstitialAd?) -> Unit) 
     val adRequest = AdRequest.Builder().build()
     InterstitialAd.load(
         context,
-        "ca-app-pub-3940256099942544/1033173712",
+        "ca-app-pub-5771910821521240/3024721616",
         adRequest,
         object : InterstitialAdLoadCallback() {
             override fun onAdLoaded(ad: InterstitialAd) {
@@ -82,7 +82,7 @@ fun loadRewardedAd(context: Context, onAdLoaded: (RewardedAd?) -> Unit) {
     val adRequest = AdRequest.Builder().build()
     RewardedAd.load(
         context,
-        "ca-app-pub-3940256099942544/5224354917", // Test ID
+        "ca-app-pub-5771910821521240/5461758973", // Test ID: ca-app-pub-3940256099942544/5224354917
         adRequest,
         object : RewardedAdLoadCallback() {
             override fun onAdLoaded(ad: RewardedAd) {

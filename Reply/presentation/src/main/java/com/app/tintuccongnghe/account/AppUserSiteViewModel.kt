@@ -45,6 +45,7 @@ data class AppUserSiteUiState(
 @HiltViewModel
 class AppUserSiteViewModel @Inject constructor(
     private val appDatabase: AppDatabase,
+    private val okHttpClient: OkHttpClient,
     private val getAppUserSiteListUseCase: GetAppUserSiteListUseCase,
     private val refreshAppUserSiteListUseCase: RefreshAppUserSiteListUseCase,
     private val updateAppUserSiteUseCase: UpdateAppUserSiteUseCase,
@@ -223,9 +224,8 @@ class AppUserSiteViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 try {
                     if (site.GROUP == "1" && site.Url.isNotEmpty()) {
-                        val client = OkHttpClient()
                         val request = Request.Builder().url(site.Url).build()
-                        client.newCall(request).execute().use { response ->
+                        okHttpClient.newCall(request).execute().use { response ->
                             val currentTime = System.currentTimeMillis()
                             val nextTime = currentTime + TimeUnit.MINUTES.toMillis(15)
 

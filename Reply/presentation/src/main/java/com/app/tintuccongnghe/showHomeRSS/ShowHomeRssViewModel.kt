@@ -34,6 +34,7 @@ data class ShowHomeRssUiState(
 @HiltViewModel
 class ShowHomeRssViewModel @Inject constructor(
     private val appDatabase: AppDatabase,
+    private val okHttpClient: OkHttpClient,
     private val getAuthInfoUseCase: GetAuthInfoUseCase
 ) : ViewModel() {
 
@@ -71,13 +72,11 @@ class ShowHomeRssViewModel @Inject constructor(
                 val rssItemDao = appDatabase.rssItemDao()
                 val sites = _uiState.value.sites
 
-                val client = OkHttpClient()
-
                 sites.forEach { site ->
                     try {
                         if (site.GROUP == "1" && site.Url.isNotEmpty()) {
                             val request = Request.Builder().url(site.Url).build()
-                            client.newCall(request).execute().use { response ->
+                            okHttpClient.newCall(request).execute().use { response ->
                                 val currentTime = System.currentTimeMillis()
                                 val nextTime = currentTime + TimeUnit.MINUTES.toMillis(15)
 
