@@ -3,6 +3,8 @@ package com.app.tintuccongnghe.account
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +28,10 @@ import com.app.tintuccongnghe.domain.models.LoginResponse
 import com.google.firebase.Firebase
 import com.google.firebase.crashlytics.crashlytics
 import java.util.Locale
+import android.app.TimePickerDialog
+import androidx.compose.ui.platform.LocalContext
+import com.app.tintuccongnghe.domain.models.DailyRefreshSettings
+import com.app.tintuccongnghe.domain.models.RefreshTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +47,9 @@ fun AccountInfoScreen(
     val authInfo by viewModel.authInfo.collectAsStateWithLifecycle()
     val nightMode by viewModel.nightMode.collectAsStateWithLifecycle()
     val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
+    val refreshInterval by viewModel.refreshInterval.collectAsStateWithLifecycle()
+    val dailyRefreshSettings by viewModel.dailyRefreshSettings.collectAsStateWithLifecycle()
+    val refreshStrategy by viewModel.refreshStrategy.collectAsStateWithLifecycle()
 
     var showLogoutSheet by remember { mutableStateOf(false) }
     var showDeleteAccountSheet by remember { mutableStateOf(false) }
@@ -111,6 +120,34 @@ fun AccountInfoScreen(
                 value = fontScale,
                 onValueChange = { viewModel.setFontScale(it) }
             )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            
+            Text(
+                text = "RSS Sync Strategy",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            SettingStrategyItem(
+                currentStrategy = refreshStrategy,
+                onStrategyChange = { viewModel.setRefreshStrategy(it) }
+            )
+
+            if (refreshStrategy == "INTERVAL") {
+                SettingRefreshIntervalItem(
+                    currentInterval = refreshInterval,
+                    onIntervalChange = { viewModel.setRefreshInterval(it) }
+                )
+            } else {
+                SettingDailyRefreshItem(
+                    settings = dailyRefreshSettings,
+                    onSettingsChange = { enabled, times ->
+                        viewModel.setDailyRefreshSettings(enabled, times)
+                    }
+                )
+            }
 
             if (authInfo != null) {
                 SettingItem(
@@ -468,5 +505,208 @@ fun SettingSliderItem(
             steps = 3,
             modifier = Modifier.padding(horizontal = 8.dp)
         )
+    }
+}
+
+@Composable
+fun SettingStrategyItem(
+    currentStrategy: String,
+    onStrategyChange: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = currentStrategy == "DAILY",
+            onClick = { onStrategyChange("DAILY") },
+            label = { Text("Daily Schedule") },
+            leadingIcon = if (currentStrategy == "DAILY") {
+                { Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            } else null
+        )
+        FilterChip(
+            selected = currentStrategy == "INTERVAL",
+            onClick = { onStrategyChange("INTERVAL") },
+            label = { Text("Fixed Interval") },
+            leadingIcon = if (currentStrategy == "INTERVAL") {
+                { Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(18.dp)) }
+            } else null
+        )
+    }
+}
+
+@Composable
+fun SettingRefreshIntervalItem(
+    currentInterval: Long,
+    onIntervalChange: (Long) -> Unit
+) {
+    val intervals = listOf(15L, 30L, 60L, 120L, 240L)
+    val labels = mapOf(
+        15L to "15 min",
+        30L to "30 min",
+        60L to "1 hour",
+        120L to "2 hours",
+        240L to "4 hours"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Sync,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = Color.Gray
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "RSS Refresh Interval",
+                modifier = Modifier.weight(1f),
+                fontSize = 16.sp
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(intervals.size) { index ->
+                val interval = intervals[index]
+                val isSelected = interval == currentInterval
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onIntervalChange(interval) },
+                    label = { 
+                        Text(
+                            text = labels[interval] ?: "$interval min",
+                            fontSize = 12.sp
+                        ) 
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingDailyRefreshItem(
+    settings: DailyRefreshSettings,
+    onSettingsChange: (Boolean, List<RefreshTime>) -> Unit
+) {
+    val context = LocalContext.current
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Schedule,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = Color.Gray
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "Daily RSS Refresh",
+                modifier = Modifier.weight(1f),
+                fontSize = 16.sp
+            )
+            Switch(
+                checked = settings.enabled,
+                onCheckedChange = { onSettingsChange(it, settings.times) }
+            )
+        }
+
+        if (settings.enabled) {
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 40.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(settings.times) { time ->
+                    InputChip(
+                        selected = true,
+                        onClick = {
+                            // Optionally allow editing existing time
+                            TimePickerDialog(
+                                context,
+                                { _, h, m ->
+                                    val newTimes = settings.times.toMutableList()
+                                    val index = newTimes.indexOf(time)
+                                    if (index != -1) {
+                                        newTimes[index] = RefreshTime(h, m)
+                                        onSettingsChange(true, newTimes)
+                                    }
+                                },
+                                time.hour,
+                                time.minute,
+                                true
+                            ).show()
+                        },
+                        label = {
+                            Text(text = String.format(Locale.getDefault(), "%02d:%02d", time.hour, time.minute))
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove",
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable {
+                                        onSettingsChange(true, settings.times.filter { it != time })
+                                    }
+                            )
+                        }
+                    )
+                }
+                
+                item {
+                    AssistChip(
+                        onClick = {
+                            TimePickerDialog(
+                                context,
+                                { _, h, m ->
+                                    val newTime = RefreshTime(h, m)
+                                    if (!settings.times.contains(newTime)) {
+                                        onSettingsChange(true, settings.times + newTime)
+                                    }
+                                },
+                                8,
+                                0,
+                                true
+                            ).show()
+                        },
+                        label = { Text("Add Time") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    )
+                }
+            }
+        }
     }
 }

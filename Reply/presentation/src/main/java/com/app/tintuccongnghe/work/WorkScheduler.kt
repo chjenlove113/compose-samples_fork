@@ -7,12 +7,12 @@ import java.util.concurrent.TimeUnit
 object WorkScheduler {
     private const val RSS_WORK_NAME = "RssRefreshWorker"
 
-    fun scheduleRssRefresh(context: Context) {
+    fun scheduleRssRefresh(context: Context, intervalMinutes: Long = 15) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        val refreshRequest = PeriodicWorkRequestBuilder<RssRefreshWorker>(15, TimeUnit.MINUTES)
+        val refreshRequest = PeriodicWorkRequestBuilder<RssRefreshWorker>(intervalMinutes, TimeUnit.MINUTES)
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.MINUTES)
             .build()
@@ -38,5 +38,9 @@ object WorkScheduler {
             ExistingWorkPolicy.REPLACE,
             refreshRequest
         )
+    }
+
+    fun cancelRefresh(context: Context) {
+        WorkManager.getInstance(context).cancelUniqueWork(RSS_WORK_NAME)
     }
 }
