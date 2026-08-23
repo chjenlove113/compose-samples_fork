@@ -9,7 +9,7 @@
   the License.
   -->
 <resources>
-    <string name="app_name">Reply_TEST</string>
+    <string name="app_name">Tin Công Nghệ</string>
     <string name="navigation_drawer">Navigation Drawer</string>
     <string name="close_drawer">Close drawer</string>
     <string name="tab_inbox">Inbox</string>

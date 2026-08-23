@@ -105,6 +105,49 @@ fun AccountInfoScreen(
                     title = "RSS Website Sources",
                     onClick = onNavigateToUserSites
                 )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                Text(
+                    text = "RSS Sync Strategy",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                SettingStrategyItem(
+                    currentStrategy = refreshStrategy,
+                    onStrategyChange = { viewModel.setRefreshStrategy(it) }
+                )
+
+                if (refreshStrategy == "INTERVAL") {
+                    SettingRefreshIntervalItem(
+                        currentInterval = refreshInterval,
+                        onIntervalChange = { viewModel.setRefreshInterval(it) }
+                    )
+                } else {
+                    SettingDailyRefreshItem(
+                        settings = dailyRefreshSettings,
+                        onSettingsChange = { enabled, times ->
+                            viewModel.setDailyRefreshSettings(enabled, times)
+                        }
+                    )
+                }
+
+                SettingItem(
+                    icon = Icons.AutoMirrored.Filled.Logout,
+                    title = "Log Out",
+                    onClick = { showLogoutSheet = true },
+                    textColor = MaterialTheme.colorScheme.primary,
+                    iconColor = MaterialTheme.colorScheme.primary
+                )
+                SettingItem(
+                    icon = Icons.Default.DeleteForever,
+                    title = "Delete account",
+                    onClick = { showDeleteAccountSheet = true },
+                    textColor = MaterialTheme.colorScheme.error,
+                    iconColor = MaterialTheme.colorScheme.error
+                )
             }
 
             SettingSwitchItem(
@@ -121,50 +164,7 @@ fun AccountInfoScreen(
                 onValueChange = { viewModel.setFontScale(it) }
             )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-            
-            Text(
-                text = "RSS Sync Strategy",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
 
-            SettingStrategyItem(
-                currentStrategy = refreshStrategy,
-                onStrategyChange = { viewModel.setRefreshStrategy(it) }
-            )
-
-            if (refreshStrategy == "INTERVAL") {
-                SettingRefreshIntervalItem(
-                    currentInterval = refreshInterval,
-                    onIntervalChange = { viewModel.setRefreshInterval(it) }
-                )
-            } else {
-                SettingDailyRefreshItem(
-                    settings = dailyRefreshSettings,
-                    onSettingsChange = { enabled, times ->
-                        viewModel.setDailyRefreshSettings(enabled, times)
-                    }
-                )
-            }
-
-            if (authInfo != null) {
-                SettingItem(
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    title = "Log Out",
-                    onClick = { showLogoutSheet = true },
-                    textColor = MaterialTheme.colorScheme.primary,
-                    iconColor = MaterialTheme.colorScheme.primary
-                )
-                SettingItem(
-                    icon = Icons.Default.DeleteForever,
-                    title = "Delete account",
-                    onClick = { showDeleteAccountSheet = true },
-                    textColor = MaterialTheme.colorScheme.error,
-                    iconColor = MaterialTheme.colorScheme.error
-                )
-            }
         }
     }
 
@@ -541,13 +541,17 @@ fun SettingRefreshIntervalItem(
     currentInterval: Long,
     onIntervalChange: (Long) -> Unit
 ) {
-    val intervals = listOf(15L, 30L, 60L, 120L, 240L)
+    val intervals = listOf(15L, 30L, 60L, 120L, 240L, 360L, 480L, 720L, 1440L)
     val labels = mapOf(
         15L to "15 min",
         30L to "30 min",
         60L to "1 hour",
         120L to "2 hours",
-        240L to "4 hours"
+        240L to "4 hours",
+        360L to "6 hours",
+        480L to "8 hours",
+        720L to "12 hours",
+        1440L to "24 hours",
     )
 
     Column(
