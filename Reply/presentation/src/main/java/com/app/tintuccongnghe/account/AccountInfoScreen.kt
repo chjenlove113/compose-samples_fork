@@ -128,8 +128,8 @@ fun AccountInfoScreen(
                 } else {
                     SettingDailyRefreshItem(
                         settings = dailyRefreshSettings,
-                        onSettingsChange = { enabled, times ->
-                            viewModel.setDailyRefreshSettings(enabled, times)
+                        onTimesChange = { times ->
+                            viewModel.setDailyRefreshSettings(true, times)
                         }
                     )
                 }
@@ -607,7 +607,7 @@ fun SettingRefreshIntervalItem(
 @Composable
 fun SettingDailyRefreshItem(
     settings: DailyRefreshSettings,
-    onSettingsChange: (Boolean, List<RefreshTime>) -> Unit
+    onTimesChange: (List<RefreshTime>) -> Unit
 ) {
     val context = LocalContext.current
     
@@ -631,85 +631,79 @@ fun SettingDailyRefreshItem(
                 modifier = Modifier.weight(1f),
                 fontSize = 16.sp
             )
-            Switch(
-                checked = settings.enabled,
-                onCheckedChange = { onSettingsChange(it, settings.times) }
-            )
         }
 
-        if (settings.enabled) {
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 40.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items(settings.times) { time ->
-                    InputChip(
-                        selected = true,
-                        onClick = {
-                            // Optionally allow editing existing time
-                            TimePickerDialog(
-                                context,
-                                { _, h, m ->
-                                    val newTimes = settings.times.toMutableList()
-                                    val index = newTimes.indexOf(time)
-                                    if (index != -1) {
-                                        newTimes[index] = RefreshTime(h, m)
-                                        onSettingsChange(true, newTimes)
-                                    }
-                                },
-                                time.hour,
-                                time.minute,
-                                true
-                            ).show()
-                        },
-                        label = {
-                            Text(text = String.format(Locale.getDefault(), "%02d:%02d", time.hour, time.minute))
-                        },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Remove",
-                                modifier = Modifier
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 40.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items(settings.times) { time ->
+                InputChip(
+                    selected = true,
+                    onClick = {
+                        // Optionally allow editing existing time
+                        TimePickerDialog(
+                            context,
+                            { _, h, m ->
+                                val newTimes = settings.times.toMutableList()
+                                val index = newTimes.indexOf(time)
+                                if (index != -1) {
+                                    newTimes[index] = RefreshTime(h, m)
+                                    onTimesChange(newTimes)
+                                }
+                            },
+                            time.hour,
+                            time.minute,
+                            true
+                        ).show()
+                    },
+                    label = {
+                        Text(text = String.format(Locale.getDefault(), "%02d:%02d", time.hour, time.minute))
+                    },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove",
+                            modifier = Modifier
                                     .size(16.dp)
                                     .clickable {
-                                        onSettingsChange(true, settings.times.filter { it != time })
+                                        onTimesChange(settings.times.filter { it != time })
                                     }
-                            )
-                        }
-                    )
-                }
-                
-                item {
-                    AssistChip(
-                        onClick = {
-                            TimePickerDialog(
-                                context,
-                                { _, h, m ->
-                                    val newTime = RefreshTime(h, m)
-                                    if (!settings.times.contains(newTime)) {
-                                        onSettingsChange(true, settings.times + newTime)
-                                    }
-                                },
-                                8,
-                                0,
-                                true
-                            ).show()
-                        },
-                        label = { Text("Add Time") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    )
-                }
+                        )
+                    }
+                )
+            }
+            
+            item {
+                AssistChip(
+                    onClick = {
+                        TimePickerDialog(
+                            context,
+                            { _, h, m ->
+                                val newTime = RefreshTime(h, m)
+                                if (!settings.times.contains(newTime)) {
+                                    onTimesChange(settings.times + newTime)
+                                }
+                            },
+                            8,
+                            0,
+                            true
+                        ).show()
+                    },
+                    label = { Text("Add Time") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                )
             }
         }
     }

@@ -96,6 +96,13 @@ class AccountViewModel @Inject constructor(
     private val _message = MutableSharedFlow<String>()
     val message: SharedFlow<String> = _message.asSharedFlow()
 
+    private val defaultRefreshTimes = listOf(
+        RefreshTime(6, 0),
+        RefreshTime(12, 0),
+        RefreshTime(18, 0),
+        RefreshTime(0, 0)
+    )
+
     fun toggleNightMode(enabled: Boolean) {
         viewModelScope.launch {
             setNightModeUseCase(enabled)
@@ -123,10 +130,11 @@ class AccountViewModel @Inject constructor(
 
     fun setDailyRefreshSettings(enabled: Boolean, times: List<RefreshTime>) {
         viewModelScope.launch {
-            setDailyRefreshSettingsUseCase(enabled, times)
+            val finalTimes = if (times.isEmpty()) defaultRefreshTimes else times
+            setDailyRefreshSettingsUseCase(enabled, finalTimes)
             if (refreshStrategy.value == "DAILY") {
                 if (enabled) {
-                    Work2Scheduler.scheduleDailyRssRefreshes(application, times)
+                    Work2Scheduler.scheduleDailyRssRefreshes(application, finalTimes)
                 } else {
                     Work2Scheduler.cancelAllDailyRefreshes(application)
                 }
@@ -139,10 +147,12 @@ class AccountViewModel @Inject constructor(
             setRefreshStrategyUseCase(strategy)
             // Re-schedule based on new strategy
             if (strategy == "DAILY") {
-                WorkScheduler.cancelRefresh(application) // Need to add this
-                if (dailyRefreshSettings.value.enabled) {
-                    Work2Scheduler.scheduleDailyRssRefreshes(application, dailyRefreshSettings.value.times)
-                }
+                WorkScheduler.cancelRefresh(application)
+                val currentSettings = dailyRefreshSettings.value
+                val finalTimes = if (currentSettings.times.isEmpty()) defaultRefreshTimes else currentSettings.times
+                // Always enable when switching to DAILY strategy
+                setDailyRefreshSettingsUseCase(true, finalTimes)
+                Work2Scheduler.scheduleDailyRssRefreshes(application, finalTimes)
             } else {
                 Work2Scheduler.cancelAllDailyRefreshes(application)
                 WorkScheduler.scheduleRssRefresh(application, refreshInterval.value)
