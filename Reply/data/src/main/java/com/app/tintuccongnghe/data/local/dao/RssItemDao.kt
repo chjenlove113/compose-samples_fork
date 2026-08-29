@@ -33,13 +33,13 @@ interface RssItemDao {
     @Query("SELECT * FROM rss_items WHERE isFavorite = 1 ORDER BY pubDate DESC")
     fun getFavoriteItemsPaging(): androidx.paging.PagingSource<Int, RssItemEntity>
 
-    @Query("SELECT * FROM rss_items ORDER BY pubDate DESC LIMIT 8")
+    @Query("SELECT * FROM rss_items ORDER BY pubDate DESC LIMIT 20")
     suspend fun getLatestRssItems(): List<RssItemEntity>
 
     @Query("SELECT * FROM rss_items ORDER BY pubDate DESC LIMIT 20")
     fun getLatestRssItemsFlow(): Flow<List<RssItemEntity>>
 
-    @Query("SELECT * FROM rss_items WHERE siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind ORDER BY pubDate DESC LIMIT 8")
+    @Query("SELECT * FROM rss_items WHERE siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind ORDER BY pubDate DESC LIMIT 20")
     suspend fun getLatestRssItemsForSite(siteId: Int, siteGroup: String, siteKind: String): List<RssItemEntity>
 
     @Query("DELETE FROM rss_items")

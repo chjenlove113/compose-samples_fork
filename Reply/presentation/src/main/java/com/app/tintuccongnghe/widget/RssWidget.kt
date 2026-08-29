@@ -84,7 +84,7 @@ class RssWidget : GlanceAppWidget() {
         val rssItemDao = db.rssItemDao()
 
         // 1. Fetch sites and auth status once (fast queries)
-        val allSites = siteDao.getAllSites().filter { it.GROUP == "1" }.take(9) // Limit sites to 3 rows
+        val allSites = siteDao.getAllSites().filter { it.GROUP == "1" }
         val isLoggedIn = authDao.getAuthInfoDirect() != null
 
         provideContent {
