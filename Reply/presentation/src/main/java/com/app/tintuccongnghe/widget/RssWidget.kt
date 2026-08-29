@@ -4,11 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ColorFilter
@@ -49,12 +44,10 @@ import androidx.glance.text.TextStyle
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.glance.currentState
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.AppUserSiteEntity
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import com.app.tintuccongnghe.presentation.R
-import com.app.tintuccongnghe.work.WorkScheduler
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -85,27 +78,26 @@ class RssWidget : GlanceAppWidget() {
             WidgetEntryPoint::class.java
         )
         
-        val authDao = entryPoint.appDatabase().authDao()
-        val siteDao = entryPoint.appDatabase().appUserSiteDao()
-        val rssItemDao = entryPoint.appDatabase().rssItemDao()
-        
-        // Fetch sites once during setup
-        val allSites = siteDao.getAllSites().filter { it.GROUP == "1" }
+        val db = entryPoint.appDatabase()
+        val authDao = db.authDao()
+        val siteDao = db.appUserSiteDao()
+        val rssItemDao = db.rssItemDao()
+
+        // 1. Fetch sites and auth status once (fast queries)
+        val allSites = siteDao.getAllSites().filter { it.GROUP == "1" }.take(9) // Limit sites to 3 rows
+        val isLoggedIn = authDao.getAuthInfoDirect() != null
 
         provideContent {
-            val prefs = currentState<Preferences>()
+            // 2. Reactively read current state inside provideContent
+            // This ensures the UI updates immediately when updateAppWidgetState is called
+            val prefs = androidx.glance.currentState<Preferences>()
             val selectedSiteId = prefs[RssWidgetPrefs.SelectedSiteIdKey]
             val selectedSiteGroup = prefs[RssWidgetPrefs.SelectedSiteGroupKey]
             val selectedSiteKind = prefs[RssWidgetPrefs.SelectedSiteKindKey]
 
-            // State to hold items for the current tab and auth status
-            var items by remember { mutableStateOf<List<RssItemEntity>>(emptyList()) }
-            var isLoggedIn by remember { mutableStateOf(true) }
-
-            // Reactive data loading: Re-query Room whenever the selected tab changes
-            LaunchedEffect(selectedSiteId, selectedSiteGroup, selectedSiteKind) {
-                isLoggedIn = authDao.getAuthInfoDirect() != null
-                items = if (selectedSiteId != null && selectedSiteGroup != null && selectedSiteKind != null) {
+            // 3. Use produceState to fetch items without blocking composition
+            val itemsState = androidx.compose.runtime.produceState<List<RssItemEntity>>(initialValue = emptyList(), selectedSiteId, selectedSiteGroup, selectedSiteKind) {
+                value = if (selectedSiteId != null && selectedSiteGroup != null && selectedSiteKind != null) {
                     rssItemDao.getLatestRssItemsForSite(selectedSiteId, selectedSiteGroup, selectedSiteKind)
                 } else {
                     rssItemDao.getLatestRssItems()
@@ -113,7 +105,7 @@ class RssWidget : GlanceAppWidget() {
             }
 
             RssWidgetContent(
-                items = items,
+                items = itemsState.value,
                 sites = allSites,
                 selectedSiteId = selectedSiteId,
                 isLoggedIn = isLoggedIn
@@ -170,31 +162,51 @@ class RssWidget : GlanceAppWidget() {
                 }
 
                 // Tabs
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth().padding(bottom = 12.dp),
-                    verticalAlignment = Alignment.Vertical.CenterVertically
-                ) {
-                    TabItem(
-                        text = "Tất cả",
-                        isSelected = selectedSiteId == null,
-                        onClick = actionRunCallback<SelectSiteActionCallback>(
-                            parameters = actionParametersOf()
-                        )
-                    )
+                Column(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                    val allTabItems = listOf<AppUserSiteEntity?>(null) + sites
+                    val chunks = allTabItems.chunked(3)
                     
-                    sites.take(3).forEach { site ->
-                        Spacer(modifier = GlanceModifier.width(4.dp))
-                        TabItem(
-                            text = site.Name,
-                            isSelected = selectedSiteId == site.Id,
-                            onClick = actionRunCallback<SelectSiteActionCallback>(
-                                parameters = actionParametersOf(
-                                    RssWidgetPrefs.SiteIdParam to site.Id,
-                                    RssWidgetPrefs.SiteGroupParam to site.GROUP,
-                                    RssWidgetPrefs.SiteKindParam to site.Kind
-                                )
-                            )
-                        )
+                    chunks.forEach { chunk ->
+                        Row(
+                            modifier = GlanceModifier.fillMaxWidth().padding(bottom = 4.dp),
+                            verticalAlignment = Alignment.Vertical.CenterVertically
+                        ) {
+                            chunk.forEachIndexed { index, site ->
+                                if (index > 0) {
+                                    Spacer(modifier = GlanceModifier.width(4.dp))
+                                }
+                                Box(modifier = GlanceModifier.defaultWeight()) {
+                                    if (site == null) {
+                                        TabItem(
+                                            text = "Tất cả",
+                                            isSelected = selectedSiteId == null,
+                                            onClick = actionRunCallback<SelectSiteActionCallback>(
+                                                parameters = actionParametersOf()
+                                            )
+                                        )
+                                    } else {
+                                        TabItem(
+                                            text = site.Name,
+                                            isSelected = selectedSiteId == site.Id,
+                                            onClick = actionRunCallback<SelectSiteActionCallback>(
+                                                parameters = actionParametersOf(
+                                                    RssWidgetPrefs.SiteIdParam to site.Id,
+                                                    RssWidgetPrefs.SiteGroupParam to site.GROUP,
+                                                    RssWidgetPrefs.SiteKindParam to site.Kind
+                                                )
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                            // Fill remaining space if chunk is not full
+                            if (chunk.size < 3) {
+                                Spacer(modifier = GlanceModifier.defaultWeight())
+                                if (chunk.size < 2) {
+                                    Spacer(modifier = GlanceModifier.defaultWeight())
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -258,6 +270,7 @@ class RssWidget : GlanceAppWidget() {
     ) {
         Box(
             modifier = GlanceModifier
+                .fillMaxWidth()
                 .background(if (isSelected) GlanceTheme.colors.primary else GlanceTheme.colors.surfaceVariant)
                 .cornerRadius(12.dp)
                 .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -270,7 +283,8 @@ class RssWidget : GlanceAppWidget() {
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                     color = if (isSelected) GlanceTheme.colors.onPrimary else GlanceTheme.colors.onSurfaceVariant
                 ),
-                maxLines = 1
+                maxLines = 1,
+                modifier = GlanceModifier.fillMaxWidth()
             )
         }
     }
@@ -352,6 +366,8 @@ class SelectSiteActionCallback : ActionCallback {
                 prefs.remove(RssWidgetPrefs.SelectedSiteKindKey)
             }
         }
+        // In Glance 1.1.0+, updateAppWidgetState should automatically trigger an update.
+        // We'll call update() once just to be sure, but we won't block the action on it if possible.
         RssWidget().update(context, glanceId)
     }
 }
@@ -362,6 +378,6 @@ class RefreshActionCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        WorkScheduler.refreshRssNow(context)
+        RssWidget().update(context, glanceId)
     }
 }
