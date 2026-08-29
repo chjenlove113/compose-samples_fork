@@ -39,6 +39,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    packaging {
+        resources.excludes.add("rome-utils-2.1.0.jar")
+    }
 }
 
 dependencies {
@@ -74,4 +78,6 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.androidx.paging.compose)
+    implementation(libs.rometools.rome)
+    implementation(libs.rometools.modules)
 }

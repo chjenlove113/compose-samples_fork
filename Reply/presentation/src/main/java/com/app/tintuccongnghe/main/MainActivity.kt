@@ -220,7 +220,10 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(
-                        route = "screen_rss"
+                        route = "screen_rss",
+                        deepLinks = listOf(
+                            navDeepLink { uriPattern = "reply://rss_feed" }
+                        )
                     ) {
                         ShowHomeRSSFeedScreen(
                             onNavigateToLogin = { navHost.navigate("login") },
@@ -443,6 +446,12 @@ class MainActivity : ComponentActivity() {
         if (intent?.data?.host == "login" || intent?.getStringExtra("navigate_route") == "login") {
             mainViewModel.setTargetRoute("login")
         }
+        
+        // Handle deep link link parameter
+        intent?.data?.getQueryParameter("link")?.let { link ->
+            mainViewModel.setRssItemJumpByLink(link)
+        }
+
         val rssItem = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent?.getParcelableExtra("rss_item", RssItemEntity::class.java)
         } else {

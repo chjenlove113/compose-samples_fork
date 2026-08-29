@@ -15,11 +15,13 @@ import com.app.tintuccongnghe.data.repository.NewsSiteRepository
 import com.app.tintuccongnghe.data.repository.NewsTagRepository
 import com.app.tintuccongnghe.data.repository.ShowHomeRepository
 import com.app.tintuccongnghe.data.repository.SettingsRepositoryImpl
+import com.app.tintuccongnghe.data.repository.RssRepositoryImpl
 import com.app.tintuccongnghe.domain.repository.IAppUserSiteRepository
 import com.app.tintuccongnghe.domain.repository.IAuthRepository
 import com.app.tintuccongnghe.domain.repository.INewsDetailRepository
 import com.app.tintuccongnghe.domain.repository.INewsSiteRepository
 import com.app.tintuccongnghe.domain.repository.INewsTagRepository
+import com.app.tintuccongnghe.domain.repository.IRssRepository
 import com.app.tintuccongnghe.domain.repository.ISettingsRepository
 import com.app.tintuccongnghe.domain.repository.IShowHomeRepository
 import dagger.Module
@@ -84,5 +86,17 @@ class RepositoryModule {
         appDatabase: AppDatabase
     ): IAppUserSiteRepository {
         return AppUserSiteRepositoryImpl(appUserSiteService, appDatabase)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRssRepository(
+        appDatabase: AppDatabase,
+        okHttpClient: okhttp3.OkHttpClient
+    ): IRssRepository {
+        return RssRepositoryImpl(
+            appDatabase,
+            okHttpClient
+        )
     }
 }

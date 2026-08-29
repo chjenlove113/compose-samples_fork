@@ -15,6 +15,9 @@ interface AppUserSiteDao {
     @Query("SELECT * FROM app_user_sites")
     suspend fun getAllSites(): List<AppUserSiteEntity>
 
+    @Query("SELECT * FROM app_user_sites")
+    fun getAllSitesFlow(): Flow<List<AppUserSiteEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(sites: List<AppUserSiteEntity>)
 

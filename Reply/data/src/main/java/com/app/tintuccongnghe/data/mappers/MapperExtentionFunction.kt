@@ -73,4 +73,38 @@ fun com.app.tintuccongnghe.data.local.entities.News.toNewsModel(): com.app.tintu
     )
 }
 
+fun com.app.tintuccongnghe.data.local.entities.RssItemEntity.toRssItem(): com.app.tintuccongnghe.domain.models.RssItem {
+    return com.app.tintuccongnghe.domain.models.RssItem(
+        title = title,
+        link = link,
+        description = description,
+        pubDate = pubDate,
+        siteId = siteId,
+        siteGroup = siteGroup,
+        siteKind = siteKind,
+        updDate = updDate,
+        content = content,
+        siteName = siteName,
+        imageUrl = imageUrl,
+        isFavorite = isFavorite
+    )
+}
+
+fun com.app.tintuccongnghe.domain.models.RssItem.toRssItemEntity(): com.app.tintuccongnghe.data.local.entities.RssItemEntity {
+    return com.app.tintuccongnghe.data.local.entities.RssItemEntity(
+        title = title,
+        link = link,
+        description = description,
+        pubDate = pubDate,
+        siteId = siteId,
+        siteGroup = siteGroup,
+        siteKind = siteKind,
+        updDate = updDate,
+        content = content,
+        siteName = siteName,
+        imageUrl = imageUrl,
+        isFavorite = isFavorite
+    )
+}
+
 

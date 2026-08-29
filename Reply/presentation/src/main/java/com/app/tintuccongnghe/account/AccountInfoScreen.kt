@@ -133,21 +133,6 @@ fun AccountInfoScreen(
                         }
                     )
                 }
-
-                SettingItem(
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    title = "Log Out",
-                    onClick = { showLogoutSheet = true },
-                    textColor = MaterialTheme.colorScheme.primary,
-                    iconColor = MaterialTheme.colorScheme.primary
-                )
-                SettingItem(
-                    icon = Icons.Default.DeleteForever,
-                    title = "Delete account",
-                    onClick = { showDeleteAccountSheet = true },
-                    textColor = MaterialTheme.colorScheme.error,
-                    iconColor = MaterialTheme.colorScheme.error
-                )
             }
 
             SettingSwitchItem(
@@ -164,7 +149,22 @@ fun AccountInfoScreen(
                 onValueChange = { viewModel.setFontScale(it) }
             )
 
-
+            if(authInfo != null){
+                SettingItem(
+                    icon = Icons.AutoMirrored.Filled.Logout,
+                    title = "Log Out",
+                    onClick = { showLogoutSheet = true },
+                    textColor = MaterialTheme.colorScheme.primary,
+                    iconColor = MaterialTheme.colorScheme.primary
+                )
+                SettingItem(
+                    icon = Icons.Default.DeleteForever,
+                    title = "Delete account",
+                    onClick = { showDeleteAccountSheet = true },
+                    textColor = MaterialTheme.colorScheme.error,
+                    iconColor = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 

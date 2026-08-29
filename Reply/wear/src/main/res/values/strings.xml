@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Reply Wear</string>
+    <string name="tile_label">Reply RSS</string>
+    <string name="tile_description">Show latest RSS items</string>
+</resources>

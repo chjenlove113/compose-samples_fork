@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.app.tintuccongnghe.domain.usecases.GetFontScaleUseCase
 import com.app.tintuccongnghe.domain.usecases.GetNightModeUseCase
 import com.app.tintuccongnghe.domain.usecases.SetFontScaleUseCase
+import com.app.tintuccongnghe.domain.usecases.GetRssItemByLinkUseCase
+import com.app.tintuccongnghe.data.mappers.toRssItemEntity
 import kotlinx.serialization.Serializable
 import com.app.tintuccongnghe.domain.models.News
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
@@ -30,7 +32,8 @@ data class RssJump(val siteId: Int, val siteGroup: String, val timestamp: Long)
 class MainViewModel @Inject constructor(
     getNightModeUseCase: GetNightModeUseCase,
     getFontScaleUseCase: GetFontScaleUseCase,
-    private val setFontScaleUseCase: SetFontScaleUseCase
+    private val setFontScaleUseCase: SetFontScaleUseCase,
+    private val getRssItemByLinkUseCase: GetRssItemByLinkUseCase
 ) : ViewModel() {
 
     private val _rssJump = MutableStateFlow<RssJump?>(null)
@@ -83,6 +86,17 @@ class MainViewModel @Inject constructor(
 
     fun clearRssItemJump() {
         _rssItemJump.value = null
+    }
+
+    fun setRssItemJumpByLink(link: String) {
+        viewModelScope.launch {
+            val item = getRssItemByLinkUseCase(link)
+            if (item != null) {
+                val entity = item.toRssItemEntity()
+                _rssItemJump.value = entity
+                _rssJump.update { RssJump(entity.siteId, entity.siteGroup, System.currentTimeMillis()) }
+            }
+        }
     }
 
     val nightMode: StateFlow<Boolean> = getNightModeUseCase()

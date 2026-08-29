@@ -24,6 +24,9 @@ android {
         targetSdk = 33
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         //consumerProguardFiles("consumer-rules.pro")
+        // Add or fix these two lines:
+        versionCode = 10  // Must be a whole integer
+        versionName = "1.1.8" // Must be a string
     }
 
     buildTypes {
@@ -134,6 +137,7 @@ dependencies {
     implementation(libs.androidx.glance)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
+    implementation(libs.play.services.wearable)
 
     // Import the BoM for the Firebase platform
     implementation(platform("com.google.firebase:firebase-bom:34.15.0"))
