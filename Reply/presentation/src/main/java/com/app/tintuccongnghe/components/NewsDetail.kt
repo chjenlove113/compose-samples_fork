@@ -77,7 +77,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -599,10 +601,10 @@ fun NewsDetailScreen(
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
-                    if (child.MediaUrl.isNotEmpty()) {
+                    if ((child.MediaUrl?.toString() ?: "").isNotEmpty()) {
                         if (child.Kind == "2") {
                             VideoPlayer(
-                                videoUrl = child.MediaUrl,
+                                videoUrl = child.MediaUrl!!,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         } else {
@@ -617,11 +619,9 @@ fun NewsDetailScreen(
                             )
                         }
                     }
-                    if (child.Content.isNotEmpty()) {
-                        Text(
-                            text = child.Content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                    if ((child.Content?.toString() ?: "").isNotEmpty()) {
+                        HtmlTextView(
+                            htmlString = child.Content!!,
                         )
                     }
                 }
@@ -632,4 +632,12 @@ fun NewsDetailScreen(
 
 private fun Color.toHtmlHex(): String {
     return String.format("#%06X", (0xFFFFFF and this.toArgb()))
+}
+
+@Composable
+fun HtmlTextView(htmlString: String) {
+    // Automatically parses HTML tags into a styled Compose AnnotatedString
+    val annotatedText = AnnotatedString.fromHtml(htmlString)
+
+    Text(text = annotatedText)
 }

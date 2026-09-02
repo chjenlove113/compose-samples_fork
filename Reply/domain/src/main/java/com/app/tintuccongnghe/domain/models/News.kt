@@ -43,8 +43,8 @@ data class News(
 data class NewsChildItem(
     val NewsId : Int = 0,
     val Seq : Int = 0,
-    val MediaUrl : String = "",
-    val Content : String = "",
+    val MediaUrl : String? = null,
+    val Content : String? = null,
     val TextColor:String? = null,
     val BackgroundColor:String? = null,
     val BackgroundColor2:String? = null,

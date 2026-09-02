@@ -1,7 +1,7 @@
 package com.example.reply
 
-import com.app.tintuccongnghe.presentation.NewsApplication
+import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 
 //@HiltAndroidApp
-//class ReplyApplication : NewsApplication()
+class ReplyApplication : Application()

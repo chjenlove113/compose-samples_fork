@@ -21,17 +21,18 @@ android {
     defaultConfig {
         applicationId = "com.app.tintuccongnghe"
         minSdk = 23
-        targetSdk = 33
+        targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         //consumerProguardFiles("consumer-rules.pro")
         // Add or fix these two lines:
-        versionCode = 10  // Must be a whole integer
-        versionName = "1.1.8" // Must be a string
+        versionCode = 13  // Must be a whole integer
+        versionName = "1.1.9" // Must be a string
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

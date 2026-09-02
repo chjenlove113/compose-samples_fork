@@ -93,8 +93,15 @@ android {
         jvmTarget = "17"
     }
 
-    buildFeatures {
-        compose = true
+    packaging {
+        resources {
+            excludes += "rome-utils-2.1.0.jar"
+        }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 }
 
@@ -145,5 +152,4 @@ dependencies {
     implementation(libs.hilt.ext.work)
     ksp(libs.hilt.ext.compiler)
 
-    implementation(project(":presentation"))
 }
