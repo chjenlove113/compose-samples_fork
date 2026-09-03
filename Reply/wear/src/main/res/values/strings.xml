@@ -3,4 +3,14 @@
     <string name="app_name">Reply Wear</string>
     <string name="tile_label">Reply RSS</string>
     <string name="tile_description">Show latest RSS items</string>
+    <string name="rss_sites">RSS sites</string>
+    <string name="all_news">All news</string>
+    <string name="latest_news_from_all_sites">Latest stories from every site</string>
+    <string name="no_rss_sites">No RSS sites</string>
+    <string name="no_rss_items">No stories yet</string>
+    <string name="tap_to_refresh">Tap to refresh from your phone</string>
+    <string name="refresh">Refresh</string>
+    <string name="rss_feed">RSS feed</string>
+    <string name="opening_on_phone">Opening on phone…</string>
+    <string name="item_count">%1$d items</string>
 </resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Reply Wear</string>
+    <string name="tile_label">Reply RSS</string>
+    <string name="tile_description">Hiển thị tin RSS mới nhất</string>
+    <string name="rss_sites">Nguồn tin RSS</string>
+    <string name="all_news">Tất cả</string>
+    <string name="latest_news_from_all_sites">Tin mới nhất từ mọi nguồn</string>
+    <string name="no_rss_sites">Chưa có nguồn tin RSS</string>
+    <string name="no_rss_items">Chưa có tin mới</string>
+    <string name="tap_to_refresh">Chạm để làm mới từ điện thoại</string>
+    <string name="refresh">Làm mới</string>
+    <string name="rss_feed">Nguồn RSS</string>
+    <string name="opening_on_phone">Đang mở trên điện thoại…</string>
+    <string name="item_count">%1$d tin</string>
+</resources>

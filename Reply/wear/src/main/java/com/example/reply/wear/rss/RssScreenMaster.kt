@@ -1,41 +1,40 @@
 package com.example.reply.wear.rss
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
-import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
-import androidx.wear.compose.foundation.lazy.AutoCenteringParams
-import androidx.wear.compose.material3.AppScaffold
-import androidx.wear.compose.material3.Button
+import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.material3.CardDefaults
+import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.EdgeButtonSize
+import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
-import androidx.wear.compose.material3.TimeText
 import androidx.wear.compose.material3.TitleCard
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.lazy.transformedHeight
+import com.example.reply.wear.R
 
 @Composable
 fun RssScreenMaster(
     onAllClick: () -> Unit,
     onSiteClick: (Int, String, String, String) -> Unit,
-    viewModel: RssMasterViewModel = hiltViewModel()
+    viewModel: RssMasterViewModel = hiltViewModel(),
 ) {
     val sites by viewModel.uiState.collectAsStateWithLifecycle()
-    val scrollState = rememberScalingLazyListState()
+    val scrollState = rememberTransformingLazyColumnState()
+    val transformationSpec = rememberTransformationSpec()
 
     LaunchedEffect(Unit) {
         if (sites.isEmpty()) {
@@ -43,70 +42,85 @@ fun RssScreenMaster(
         }
     }
 
-    AppScaffold {
-        ScreenScaffold(
-            scrollState = scrollState,
-            timeText = { TimeText() }
-        ) {
-            ScalingLazyColumn(
-                state = scrollState,
-                modifier = Modifier.fillMaxSize(),
-                autoCentering = AutoCenteringParams(itemIndex = 0),
+    ScreenScaffold(
+        scrollState = scrollState,
+        edgeButton = {
+            EdgeButton(
+                onClick = viewModel::refresh,
+                buttonSize = EdgeButtonSize.Medium,
             ) {
-                item {
-                    Text(
-                        text = "RSS Sites",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                Text(stringResource(R.string.refresh))
+            }
+        },
+    ) { contentPadding ->
+        TransformingLazyColumn(
+            state = scrollState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = contentPadding,
+        ) {
+            item {
+                ListHeader(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec),
+                ) {
+                    Text(stringResource(R.string.rss_sites))
                 }
+            }
 
+            item {
+                TitleCard(
+                    onClick = onAllClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .transformedHeight(this, transformationSpec),
+                    transformation = SurfaceTransformation(transformationSpec),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        titleColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        subtitleColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                    title = { Text(stringResource(R.string.all_news)) },
+                    subtitle = { Text(stringResource(R.string.latest_news_from_all_sites)) },
+                )
+            }
+
+            if (sites.isEmpty()) {
                 item {
                     TitleCard(
-                        onClick = onAllClick,
-                        title = { Text("Tất cả") }
-                    ) {
-                        Text(
-                            text = "Tất cả tin mới nhất",
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
+                        onClick = viewModel::refresh,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec),
+                        transformation = SurfaceTransformation(transformationSpec),
+                        title = { Text(stringResource(R.string.no_rss_sites)) },
+                        subtitle = { Text(stringResource(R.string.tap_to_refresh)) },
+                    )
                 }
-
-                if (sites.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("No RSS sites")
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(onClick = { viewModel.refresh() }) {
-                                    Text("Refresh")
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    items(sites) { site ->
-                        TitleCard(
-                            onClick = { onSiteClick(site.Id, site.GROUP, site.Kind, site.Name) },
-                            title = { Text(site.Name) }
-                        ) {
+            } else {
+                items(sites, key = { it.Id }) { site ->
+                    TitleCard(
+                        onClick = { onSiteClick(site.Id, site.GROUP, site.Kind, site.Name) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .transformedHeight(this, transformationSpec),
+                        transformation = SurfaceTransformation(transformationSpec),
+                        title = {
                             Text(
-                                text = "${site.itemCount} items",
-                                style = MaterialTheme.typography.labelSmall
+                                text = site.Name,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                        }
-                    }
-                    item {
-                        Button(onClick = { viewModel.refresh() }) {
-                            Text("Refresh Sites")
-                        }
-                    }
+                        },
+                        subtitle = {
+                            Text(
+                                text = stringResource(R.string.item_count, site.itemCount),
+                                maxLines = 1,
+                            )
+                        },
+                    )
                 }
             }
         }

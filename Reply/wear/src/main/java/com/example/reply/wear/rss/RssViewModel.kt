@@ -37,7 +37,7 @@ class RssViewModel @Inject constructor(
     private val siteId: Int? = savedStateHandle.get<String>("siteId")?.toIntOrNull()
     private val siteGroup: String? = savedStateHandle["siteGroup"]
     private val siteKind: String? = savedStateHandle["siteKind"]
-    val siteName: String = savedStateHandle["siteName"] ?: "Tin tức"
+    val siteName: String = savedStateHandle["siteName"] ?: "News"
 
     val uiState: StateFlow<List<RssItem>> = (if (siteId != null && siteGroup != null && siteKind != null) {
         getRssItemsForSiteUseCase(siteId, siteGroup, siteKind)

@@ -16,55 +16,58 @@
 
 package com.example.reply.wear
 
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import android.net.Uri
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.wear.compose.material3.MaterialTheme
-import androidx.wear.compose.material3.Text
-import androidx.wear.compose.material3.AppScaffold
-import androidx.wear.compose.material3.ScreenScaffold
-import androidx.wear.compose.material3.TimeText
-import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.Alignment
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import com.example.reply.wear.rss.RssScreen
 import com.example.reply.wear.rss.RssScreenMaster
+import com.example.reply.wear.theme.ReplyWearTheme
 
 @Composable
 fun WearApp() {
-    MaterialTheme {
-        val navController = rememberSwipeDismissableNavController()
-        SwipeDismissableNavHost(
-            navController = navController,
-            startDestination = "rss_master"
-        ) {
-            composable("rss_master") {
-                RssScreenMaster(
-                    onAllClick = {
-                        navController.navigate("rss_details/all/all/all/Tất cả")
-                    },
-                    onSiteClick = { siteId, siteGroup, siteKind, siteName ->
-                        navController.navigate("rss_details/$siteId/$siteGroup/$siteKind/$siteName")
-                    }
-                )
-            }
-            composable(
-                route = "rss_details/{siteId}/{siteGroup}/{siteKind}/{siteName}",
-                arguments = listOf(
-                    navArgument("siteId") { type = NavType.StringType },
-                    navArgument("siteGroup") { type = NavType.StringType },
-                    navArgument("siteKind") { type = NavType.StringType },
-                    navArgument("siteName") { type = NavType.StringType }
-                )
+    ReplyWearTheme {
+        AppScaffold {
+            val navController = rememberSwipeDismissableNavController()
+            val allNews = Uri.encode(stringResource(R.string.all_news))
+
+            SwipeDismissableNavHost(
+                navController = navController,
+                startDestination = RSS_MASTER_ROUTE,
             ) {
-                RssScreen()
+                composable(RSS_MASTER_ROUTE) {
+                    RssScreenMaster(
+                        onAllClick = {
+                            navController.navigate("rss_details/all/all/all/$allNews")
+                        },
+                        onSiteClick = { siteId, siteGroup, siteKind, siteName ->
+                            navController.navigate(
+                                "rss_details/$siteId/${Uri.encode(siteGroup)}/" +
+                                    "${Uri.encode(siteKind)}/${Uri.encode(siteName)}"
+                            )
+                        },
+                    )
+                }
+                composable(
+                    route = RSS_DETAILS_ROUTE,
+                    arguments = listOf(
+                        navArgument("siteId") { type = NavType.StringType },
+                        navArgument("siteGroup") { type = NavType.StringType },
+                        navArgument("siteKind") { type = NavType.StringType },
+                        navArgument("siteName") { type = NavType.StringType },
+                    ),
+                ) {
+                    RssScreen()
+                }
             }
         }
     }
 }
+
+private const val RSS_MASTER_ROUTE = "rss_master"
+private const val RSS_DETAILS_ROUTE = "rss_details/{siteId}/{siteGroup}/{siteKind}/{siteName}"
