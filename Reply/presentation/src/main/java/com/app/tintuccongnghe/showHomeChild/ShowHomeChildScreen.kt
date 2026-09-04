@@ -157,8 +157,8 @@ fun ExploreContentChild(
     onTabSelected: (String) -> Unit = {},
     selectedNews: News? = null
 ) {
-    val itemsListHeader = allEventCategories.CategoryViewModel.LstNewsHeader
-    val appSiteCateByGroup = allEventCategories.CategoryViewModel.AppSiteCateByGroup
+    val itemsListHeader = allEventCategories.CategoryViewModel?.LstNewsHeader
+    val appSiteCateByGroup = allEventCategories.CategoryViewModel?.AppSiteCateByGroup
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
 //        item {

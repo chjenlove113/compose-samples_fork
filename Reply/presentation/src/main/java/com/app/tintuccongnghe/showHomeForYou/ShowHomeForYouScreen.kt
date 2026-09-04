@@ -294,7 +294,7 @@ fun ShowHomeForYouScreen(
                                 })
                             )
 
-                            data.data.CategoryViewModel.AppSiteCateByGroup?.forEach {
+                            data.data.CategoryViewModel?.AppSiteCateByGroup?.forEach {
                                 val appSite = ItemDetailSite(
                                     AppSite(it.Id, it.Slug, it.Key, it.Name, "", "", "", "")
                                 )

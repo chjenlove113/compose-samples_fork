@@ -25,8 +25,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         //consumerProguardFiles("consumer-rules.pro")
         // Add or fix these two lines:
-        versionCode = 13  // Must be a whole integer
-        versionName = "1.1.9" // Must be a string
+        versionCode = 14  // Must be a whole integer
+        versionName = "1.2.0" // Must be a string
     }
 
     buildTypes {

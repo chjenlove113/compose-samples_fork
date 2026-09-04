@@ -370,7 +370,7 @@ fun ExploreContent(
             // Latest posts header
             currentIndex++ // for stickyHeader { ... } at index 1
 
-            allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEach { category ->
+            allEventCategories.CategoryViewModel?.AppSiteCateByGroup?.forEach { category ->
                 val categoryNews = category.LstNews ?: emptyList()
                 if (categoryNews.isNotEmpty()) {
                     // ExploreHeader
@@ -483,7 +483,7 @@ fun ExploreContent(
             }
         }
 
-        allEventCategories.CategoryViewModel.AppSiteCateByGroup?.forEachIndexed { index, category ->
+        allEventCategories.CategoryViewModel?.AppSiteCateByGroup?.forEachIndexed { index, category ->
             val categoryNews = category.LstNews ?: emptyList()
             if (categoryNews.isNotEmpty()) {
                 stickyHeader {

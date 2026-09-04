@@ -5,7 +5,8 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 data class ShowHomeDataModel(
-    val CategoryViewModel : CategoryViewModel,
+    // Gson can legally produce null when the server omits this object or returns it as null.
+    val CategoryViewModel: CategoryViewModel?,
     val LstNewsHeader: ArrayList<News>?,
 ) : Parcelable
 

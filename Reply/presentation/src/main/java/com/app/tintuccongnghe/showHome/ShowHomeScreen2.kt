@@ -294,7 +294,7 @@ fun ShowHomeScreen2(
                                 })
                             )
 
-                            uiState.data.CategoryViewModel.AppSiteCateByGroup?.forEach {
+                            uiState.data.CategoryViewModel?.AppSiteCateByGroup?.forEach {
                                 val appSite = ItemDetailSite(
                                     AppSite(it.Id, it.Slug, it.Key, it.Name, "", "", "", "")
                                 )

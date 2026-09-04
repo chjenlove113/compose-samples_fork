@@ -58,4 +58,13 @@
     <string name="next_refresh">Next refresh: %1$s</string>
     <string name="items_count">Items: %1$d</string>
     <string name="go_to_rss">Go to RSS</string>
+    <string name="rss_widget_name">Latest news</string>
+    <string name="rss_widget_description">Recent stories from your RSS sources</string>
+    <string name="rss_widget_refresh">Refresh news</string>
+    <string name="rss_widget_all">All</string>
+    <string name="rss_widget_empty">No recent stories</string>
+    <string name="rss_widget_empty_hint">Refresh after syncing sources in the app</string>
+    <string name="rss_widget_login_required">Sign in to see your news</string>
+    <string name="rss_widget_sign_in">Sign in</string>
+    <string name="rss_widget_article_image">Article image</string>
 </resources>

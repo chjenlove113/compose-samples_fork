@@ -52,12 +52,12 @@ class ShowHomeRepository @Inject constructor(private  val showHomeService: ShowH
          return try {
              val currentPage = params.key ?: 1 // Start page
              val response = showHomeService.getShowHome(AppContants.app_Slug, currentPage, siteSlug, catSlug, userId)
-             val items =   response.CategoryViewModel.LstNewsItem
+             val items = response.CategoryViewModel?.LstNewsItem.orEmpty()
 
              LoadResult.Page(
-                 data = items as List<News>,
+                 data = items,
                  prevKey = if (currentPage == 1) null else currentPage - 1,
-                 nextKey = if (items?.isEmpty() ?: true) null else currentPage + 1)
+                 nextKey = if (items.isEmpty()) null else currentPage + 1)
 
 
          }catch (e: Exception) {
