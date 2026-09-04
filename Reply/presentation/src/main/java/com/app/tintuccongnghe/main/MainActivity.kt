@@ -36,6 +36,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navDeepLink
 import com.app.tintuccongnghe.newsTag.NewsTagRoute
+import com.app.tintuccongnghe.presentation.R
 import com.app.tintuccongnghe.showHomeRSS.ShowHomeRSSFeedScreen
 import com.app.tintuccongnghe.showHomeFavorite.ShowHomeFavoriteScreen
 import android.net.Uri
@@ -74,7 +75,10 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
@@ -104,6 +108,7 @@ enum class AppDestinations(
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
+    private var lastExitBackPressAt: Long? = null
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -143,6 +148,13 @@ class MainActivity : ComponentActivity() {
             val navHost = rememberNavController()
             val navBackStackEntry by navHost.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
+
+            BackHandler(
+                enabled = currentDestination?.route == "screen1" &&
+                    navHost.previousBackStackEntry == null
+            ) {
+                handleExitBackPress()
+            }
 
             val rssItemJump by mainViewModel.rssItemJump.collectAsStateWithLifecycle()
             LaunchedEffect(rssItemJump) {
@@ -496,6 +508,22 @@ class MainActivity : ComponentActivity() {
             val token = task.result
             Log.d("MainActivity", "FCM registration token: $token")
         }
+    }
+
+    private fun handleExitBackPress() {
+        val now = SystemClock.elapsedRealtime()
+        val previousPress = lastExitBackPressAt
+
+        if (previousPress != null && now - previousPress <= EXIT_CONFIRMATION_WINDOW_MILLIS) {
+            finish()
+        } else {
+            lastExitBackPressAt = now
+            Toast.makeText(this, R.string.press_back_again_to_exit, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private companion object {
+        const val EXIT_CONFIRMATION_WINDOW_MILLIS = 2_000L
     }
 }
 

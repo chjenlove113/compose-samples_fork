@@ -77,4 +77,5 @@
     <string name="rss_sync_result">%1$d of %2$d feeds synced • %3$d new stories</string>
     <string name="rss_sync_failed">RSS sync failed</string>
     <string name="rss_sync_failed_description">Could not refresh your RSS feeds</string>
+    <string name="press_back_again_to_exit">Press back again to exit</string>
 </resources>
