@@ -67,4 +67,14 @@
     <string name="rss_widget_login_required">Sign in to see your news</string>
     <string name="rss_widget_sign_in">Sign in</string>
     <string name="rss_widget_article_image">Article image</string>
+    <string name="rss_sync_channel_name">RSS sync</string>
+    <string name="rss_sync_channel_description">Progress for RSS syncs you start</string>
+    <string name="rss_sync_in_progress">Syncing RSS feeds</string>
+    <string name="rss_sync_preparing">Preparing feeds</string>
+    <string name="rss_sync_progress">%1$d of %2$d feeds • %3$s</string>
+    <string name="rss_sync_complete">RSS sync complete</string>
+    <string name="rss_sync_complete_with_errors">RSS sync finished with errors</string>
+    <string name="rss_sync_result">%1$d of %2$d feeds synced • %3$d new stories</string>
+    <string name="rss_sync_failed">RSS sync failed</string>
+    <string name="rss_sync_failed_description">Could not refresh your RSS feeds</string>
 </resources>

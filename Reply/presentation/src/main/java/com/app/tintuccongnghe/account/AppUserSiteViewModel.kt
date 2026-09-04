@@ -16,11 +16,13 @@ import com.app.tintuccongnghe.domain.usecases.CreateOrUpdateAppUserSiteUseCase
 import com.app.tintuccongnghe.domain.usecases.DeleteAppUserSiteUseCase
 import com.app.tintuccongnghe.domain.usecases.CopyAppUserSiteUseCase
 import com.app.tintuccongnghe.domain.usecases.RefreshAppUserSiteListUseCase
+import com.app.tintuccongnghe.notifications.RssSyncLiveUpdate
 import com.app.tintuccongnghe.utils.AppContants
 import com.rometools.rome.feed.synd.SyndFeed
 import com.rometools.rome.io.SyndFeedInput
 import com.rometools.rome.io.XmlReader
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +54,8 @@ class AppUserSiteViewModel @Inject constructor(
     private val getAuthInfoUseCase: GetAuthInfoUseCase,
     private val createOrUpdateAppUserSiteUseCase: CreateOrUpdateAppUserSiteUseCase,
     private val deleteAppUserSiteUseCase: DeleteAppUserSiteUseCase,
-    private val copyAppUserSiteUseCase: CopyAppUserSiteUseCase
+    private val copyAppUserSiteUseCase: CopyAppUserSiteUseCase,
+    private val rssSyncLiveUpdate: RssSyncLiveUpdate
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUserSiteUiState())
@@ -221,68 +224,86 @@ class AppUserSiteViewModel @Inject constructor(
     fun syncSite(site: AppUserSite) {
         viewModelScope.launch {
             _uiState.update { it.copy(syncingSiteIds = it.syncingSiteIds + site.Id) }
-            withContext(Dispatchers.IO) {
-                try {
+            val notificationSession = rssSyncLiveUpdate.start(
+                totalFeeds = 1,
+                feedName = site.Name,
+                syncKey = site.Id
+            )
+            var newItemCount = 0
+
+            try {
+                withContext(Dispatchers.IO) {
                     if (site.GROUP == "1" && site.Url.isNotEmpty()) {
                         val request = Request.Builder().url(site.Url).build()
                         okHttpClient.newCall(request).execute().use { response ->
                             val currentTime = System.currentTimeMillis()
                             val nextTime = currentTime + TimeUnit.MINUTES.toMillis(15)
 
-                            if (response.isSuccessful) {
-                                val input = SyndFeedInput()
-                                val feed: SyndFeed = input.build(XmlReader(response.body!!.byteStream()))
-                                val itemsToInsert = mutableListOf<RssItemEntity>()
-                                val totalItems = feed.entries.size
+                            check(response.isSuccessful) {
+                                "${response.code} ${response.message}"
+                            }
+                            val responseBody = checkNotNull(response.body) { "Empty RSS response" }
+                            val input = SyndFeedInput()
+                            val feed: SyndFeed = input.build(XmlReader(responseBody.byteStream()))
+                            val itemsToInsert = mutableListOf<RssItemEntity>()
+                            val totalItems = feed.entries.size
 
-                                val siteEntity = site.toEntity().copy(
-                                    lastRefreshTime = currentTime,
-                                    nextRefreshTime = nextTime,
-                                    itemCount = totalItems
-                                )
-                                appDatabase.appUserSiteDao().update(siteEntity)
+                            val siteEntity = site.toEntity().copy(
+                                lastRefreshTime = currentTime,
+                                nextRefreshTime = nextTime,
+                                itemCount = totalItems
+                            )
+                            appDatabase.appUserSiteDao().update(siteEntity)
 
-                                feed.entries.forEach { entry ->
-                                    val link = entry.link ?: ""
-                                    if (link.isNotEmpty()) {
-                                        val rssItemDao = appDatabase.rssItemDao()
-                                        val existingItem = rssItemDao.getItemByLink(link)
-                                        if (existingItem != null) {
-                                            rssItemDao.update(existingItem.copy(updDate = currentTime))
-                                        } else {
-                                            val contentValue = entry.contents?.firstOrNull()?.value
-                                                ?: entry.modules?.filterIsInstance<com.rometools.rome.feed.module.DCModule>()?.firstOrNull()?.description
-                                                ?: entry.description?.value
+                            feed.entries.forEach { entry ->
+                                val link = entry.link ?: ""
+                                if (link.isNotEmpty()) {
+                                    val rssItemDao = appDatabase.rssItemDao()
+                                    val existingItem = rssItemDao.getItemByLink(link)
+                                    if (existingItem != null) {
+                                        rssItemDao.update(existingItem.copy(updDate = currentTime))
+                                    } else {
+                                        val contentValue = entry.contents?.firstOrNull()?.value
+                                            ?: entry.modules?.filterIsInstance<com.rometools.rome.feed.module.DCModule>()?.firstOrNull()?.description
+                                            ?: entry.description?.value
 
-                                            itemsToInsert.add(
-                                                RssItemEntity(
-                                                    title = entry.title ?: "",
-                                                    link = link,
-                                                    description = entry.description?.value,
-                                                    pubDate = entry.publishedDate?.time,
-                                                    siteId = site.Id,
-                                                    siteGroup = site.GROUP,
-                                                    siteKind = site.Kind,
-                                                    updDate = currentTime,
-                                                    content = contentValue,
-                                                    siteName = site.Name
-                                                )
+                                        itemsToInsert.add(
+                                            RssItemEntity(
+                                                title = entry.title ?: "",
+                                                link = link,
+                                                description = entry.description?.value,
+                                                pubDate = entry.publishedDate?.time,
+                                                siteId = site.Id,
+                                                siteGroup = site.GROUP,
+                                                siteKind = site.Kind,
+                                                updDate = currentTime,
+                                                content = contentValue,
+                                                siteName = site.Name
                                             )
-                                        }
+                                        )
                                     }
                                 }
+                            }
 
-                                if (itemsToInsert.isNotEmpty()) {
-                                    appDatabase.rssItemDao().insertAll(itemsToInsert)
-                                }
+                            if (itemsToInsert.isNotEmpty()) {
+                                appDatabase.rssItemDao().insertAll(itemsToInsert)
+                                newItemCount = itemsToInsert.size
                             }
                         }
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
+                rssSyncLiveUpdate.update(notificationSession, 1, 1, site.Name)
+                rssSyncLiveUpdate.complete(notificationSession, 1, newItemCount)
+            } catch (cancellation: CancellationException) {
+                rssSyncLiveUpdate.cancel(notificationSession)
+                throw cancellation
+            } catch (error: Exception) {
+                error.printStackTrace()
+                rssSyncLiveUpdate.failed(notificationSession, error.localizedMessage)
+                _uiState.update { it.copy(error = error.localizedMessage) }
+            } finally {
+                _uiState.update { it.copy(syncingSiteIds = it.syncingSiteIds - site.Id) }
             }
-            _uiState.update { it.copy(syncingSiteIds = it.syncingSiteIds - site.Id) }
         }
     }
 }

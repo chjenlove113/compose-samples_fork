@@ -21,7 +21,7 @@ android {
     defaultConfig {
         applicationId = "com.app.tintuccongnghe"
         minSdk = 23
-        targetSdk = 36
+        targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         //consumerProguardFiles("consumer-rules.pro")
         // Add or fix these two lines:
