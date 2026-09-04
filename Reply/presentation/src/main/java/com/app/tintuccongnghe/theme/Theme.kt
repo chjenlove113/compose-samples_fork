@@ -6,7 +6,8 @@ import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -302,8 +303,9 @@ fun ContrastAwareReplyTheme(
         }
     }
 
-    MaterialTheme(
+    MaterialExpressiveTheme(
         colorScheme = replyColorScheme,
+        motionScheme = MotionScheme.expressive(),
         typography = replyTypography.scaled(fontScale),
         shapes = com.app.tintuccongnghe.theme.shapes,
         content = content

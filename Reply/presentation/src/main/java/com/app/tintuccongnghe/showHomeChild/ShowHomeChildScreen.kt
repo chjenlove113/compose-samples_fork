@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
@@ -228,7 +228,7 @@ fun DynamicTabLayoutScreen(
         val scope = rememberCoroutineScope()
 
         Column(modifier = Modifier.fillMaxSize()) {
-            ScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
+            PrimaryScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
                 tabDefinitions.forEachIndexed { index, tab ->
                     Tab(
                         selected = pagerState.currentPage == index,

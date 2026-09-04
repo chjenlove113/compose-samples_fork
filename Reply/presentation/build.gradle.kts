@@ -20,12 +20,12 @@ android {
 
     defaultConfig {
         applicationId = "com.app.tintuccongnghe"
-        minSdk = 23
+        minSdk = 24
         targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         //consumerProguardFiles("consumer-rules.pro")
         // Add or fix these two lines:
-        versionCode = 14  // Must be a whole integer
+        versionCode = 15  // Must be a whole integer
         versionName = "1.2.0" // Must be a string
     }
 
@@ -83,13 +83,11 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
 
-    implementation("androidx.compose.foundation:foundation:1.8.1")
+    implementation(libs.androidx.compose.foundation)
 
-    val composeBom = platform("androidx.compose:compose-bom:2025.02.00")
+    val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
     androidTestImplementation(composeBom)
-
-    implementation("androidx.compose.material3:material3")
 
     implementation("com.google.android.gms:play-services-ads:23.6.0")
 
@@ -114,7 +112,6 @@ dependencies {
 
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
 
-    implementation("androidx.compose.material:material:1.8.1")
     val nav_version = "2.9.0"
 
     implementation("androidx.navigation:navigation-compose:$nav_version")

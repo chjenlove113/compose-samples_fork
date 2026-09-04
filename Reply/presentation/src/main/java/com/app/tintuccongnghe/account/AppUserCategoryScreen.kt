@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.app.tintuccongnghe.account
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -70,7 +72,7 @@ fun AppUserCategoryScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 if (uiState.isLoading && group0Sites.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        LoadingIndicator()
                     }
                 } else if (uiState.error != null && group0Sites.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

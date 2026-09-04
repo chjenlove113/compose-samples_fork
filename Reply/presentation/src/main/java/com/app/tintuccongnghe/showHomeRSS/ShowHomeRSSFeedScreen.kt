@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.app.tintuccongnghe.showHomeRSS
 
 import androidx.activity.ComponentActivity
@@ -131,10 +133,7 @@ fun ShowHomeRSSFeedScreen(
 
     if (uiState.isLoading || uiState.isSyncing) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 4.dp
-            )
+            LoadingIndicator(color = MaterialTheme.colorScheme.primary)
         }
         return
     }

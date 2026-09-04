@@ -32,12 +32,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.Scaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.shapes
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -335,7 +334,7 @@ fun ShowHomeForYouScreen(
 
                         Column {
                             // Tab Row implementation - Use pagerState.currentPage directly to avoid feedback loops
-                            ScrollableTabRow(
+                            PrimaryScrollableTabRow(
                                 selectedTabIndex = pagerState.currentPage,
                                 edgePadding = pagePadding
                             ) {

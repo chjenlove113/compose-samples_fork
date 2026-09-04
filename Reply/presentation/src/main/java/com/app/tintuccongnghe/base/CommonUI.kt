@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.app.tintuccongnghe.base
 
 import android.util.Log
@@ -22,7 +24,7 @@ import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -77,7 +79,7 @@ fun ShowLoading() {
             .fillMaxHeight()
     ) {
         val contentDesc = stringResource(R.string.loading)
-        CircularProgressIndicator(modifier = Modifier
+        LoadingIndicator(modifier = Modifier
             .align(Alignment.Center)
             .semantics {
                 contentDescription = contentDesc

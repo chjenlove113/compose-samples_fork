@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.app.tintuccongnghe.account
 
 import androidx.compose.foundation.layout.*
@@ -150,7 +152,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (uiState.isLoading) {
-            CircularProgressIndicator()
+            LoadingIndicator()
         } else {
             Button(
                 onClick = {
@@ -366,7 +368,7 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         if (uiState.isLoading) {
-            CircularProgressIndicator()
+            LoadingIndicator()
         } else {
             Button(
                 onClick = {

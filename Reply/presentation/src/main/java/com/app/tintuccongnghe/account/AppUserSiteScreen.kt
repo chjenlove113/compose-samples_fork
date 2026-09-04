@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
 package com.app.tintuccongnghe.account
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -130,7 +132,7 @@ fun AppUserSiteScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 if (uiState.isLoading && nonGroup0Sites.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        LoadingIndicator()
                     }
                 } else if (uiState.error != null && nonGroup0Sites.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -322,9 +324,8 @@ fun SiteListItem(
                             modifier = Modifier.height(32.dp)
                         ) {
                             if (isSyncing) {
-                                CircularProgressIndicator(
+                                LoadingIndicator(
                                     modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
