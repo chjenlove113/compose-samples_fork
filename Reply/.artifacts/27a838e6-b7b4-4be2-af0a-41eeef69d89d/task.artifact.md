@@ -1,0 +1,3 @@
+- [x] Enable `kotlin-parcelize` in `:presentation/build.gradle.kts`
+- [x] Make `FavoriteItem` and its subclasses `Parcelable` in `ShowHomeFavoriteViewModel.kt`
+- [x] Verify the fix

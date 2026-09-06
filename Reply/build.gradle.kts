@@ -21,6 +21,17 @@ plugins {
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.parcelize) apply false
     alias(libs.plugins.compose) apply false
+    alias(libs.plugins.android.library) apply false
+    id("com.google.devtools.ksp") version "2.3.6" apply false
+
+    alias(libs.plugins.hilt) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+
+    // Make sure that you have the Google services Gradle plugin 4.4.1+ dependency
+    id("com.google.gms.google-services") version "4.5.0" apply false
+
+    // Add the dependency for the Crashlytics Gradle plugin
+    id("com.google.firebase.crashlytics") version "3.0.7" apply false
 }
 
 apply("${project.rootDir}/buildscripts/toml-updater-config.gradle")

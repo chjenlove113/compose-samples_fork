@@ -4,14 +4,14 @@
 #####
 [versions]
 accompanist = "0.37.0"
-androidGradlePlugin = "8.8.1"
+androidGradlePlugin = "9.3.0"
 androidx-activity-compose = "1.10.0"
 androidx-appcompat = "1.7.0"
-androidx-compose-bom = "2025.02.00"
+androidx-compose-bom = "2026.08.00"
 androidx-constraintlayout = "1.1.0"
 androidx-core-splashscreen = "1.0.1"
 androidx-corektx = "1.15.0"
-androidx-glance = "1.1.1"
+androidx-glance = "1.2.0"
 androidx-lifecycle = "2.8.2"
 androidx-lifecycle-compose = "2.8.7"
 androidx-lifecycle-runtime-compose = "2.8.7"
@@ -23,40 +23,67 @@ androidx-test-ext-junit = "1.2.1"
 androidx-test-ext-truth = "1.6.0"
 androidx-tv-foundation = "1.0.0-alpha11"
 androidx-tv-material = "1.0.0"
-androidx-wear-compose = "1.4.1"
+androidx-wear-compose = "1.6.2"
+androidx-wear-compose-material3 = "1.6.2"
+androidx-wear-remote-interactions = "1.2.0"
+androidx-wear-tiles = "1.5.0"
+androidx-wear-protolayout = "1.4.2"
+androidx-xr-compose-material3 = "1.0.0-alpha17"
+androidx-credentials = "1.3.0"
 androidx-window = "1.3.0"
-androidxHiltNavigationCompose = "1.2.0"
-androix-test-uiautomator = "2.3.0"
+facebook = "17.0.2"
+browser = "1.8.0"
+androidxHiltNavigationCompose = "1.3.0"
+androidx-test-uiautomator = "2.3.0"
 coil = "2.7.0"
+datastore = "1.1.2"
 # @keep
-compileSdk = "35"
+compileSdk = "37"
 coroutines = "1.10.1"
 google-maps = "18.2.0"
+googleid = "1.1.1"
 gradle-versions = "0.52.0"
-hilt = "2.55"
+hilt = "2.57.1"
 hiltExt = "1.2.0"
-horologist = "0.6.22"
+horologist = "0.7.15"
 # @pin When updating to AGP 7.4.0-alpha10 and up we can update this https://developer.android.com/studio/write/java8-support#library-desugaring-versions
-jdkDesugar = "1.2.2"
+jdkDesugar = "2.1.5"
 junit = "4.13.2"
-kotlin = "2.1.10"
+kotlin = "2.2.10"
 kotlinx-serialization-json = "1.7.3"
 kotlinx_immutable = "0.3.8"
-ksp = "2.1.10-1.0.30"
+ksp = "2.1.21-2.0.1"
 maps-compose = "3.1.1"
 # @keep
-minSdk = "21"
+minSdk = "23"
 okhttp = "4.12.0"
 play-services-wearable = "18.1.0"
 robolectric = "4.14.1"
 roborazzi = "1.42.0"
 rome = "2.1.0"
-room = "2.6.1"
+room = "2.8.4"
+work = "2.11.2"
 secrets = "2.0.1"
 # @keep
 targetSdk = "33"
 version-catalog-update = "0.8.5"
+material = "1.12.0"
+lifecycleViewmodelAndroid = "2.8.7"
 
+nav3Core = "1.1.0-rc01"
+lifecycleViewmodelNav3 = "2.10.0"
+kotlinxSerializationCore = "1.8.1"
+material3AdaptiveNav3 = "1.3.0-alpha09"
+
+androidx-paging-compose = "3.3.6"
+navigation3Runtime = "1.0.1"
+runtimeRetain = "1.10.5"
+adaptiveNavigation = "1.2.0"
+material3 = "1.5.0-alpha27"
+materialIconsCoreAndroid = "1.7.8"
+firebaseCommon = "22.1.0"
+media3 = "1.5.1"
+adaptive = "1.3.0"
 [libraries]
 accompanist-adaptive = { module = "com.google.accompanist:accompanist-adaptive", version.ref = "accompanist" }
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
@@ -88,8 +115,11 @@ androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling
 androidx-compose-ui-util = { module = "androidx.compose.ui:ui-util" }
 androidx-compose-ui-viewbinding = { module = "androidx.compose.ui:ui-viewbinding" }
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "androidx-constraintlayout" }
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidx-credentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidx-credentials" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-corektx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidx-core-splashscreen" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 androidx-glance = { module = "androidx.glance:glance", version.ref = "androidx-glance" }
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "androidx-glance" }
 androidx-glance-material3 = { module = "androidx.glance:glance-material3", version.ref = "androidx-glance" }
@@ -107,27 +137,42 @@ androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx",
 androidx-palette = { module = "androidx.palette:palette", version.ref = "androidx-palette" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+androidx-room-paging = { module = "androidx.room:room-paging", version.ref = "room" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidx-test" }
 androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidx-test-espresso" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-ext-junit" }
 androidx-test-ext-truth = { module = "androidx.test.ext:truth", version.ref = "androidx-test-ext-truth" }
 androidx-test-rules = { module = "androidx.test:rules", version.ref = "androidx-test" }
-androidx-test-runner = "androidx.test:runner:1.6.2"
-androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "androix-test-uiautomator" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test" }
+androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "androidx-test-uiautomator" }
 androidx-tv-foundation = { module = "androidx.tv:tv-foundation", version.ref = "androidx-tv-foundation" }
 androidx-tv-material = { module = "androidx.tv:tv-material", version.ref = "androidx-tv-material" }
 androidx-wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "androidx-wear-compose" }
 androidx-wear-compose-material = { module = "androidx.wear.compose:compose-material", version.ref = "androidx-wear-compose" }
 androidx-wear-compose-navigation = { module = "androidx.wear.compose:compose-navigation", version.ref = "androidx-wear-compose" }
+androidx-wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", version.ref = "androidx-wear-compose-material3" }
 androidx-wear-compose-ui-tooling = { module = "androidx.wear.compose:compose-ui-tooling", version.ref = "androidx-wear-compose" }
+androidx-wear-remoteinteractions = { module = "androidx.wear:wear-remote-interactions", version.ref = "androidx-wear-remote-interactions" }
+androidx-wear-tiles = { module = "androidx.wear.tiles:tiles", version.ref = "androidx-wear-tiles" }
+androidx-wear-protolayout = { module = "androidx.wear.protolayout:protolayout", version.ref = "androidx-wear-protolayout" }
+androidx-wear-protolayout-material = { module = "androidx.wear.protolayout:protolayout-material", version.ref = "androidx-wear-protolayout" }
+androidx-wear-protolayout-material3 = { module = "androidx.wear.protolayout:protolayout-material3", version.ref = "androidx-wear-protolayout" }
+androidx-wear-protolayout-expression = { module = "androidx.wear.protolayout:protolayout-expression", version.ref = "androidx-wear-protolayout" }
+androidx-xr-compose-material3 = { module = "androidx.xr.compose.material3:material3", version.ref = "androidx-xr-compose-material3" }
+horologist-tiles = { module = "com.google.android.horologist:horologist-tiles", version.ref = "horologist" }
 androidx-window = { module = "androidx.window:window", version.ref = "androidx-window" }
 androidx-window-core = { module = "androidx.window:window-core", version.ref = "androidx-window" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+hilt-ext-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltExt" }
 coil-kt-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 core-jdk-desugaring = { module = "com.android.tools:desugar_jdk_libs", version.ref = "jdkDesugar" }
 dagger-hiltandroidplugin = { module = "com.google.dagger:hilt-android-gradle-plugin", version.ref = "hilt" }
 googlemaps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "maps-compose" }
 googlemaps-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "google-maps" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
+facebook-login = { module = "com.facebook.android:facebook-login", version.ref = "facebook" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-android-testing = { module = "com.google.dagger:hilt-android-testing", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
@@ -156,6 +201,29 @@ roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose"
 roborazzi-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
 rometools-modules = { module = "com.rometools:rome-modules", version.ref = "rome" }
 rometools-rome = { module = "com.rometools:rome", version.ref = "rome" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-lifecycle-viewmodel-android = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-android", version.ref = "lifecycleViewmodelAndroid" }
+
+# Core Navigation 3 libraries
+androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "nav3Core" }
+androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "nav3Core" }
+
+# Optional add-on libraries
+androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycleViewmodelNav3" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinxSerializationCore" }
+
+androidx-material3-adaptive-navigation3 = { group = "androidx.compose.material3.adaptive", name = "adaptive-navigation3", version.ref = "material3AdaptiveNav3" }
+
+androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "androidx-paging-compose" }
+navigation3-runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "navigation3Runtime" }
+androidx-compose-runtime-retain = { group = "androidx.compose.runtime", name = "runtime-retain", version.ref = "runtimeRetain" }
+androidx-compose-adaptive-navigation = { group = "androidx.compose.material3.adaptive", name = "adaptive-navigation", version.ref = "adaptiveNavigation" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+androidx-compose-material-icons-core-android = { group = "androidx.compose.material", name = "material-icons-core-android", version.ref = "materialIconsCoreAndroid" }
+firebase-common = { group = "com.google.firebase", name = "firebase-common", version.ref = "firebaseCommon" }
+androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
+androidx-compose-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive", version.ref = "adaptive" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
@@ -172,3 +240,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secrets" }
 version-catalog-update = { id = "nl.littlerobots.version-catalog-update", version.ref = "version-catalog-update" }
+
+# Optional plugins
+
+

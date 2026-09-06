@@ -17,8 +17,9 @@ val snapshotVersion : String? = System.getenv("COMPOSE_SNAPSHOT_ID")
 
 pluginManagement {
     repositories {
-        gradlePluginPortal()
         google()
+        gradlePluginPortal()
+
         mavenCentral()
     }
 }
@@ -36,3 +37,9 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Reply"
 include(":app")
+include(":data")
+include(":domain")
+include(":presentation")
+include(":wear")
+//include(":buildSrcProj")
+include(":utils")

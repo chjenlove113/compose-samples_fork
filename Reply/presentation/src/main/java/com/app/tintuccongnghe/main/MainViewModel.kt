@@ -1,0 +1,121 @@
+package com.app.tintuccongnghe.main
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.app.tintuccongnghe.domain.usecases.GetFontScaleUseCase
+import com.app.tintuccongnghe.domain.usecases.GetNightModeUseCase
+import com.app.tintuccongnghe.domain.usecases.SetFontScaleUseCase
+import com.app.tintuccongnghe.domain.usecases.GetRssItemByLinkUseCase
+import com.app.tintuccongnghe.data.mappers.toRssItemEntity
+import kotlinx.serialization.Serializable
+import com.app.tintuccongnghe.domain.models.News
+import com.app.tintuccongnghe.data.local.entities.RssItemEntity
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@Serializable
+data class NewsNotificationPayload(
+    val news: News,
+    val tabKey: String? = null
+)
+
+data class RssJump(val siteId: Int, val siteGroup: String, val timestamp: Long)
+
+@HiltViewModel
+class MainViewModel @Inject constructor(
+    getNightModeUseCase: GetNightModeUseCase,
+    getFontScaleUseCase: GetFontScaleUseCase,
+    private val setFontScaleUseCase: SetFontScaleUseCase,
+    private val getRssItemByLinkUseCase: GetRssItemByLinkUseCase
+) : ViewModel() {
+
+    private val _rssJump = MutableStateFlow<RssJump?>(null)
+    val rssJump = _rssJump.asStateFlow()
+
+    private val _rssItemJump = MutableStateFlow<RssItemEntity?>(null)
+    val rssItemJump = _rssItemJump.asStateFlow()
+
+    private val _targetRoute = MutableStateFlow<String?>(null)
+    val targetRoute = _targetRoute.asStateFlow()
+
+    private val _selectedNews = MutableStateFlow<News?>(null)
+    val selectedNews = _selectedNews.asStateFlow()
+
+    private val _targetTab = MutableStateFlow<String?>(null)
+    val targetTab = _targetTab.asStateFlow()
+
+    fun setTargetRoute(route: String?) {
+        _targetRoute.value = route
+    }
+
+    fun clearTargetRoute() {
+        _targetRoute.value = null
+    }
+
+    fun selectNews(news: News?, tabKey: String? = null) {
+        _selectedNews.value = news
+        _targetTab.value = tabKey
+    }
+
+    fun clearTargetTab() {
+        _targetTab.value = null
+    }
+
+    fun setTargetTab(tabKey: String?) {
+        _targetTab.value = tabKey
+    }
+
+    fun setRssJump(siteId: Int, siteGroup: String) {
+        _rssJump.update { RssJump(siteId, siteGroup, System.currentTimeMillis()) }
+    }
+
+    fun clearRssJump() {
+        _rssJump.update { null }
+    }
+
+    fun setRssItemJump(item: RssItemEntity?) {
+        _rssItemJump.value = item
+    }
+
+    fun clearRssItemJump() {
+        _rssItemJump.value = null
+    }
+
+    fun setRssItemJumpByLink(link: String) {
+        viewModelScope.launch {
+            val item = getRssItemByLinkUseCase(link)
+            if (item != null) {
+                val entity = item.toRssItemEntity()
+                _rssItemJump.value = entity
+                _rssJump.update { RssJump(entity.siteId, entity.siteGroup, System.currentTimeMillis()) }
+            }
+        }
+    }
+
+    val nightMode: StateFlow<Boolean> = getNightModeUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    val fontScale: StateFlow<Float> = getFontScaleUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 1.0f
+        )
+
+    fun setFontScale(scale: Float) {
+        viewModelScope.launch {
+            setFontScaleUseCase(scale)
+        }
+    }
+}
