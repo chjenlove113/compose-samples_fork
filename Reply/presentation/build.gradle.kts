@@ -136,6 +136,7 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
     implementation(libs.play.services.wearable)
+    implementation(libs.androidx.xr.compose.material3)
 
     // Import the BoM for the Firebase platform
     implementation(platform("com.google.firebase:firebase-bom:34.15.0"))

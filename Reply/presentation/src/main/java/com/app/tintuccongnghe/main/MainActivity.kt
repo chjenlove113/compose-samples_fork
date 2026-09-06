@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -50,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -81,6 +83,9 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.xr.compose.material3.EnableXrComponentOverrides
+import androidx.xr.compose.material3.ExperimentalMaterial3XrApi
+import androidx.xr.compose.material3.SpaceToggleButton
 import com.google.firebase.messaging.FirebaseMessaging
 
 private sealed interface TopLevelRoute1 {
@@ -121,7 +126,11 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("RestrictedApi")
-    @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+    @OptIn(
+        ExperimentalLayoutApi::class,
+        ExperimentalMaterial3Api::class,
+        ExperimentalMaterial3XrApi::class,
+    )
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -129,9 +138,12 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
         askNotificationPermission()
         initFcm()
+        val isXrDevice = packageManager.hasSystemFeature(XR_SPATIAL_FEATURE)
+        val startDestination = if (isXrDevice) "screen_rss" else "screen1"
 
         //enableEdgeToEdge()
         setContent {
+            EnableXrComponentOverrides {
             val nightMode by mainViewModel.nightMode.collectAsStateWithLifecycle()
             val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
 
@@ -150,7 +162,7 @@ class MainActivity : ComponentActivity() {
             val currentDestination = navBackStackEntry?.destination
 
             BackHandler(
-                enabled = currentDestination?.route == "screen1" &&
+                enabled = currentDestination?.route == startDestination &&
                     navHost.previousBackStackEntry == null
             ) {
                 handleExitBackPress()
@@ -172,6 +184,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.TopEnd,
+            ) {
             NavigationSuiteScaffold(
                 navigationSuiteItems = navigationSuiteItems(currentDestination, navHost)
 
@@ -197,7 +213,7 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navHost,
-                    startDestination = "screen1"
+                    startDestination = startDestination
                 ) {
                     composable(
                         route = "screen1"
@@ -446,6 +462,13 @@ class MainActivity : ComponentActivity() {
 
 
             }
+            if (isXrDevice) {
+                SpaceToggleButton(
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            }
+            }
         }
     }
 
@@ -524,6 +547,7 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val EXIT_CONFIRMATION_WINDOW_MILLIS = 2_000L
+        const val XR_SPATIAL_FEATURE = "android.software.xr.api.spatial"
     }
 }
 
