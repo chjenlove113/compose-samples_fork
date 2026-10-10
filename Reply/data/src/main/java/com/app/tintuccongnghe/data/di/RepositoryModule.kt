@@ -2,6 +2,7 @@ package com.app.tintuccongnghe.data.di
 
 import com.app.tintuccongnghe.data.api.AppUserSiteService
 import com.app.tintuccongnghe.data.api.AuthService
+import com.app.tintuccongnghe.data.api.HtmlScrapingService
 import com.app.tintuccongnghe.data.api.NewsDetailService
 import com.app.tintuccongnghe.data.api.NewsSiteService
 import com.app.tintuccongnghe.data.api.NewsTagService
@@ -13,6 +14,7 @@ import com.app.tintuccongnghe.data.repository.AuthRepositoryImpl
 import com.app.tintuccongnghe.data.repository.NewsDetailRepositoryImpl
 import com.app.tintuccongnghe.data.repository.NewsSiteRepository
 import com.app.tintuccongnghe.data.repository.NewsTagRepository
+import com.app.tintuccongnghe.data.repository.NewsScrapingRepositoryImpl
 import com.app.tintuccongnghe.data.repository.ShowHomeRepository
 import com.app.tintuccongnghe.data.repository.SettingsRepositoryImpl
 import com.app.tintuccongnghe.data.repository.RssRepositoryImpl
@@ -21,9 +23,11 @@ import com.app.tintuccongnghe.domain.repository.IAuthRepository
 import com.app.tintuccongnghe.domain.repository.INewsDetailRepository
 import com.app.tintuccongnghe.domain.repository.INewsSiteRepository
 import com.app.tintuccongnghe.domain.repository.INewsTagRepository
+import com.app.tintuccongnghe.domain.repository.INewsScrapingRepository
 import com.app.tintuccongnghe.domain.repository.IRssRepository
 import com.app.tintuccongnghe.domain.repository.ISettingsRepository
 import com.app.tintuccongnghe.domain.repository.IShowHomeRepository
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -98,5 +102,15 @@ class RepositoryModule {
             appDatabase,
             okHttpClient
         )
+    }
+
+    @Provides
+    @Singleton
+    fun provideNewsScrapingRepository(
+        htmlScrapingService: HtmlScrapingService,
+        firestore: FirebaseFirestore,
+        appDatabase: AppDatabase
+    ): INewsScrapingRepository {
+        return NewsScrapingRepositoryImpl(htmlScrapingService, firestore, appDatabase)
     }
 }

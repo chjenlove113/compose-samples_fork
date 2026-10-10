@@ -93,6 +93,7 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.coil.kt.compose)
+    implementation("com.google.guava:guava:33.3.1-android")
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.compose.ui.tooling.preview)

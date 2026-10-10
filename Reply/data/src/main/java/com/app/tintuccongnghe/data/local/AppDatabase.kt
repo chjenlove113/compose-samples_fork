@@ -10,6 +10,7 @@ import com.app.tintuccongnghe.data.local.dao.NewsTagDao
 import com.app.tintuccongnghe.data.local.dao.AuthDao
 import com.app.tintuccongnghe.data.local.dao.AppUserSiteDao
 import com.app.tintuccongnghe.data.local.dao.RssItemDao
+import com.app.tintuccongnghe.data.local.dao.ScrapedNewsDao
 import com.app.tintuccongnghe.data.local.entities.AuthEntity
 import com.app.tintuccongnghe.data.local.entities.News
 import com.app.tintuccongnghe.data.local.entities.News_Site
@@ -18,9 +19,23 @@ import com.app.tintuccongnghe.data.local.entities.SavedTagSlug
 import com.app.tintuccongnghe.data.local.entities.AppUserSiteEntity
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import com.app.tintuccongnghe.data.local.entities.NotificationEntity
+import com.app.tintuccongnghe.data.local.entities.ScrapedNewsEntity
 import com.app.tintuccongnghe.data.local.dao.NotificationDao
 
-@Database(entities = [News_Tag::class, News_Site::class, News::class, AuthEntity::class, SavedTagSlug::class, AppUserSiteEntity::class, RssItemEntity::class, NotificationEntity::class], version = 15)
+@Database(
+    entities = [
+        News_Tag::class,
+        News_Site::class,
+        News::class,
+        AuthEntity::class,
+        SavedTagSlug::class,
+        AppUserSiteEntity::class,
+        RssItemEntity::class,
+        NotificationEntity::class,
+        ScrapedNewsEntity::class
+    ],
+    version = 16
+)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun newsTagDao(): NewsTagDao
@@ -30,4 +45,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appUserSiteDao(): AppUserSiteDao
     abstract fun rssItemDao(): RssItemDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun scrapedNewsDao(): ScrapedNewsDao
 }
