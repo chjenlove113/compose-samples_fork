@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rss_widget_name">Tin mới nhất</string>
+    <string name="rss_widget_description">Tin mới từ các nguồn RSS của bạn</string>
+    <string name="rss_widget_refresh">Làm mới tin tức</string>
+    <string name="rss_widget_all">Tất cả</string>
+    <string name="rss_widget_empty">Chưa có tin mới</string>
+    <string name="rss_widget_empty_hint">Làm mới sau khi đồng bộ nguồn tin trong ứng dụng</string>
+    <string name="rss_widget_login_required">Đăng nhập để xem tin tức</string>
+    <string name="rss_widget_sign_in">Đăng nhập</string>
+    <string name="rss_widget_article_image">Ảnh bài viết</string>
+</resources>
