@@ -9,37 +9,46 @@ object HtmlParserEngine {
     fun parse(html: String, rules: List<ParserRule>): List<NewsItem> {
         val sortedRules = rules.sortedBy { it.stt }
         
-        // Step 3: Find CONTAINER rule (enumNews == 0)
-        val containerRule = sortedRules.find { it.enumNews == EnumNews.CONTAINER.value } ?: return emptyList()
-        
-        val containerRegex = try {
-            Regex(containerRule.strRegex)
-        } catch (e: Exception) {
-            return emptyList()
-        }
+        // Find all CONTAINER rules (enumNews == 0) sorted by stt
+        val containerRules = sortedRules.filter { it.enumNews == EnumNews.CONTAINER.value }
+        //if (containerRules.isEmpty()) return emptyList()
 
-        val itemHtmlList = if (containerRule.isMatches) {
-            containerRegex.findAll(html).map { match ->
-                val groups = match.groups
-                val pos = containerRule.groupPos
-                if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
-            }.toList()
-        } else {
-            val match = containerRegex.find(html)
-            if (match != null) {
-                val groups = match.groups
-                val pos = containerRule.groupPos
-                val block = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
-                if (block.isNotEmpty()) listOf(block) else emptyList()
+        var currentHtmlChunks: String = html
+
+        // Iterate through all CONTAINER rules sequentially by stt
+        for (containerRule in containerRules) {
+            val containerRegex = try {
+                Regex(containerRule.strRegex, RegexOption.DOT_MATCHES_ALL)
+            } catch (_: Exception) {
+                continue
+            }
+
+            val nextChunks = mutableListOf<String>()
+            if (containerRule.isMatches) {
+                val matches = containerRegex.findAll(currentHtmlChunks).toList()
+                val pos = containerRule.isMatchesPos
+                val block = if (pos >= 0 && pos < matches.size) matches[pos]?.groups[containerRule.groupPos]?.value ?: "" else ""
+                currentHtmlChunks = block
             } else {
-                emptyList()
+                val match = containerRegex.find(currentHtmlChunks)
+                if (match != null) {
+                    val groups = match.groups
+                    val pos = containerRule.groupPos
+                    val block = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                    currentHtmlChunks = block
+                }
             }
         }
+
+        // Find all CONTAINER rules (enumNews == 0) sorted by stt
+        val isListRules = sortedRules.filter { it.enumNews == EnumNews.MATCH_LIST.value }
+
+        val itemHtmlList = Regex(isListRules.firstOrNull()?.strRegex ?: "", RegexOption.DOT_MATCHES_ALL).findAll(currentHtmlChunks).toList()
 
         val actionRules = sortedRules.filter { it.enumNews != EnumNews.CONTAINER.value }
         val newsItems = mutableListOf<NewsItem>()
 
-        // Step 4: Process each itemHtml
+        // Process each itemHtml with action rules sorted by stt
         for (itemHtml in itemHtmlList) {
             var title = ""
             var image = ""
@@ -53,13 +62,13 @@ object HtmlParserEngine {
                 var workingText = itemHtml
                 if (rule.isReplace) {
                     try {
-                        workingText = Regex(rule.strRegex).replace(workingText, rule.textReplace)
+                        workingText = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL).replace(workingText, rule.textReplace)
                     } catch (_: Exception) {
                         // ignore regex replace error
                     }
                 } else {
                     try {
-                        val regex = Regex(rule.strRegex)
+                        val regex = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL)
                         val extracted = if (rule.isMatches) {
                             val matches = regex.findAll(workingText).toList()
                             val match = matches.getOrNull(rule.isMatchesPos)
