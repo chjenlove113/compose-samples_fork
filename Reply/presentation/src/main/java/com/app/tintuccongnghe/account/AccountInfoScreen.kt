@@ -42,6 +42,7 @@ fun AccountInfoScreen(
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToLanguage: () -> Unit = {},
+    onNavigateToNewsScraping: () -> Unit = {},
     viewModel: AccountViewModel = hiltViewModel()
 ) {
     val authInfo by viewModel.authInfo.collectAsStateWithLifecycle()
@@ -104,6 +105,11 @@ fun AccountInfoScreen(
                     icon = Icons.AutoMirrored.Filled.Article,
                     title = "RSS Website Sources",
                     onClick = onNavigateToUserSites
+                )
+                SettingItem(
+                    icon = Icons.Default.Cloud,
+                    title = "Firestore ETL News Scraping",
+                    onClick = onNavigateToNewsScraping
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))

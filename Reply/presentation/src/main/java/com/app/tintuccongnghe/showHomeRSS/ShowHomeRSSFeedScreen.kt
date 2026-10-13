@@ -152,7 +152,7 @@ fun ShowHomeRSSFeedScreen(
                         scope.launch {
                             // When clicking an item, we usually want to see both panes on large screens
                             // so we ensure isFullScreen is false unless the user explicitly expands it later.
-                            isFullScreen = false 
+                            isFullScreen = false
                             navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
                         }
                     }
@@ -273,9 +273,9 @@ fun RSSListPane(
                     text = {
                         Text(
                             text = site.Name,
-                            style = if (pagerState.currentPage == index) 
+                            style = if (pagerState.currentPage == index)
                                 MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                            else 
+                            else
                                 MaterialTheme.typography.titleSmall,
                             maxLines = 1
                         )
@@ -289,7 +289,7 @@ fun RSSListPane(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f).background(MaterialTheme.colorScheme.surfaceContainer),
-            key = { index -> 
+            key = { index ->
                 val site = sites.getOrNull(index)
                 if (site != null) "${site.Id}_${site.GROUP}_${site.Kind}" else index
             }
@@ -355,11 +355,11 @@ fun RSSFeedChildScreen(
             val item = pagingItems[index]
             if (item != null) {
                 val isSelected = selectedItem != null &&
-                               selectedItem.link == item.link && 
+                               selectedItem.link == item.link &&
                                selectedItem.siteId == item.siteId &&
                                selectedItem.siteGroup == item.siteGroup &&
                                selectedItem.siteKind == item.siteKind
-                
+
                 RssItemRow(item, isSelected = isSelected, onClick = { onItemClick(item) })
             }
         }
@@ -376,7 +376,7 @@ fun RssItemRow(
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
     val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
-    
+
     val titleStyle = if (isExpanded) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
     val bodyStyle = if (isExpanded) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
     val labelStyle = if (isExpanded) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall

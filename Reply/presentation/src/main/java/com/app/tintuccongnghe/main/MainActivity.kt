@@ -31,14 +31,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
 import com.app.tintuccongnghe.newsTag.NewsTagRoute
 import com.app.tintuccongnghe.presentation.R
 import com.app.tintuccongnghe.showHomeRSS.ShowHomeRSSFeedScreen
+import com.app.tintuccongnghe.newsScraping.NewsScrapingScreen
+import com.app.tintuccongnghe.newsScraping.NewsDetailScreen
 import com.app.tintuccongnghe.showHomeFavorite.ShowHomeFavoriteScreen
 import android.net.Uri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -268,7 +272,35 @@ class MainActivity : ComponentActivity() {
                             onNavigateToUserCategories = { navHost.navigate("user_categories") },
                             onNavigateToFavorites = { navHost.navigate("screen_favorites") },
                             onNavigateToNotifications = { navHost.navigate("notifications") },
-                            onNavigateToLanguage = { navHost.navigate("language") }
+                            onNavigateToLanguage = { navHost.navigate("language") },
+                            onNavigateToNewsScraping = { navHost.navigate("news_scraping") }
+                        )
+                    }
+
+                    composable(
+                        route = "news_scraping"
+                    ) {
+                        NewsScrapingScreen(
+                            onItemClick = { websiteId, link ->
+                                val encoded = java.net.URLEncoder.encode(link, "UTF-8")
+                                navHost.navigate("news_detail/$websiteId/$encoded")
+                            }
+                        )
+                    }
+
+                    composable(
+                        route = "news_detail/{websiteId}/{link}",
+                        arguments = listOf(
+                            navArgument("websiteId") { type = NavType.StringType },
+                            navArgument("link") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val websiteId = backStackEntry.arguments?.getString("websiteId") ?: ""
+                        val link = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("link") ?: "", "UTF-8")
+                        NewsDetailScreen(
+                            websiteId = websiteId,
+                            link = link,
+                            onBack = { navHost.popBackStack() }
                         )
                     }
 
