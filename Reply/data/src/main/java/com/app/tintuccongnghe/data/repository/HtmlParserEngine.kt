@@ -1,8 +1,22 @@
 package com.app.tintuccongnghe.data.repository
 
+import android.text.Html
 import com.app.tintuccongnghe.domain.models.EnumNews
 import com.app.tintuccongnghe.domain.models.NewsItem
 import com.app.tintuccongnghe.domain.models.ParserRule
+
+fun String.decodeHtml(): String {
+    return try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            Html.fromHtml(this, Html.FROM_HTML_MODE_LEGACY).toString()
+        } else {
+            @Suppress("DEPRECATION")
+            Html.fromHtml(this).toString()
+        }
+    } catch (_: Exception) {
+        this
+    }
+}
 
 object HtmlParserEngine {
 
@@ -11,7 +25,6 @@ object HtmlParserEngine {
         
         // Find all CONTAINER rules (enumNews == 0) sorted by stt
         val containerRules = sortedRules.filter { it.enumNews == EnumNews.CONTAINER.value }
-        //if (containerRules.isEmpty()) return emptyList()
 
         var currentHtmlChunks: String = html
 
@@ -23,32 +36,61 @@ object HtmlParserEngine {
                 continue
             }
 
-            val nextChunks = mutableListOf<String>()
-            if (containerRule.isMatches) {
+            if (containerRule.isReplace) {
+                try {
+                    currentHtmlChunks = containerRegex.replace(currentHtmlChunks, containerRule.textReplace)
+                } catch (_: Exception) {}
+            } else if (containerRule.isMatches) {
                 val matches = containerRegex.findAll(currentHtmlChunks).toList()
                 val pos = containerRule.isMatchesPos
-                val block = if (pos >= 0 && pos < matches.size) matches[pos]?.groups[containerRule.groupPos]?.value ?: "" else ""
+                val block = if (pos >= 0 && pos < matches.size) {
+                    val m = matches[pos]
+                    val groups = m.groups
+                    val gPos = containerRule.groupPos
+                    val raw = if (gPos >= 0 && gPos < groups.size) groups[gPos]?.value ?: m.value else m.value
+                    containerRule.strPrefix + raw + containerRule.strSufix
+                } else ""
                 currentHtmlChunks = block
             } else {
                 val match = containerRegex.find(currentHtmlChunks)
                 if (match != null) {
                     val groups = match.groups
                     val pos = containerRule.groupPos
-                    val block = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
-                    currentHtmlChunks = block
+                    val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                    currentHtmlChunks = containerRule.strPrefix + raw + containerRule.strSufix
+                } else {
+                    currentHtmlChunks = ""
                 }
             }
         }
 
-        // Find all CONTAINER rules (enumNews == 0) sorted by stt
+        // Find MATCH_LIST rules
         val isListRules = sortedRules.filter { it.enumNews == EnumNews.MATCH_LIST.value }
 
-        val itemHtmlList = Regex(isListRules.firstOrNull()?.strRegex ?: "", RegexOption.DOT_MATCHES_ALL).findAll(currentHtmlChunks).toList()
+        val itemHtmlList = if (isListRules.isNotEmpty()) {
+            val listRule = isListRules.first()
+            try {
+                val listRegex = Regex(listRule.strRegex, RegexOption.DOT_MATCHES_ALL)
+                listRegex.findAll(currentHtmlChunks).map { match ->
+                    val groups = match.groups
+                    val pos = listRule.groupPos
+                    val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                    listRule.strPrefix + raw + listRule.strSufix
+                }.toList()
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
 
-        val actionRules = sortedRules.filter { it.enumNews != EnumNews.CONTAINER.value }
+        val actionRules = sortedRules.filter { it.enumNews != EnumNews.CONTAINER.value && it.enumNews != EnumNews.MATCH_LIST.value }
         val newsItems = mutableListOf<NewsItem>()
 
-        // Process each itemHtml with action rules sorted by stt
+        // Group action rules by EnumNews so multiple sequential regex steps can be run per target field
+        val groupedActionRules = actionRules.groupBy { it.enumNews }
+
+        // Process each itemHtml
         for (itemHtml in itemHtmlList) {
             var title = ""
             var image = ""
@@ -58,49 +100,57 @@ object HtmlParserEngine {
             var subCat = ""
             var isVideo = false
 
-            for (rule in actionRules) {
-                var workingText = itemHtml
-                if (rule.isReplace) {
-                    try {
-                        workingText = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL).replace(workingText, rule.textReplace)
-                    } catch (_: Exception) {
-                        // ignore regex replace error
-                    }
-                } else {
-                    try {
-                        val regex = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL)
-                        val extracted = if (rule.isMatches) {
-                            val matches = regex.findAll(workingText).toList()
-                            val match = matches.getOrNull(rule.isMatchesPos)
-                            if (match != null) {
-                                val groups = match.groups
-                                val pos = rule.groupPos
-                                if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
-                            } else ""
-                        } else {
-                            val match = regex.find(workingText)
-                            if (match != null) {
-                                val groups = match.groups
-                                val pos = rule.groupPos
-                                if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
-                            } else ""
-                        }
+            for ((enumKey, rulesList) in groupedActionRules) {
+                val sortedFieldRules = rulesList.sortedBy { it.stt }
+                var fieldWorkingText = itemHtml
 
-                        if (extracted.isNotEmpty()) {
-                            val finalVal = rule.strPrefix + extracted + rule.strSufix
-                            when (EnumNews.fromValue(rule.enumNews)) {
-                                EnumNews.TITLE -> title = finalVal
-                                EnumNews.IMAGE -> image = finalVal
-                                EnumNews.LINK -> link = finalVal
-                                EnumNews.SHORT_DES -> shortDes = finalVal
-                                EnumNews.DATE -> date = finalVal
-                                EnumNews.SUB_CAT -> subCat = finalVal
-                                EnumNews.IS_VIDEO -> isVideo = finalVal.lowercase() in listOf("true", "1", "yes")
-                                else -> {}
-                            }
+                for (rule in sortedFieldRules) {
+                    if (rule.isReplace) {
+                        try {
+                            fieldWorkingText = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL).replace(fieldWorkingText, rule.textReplace)
+                        } catch (_: Exception) {
+                            // ignore regex replace error
                         }
-                    } catch (_: Exception) {
-                        // ignore parsing error
+                    } else {
+                        try {
+                            val regex = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL)
+                            val extracted = if (rule.isMatches) {
+                                val matches = regex.findAll(fieldWorkingText).toList()
+                                val match = matches.getOrNull(rule.isMatchesPos)
+                                if (match != null) {
+                                    val groups = match.groups
+                                    val pos = rule.groupPos
+                                    if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                                } else ""
+                            } else {
+                                val match = regex.find(fieldWorkingText)
+                                if (match != null) {
+                                    val groups = match.groups
+                                    val pos = rule.groupPos
+                                    if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                                } else ""
+                            }
+
+                            if (extracted.isNotEmpty()) {
+                                fieldWorkingText = rule.strPrefix + extracted + rule.strSufix
+                            }
+                        } catch (_: Exception) {
+                            // ignore parsing error
+                        }
+                    }
+                }
+
+                val finalVal = fieldWorkingText.trim().decodeHtml()
+                if (finalVal.isNotEmpty()) {
+                    when (EnumNews.fromValue(enumKey)) {
+                        EnumNews.TITLE -> title = finalVal
+                        EnumNews.IMAGE -> image = fieldWorkingText.trim()
+                        EnumNews.LINK -> link = fieldWorkingText.trim().decodeHtml()
+                        EnumNews.SHORT_DES -> shortDes = finalVal
+                        EnumNews.DATE -> date = finalVal
+                        EnumNews.SUB_CAT -> subCat = finalVal
+                        EnumNews.IS_VIDEO -> isVideo = finalVal.lowercase() in listOf("true", "1", "yes")
+                        else -> {}
                     }
                 }
             }

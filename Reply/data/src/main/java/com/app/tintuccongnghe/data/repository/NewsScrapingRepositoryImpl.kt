@@ -135,21 +135,22 @@ class NewsScrapingRepositoryImpl @Inject constructor(
             if (items.isNotEmpty()) {
                 val entities = items.map {
                     ScrapedNewsEntity(
+                        link = it.link,
                         websiteId = websiteId,
                         categoryId = category.id,
                         title = it.title,
                         image = it.image,
-                        link = it.link,
                         shortDes = it.shortDes,
                         date = it.date,
                         subCat = it.subCat,
-                        isVideo = it.isVideo
+                        isVideo = it.isVideo,
+                        pageNumber = page
                     )
                 }
                 if (!append || page == 1) {
                     scrapedNewsDao.deleteForCategory(category.id)
                 }
-                scrapedNewsDao.insertAll(entities)
+                scrapedNewsDao.upsertAll(entities)
             }
 
             items.map { it.copy(websiteId = websiteId) }

@@ -1,8 +1,22 @@
 package com.app.tintuccongnghe.data.repository
 
+import android.text.Html
 import com.app.tintuccongnghe.domain.models.DetailRuleDocument
 import com.app.tintuccongnghe.domain.models.EnumDetail
 import com.app.tintuccongnghe.domain.models.NewsDetail
+
+fun String.decodeHtmlDetail(): String {
+    return try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            Html.fromHtml(this, Html.FROM_HTML_MODE_LEGACY).toString()
+        } else {
+            @Suppress("DEPRECATION")
+            Html.fromHtml(this).toString()
+        }
+    } catch (_: Exception) {
+        this
+    }
+}
 
 object HtmlDetailParserEngine {
 
@@ -52,10 +66,10 @@ object HtmlDetailParserEngine {
 
             val finalValue = workingText.trim()
             when (EnumDetail.fromValue(ruleDoc.targetField)) {
-                EnumDetail.TITLE -> title = finalValue
-                EnumDetail.AUTHOR -> author = finalValue
-                EnumDetail.PUBLISH_DATE -> publishDate = finalValue
-                EnumDetail.CONTENT -> contentHtml = finalValue
+                EnumDetail.TITLE -> title = finalValue.decodeHtmlDetail()
+                EnumDetail.AUTHOR -> author = finalValue.decodeHtmlDetail()
+                EnumDetail.PUBLISH_DATE -> publishDate = finalValue.decodeHtmlDetail()
+                EnumDetail.CONTENT -> contentHtml = workingText.trim()
             }
         }
 

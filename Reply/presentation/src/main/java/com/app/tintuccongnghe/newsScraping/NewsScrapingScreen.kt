@@ -177,7 +177,6 @@ fun HomeNewsContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WebsiteContainerScreen(
     website: NewsWebsite,
@@ -192,93 +191,182 @@ fun WebsiteContainerScreen(
     onLoadMore: () -> Unit,
     onItemClick: (String, String) -> Unit
 ) {
-    val subTabs = listOf("All") + categories.map { it.name }
-    val subPagerState = rememberPagerState(pageCount = { subTabs.size })
-
-    LaunchedEffect(subPagerState.currentPage) {
-        onSubTabSelected(subPagerState.currentPage)
-    }
-    LaunchedEffect(selectedSubIndex) {
-        if (subPagerState.currentPage != selectedSubIndex) {
-            subPagerState.animateScrollToPage(selectedSubIndex)
-        }
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        ScrollableTabRow(
-            selectedTabIndex = selectedSubIndex,
-            edgePadding = 16.dp,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            subTabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedSubIndex == index,
-                    onClick = { onSubTabSelected(index) },
-                    text = { Text(text = title) }
+    when {
+        categories.isEmpty() -> {
+            // Case 1: categories.isEmpty()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Website đang cập nhật chuyên mục...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
             }
         }
+        categories.size == 1 -> {
+            // Case 2: categories.size == 1 (Hide Sub-TabRow and Pager entirely)
+            val singleCategory = categories.first()
+            val currentNews = categoryNews[singleCategory.id] ?: emptyList()
+            CategoryNewsList(
+                newsItems = currentNews,
+                isLoading = isLoading,
+                isLoadingMore = isLoadingMore,
+                onRefresh = onRefresh,
+                onLoadMore = onLoadMore,
+                onItemClick = onItemClick
+            )
+        }
+        else -> {
+            // Case 3: categories.size > 1 (Insert virtual "All" tab + ScrollableTabRow + HorizontalPager)
+            val subTabs = listOf("All") + categories.map { it.name }
+            val subPagerState = rememberPagerState(pageCount = { subTabs.size })
 
-        HorizontalPager(
-            state = subPagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) { subPageIndex ->
-            val currentNews = if (subPageIndex == 0) {
-                websiteNews
-            } else {
-                val cat = categories.getOrNull(subPageIndex - 1)
-                if (cat != null) categoryNews[cat.id] ?: emptyList() else emptyList()
+            LaunchedEffect(subPagerState.currentPage) {
+                onSubTabSelected(subPagerState.currentPage)
+            }
+            LaunchedEffect(selectedSubIndex) {
+                if (subPagerState.currentPage != selectedSubIndex) {
+                    subPagerState.animateScrollToPage(selectedSubIndex)
+                }
             }
 
-            PullToRefreshBox(
-                isRefreshing = isLoading,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize()
+            Column(modifier = Modifier.fillMaxSize()) {
+                ScrollableTabRow(
+                    selectedTabIndex = selectedSubIndex,
+                    edgePadding = 16.dp,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    subTabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedSubIndex == index,
+                            onClick = { onSubTabSelected(index) },
+                            text = { Text(text = title, fontWeight = if (selectedSubIndex == index) FontWeight.Bold else FontWeight.Normal) }
+                        )
+                    }
+                }
+
+                HorizontalPager(
+                    state = subPagerState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) { subPageIndex ->
+                    if (subPageIndex == 0) {
+                        WebsiteAllNewsList(
+                            newsItems = websiteNews,
+                            isLoading = isLoading,
+                            onRefresh = onRefresh,
+                            onItemClick = onItemClick
+                        )
+                    } else {
+                        val cat = categories.getOrNull(subPageIndex - 1)
+                        val currentNews = if (cat != null) categoryNews[cat.id] ?: emptyList() else emptyList()
+                        CategoryNewsList(
+                            newsItems = currentNews,
+                            isLoading = isLoading,
+                            isLoadingMore = isLoadingMore,
+                            onRefresh = onRefresh,
+                            onLoadMore = onLoadMore,
+                            onItemClick = onItemClick
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WebsiteAllNewsList(
+    newsItems: List<NewsItem>,
+    isLoading: Boolean,
+    onRefresh: () -> Unit,
+    onItemClick: (String, String) -> Unit
+) {
+    PullToRefreshBox(
+        isRefreshing = isLoading,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        if (newsItems.isEmpty() && !isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Không có bài viết tổng hợp nào cho website này.")
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (currentNews.isEmpty() && !isLoading) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Không có bài viết trong mục này.")
-                    }
-                } else {
-                    val listState = rememberLazyListState()
-                    val shouldLoadMore = remember {
-                        derivedStateOf {
-                            val layoutInfo = listState.layoutInfo
-                            val totalItemsNumber = layoutInfo.totalItemsCount
-                            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                            totalItemsNumber > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
-                        }
-                    }
+                items(newsItems) { item ->
+                    NewsItemCard(item = item, onItemClick = onItemClick)
+                }
+            }
+        }
+    }
+}
 
-                    LaunchedEffect(shouldLoadMore.value) {
-                        if (shouldLoadMore.value && !isLoadingMore && subPageIndex > 0) {
-                            onLoadMore()
-                        }
-                    }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryNewsList(
+    newsItems: List<NewsItem>,
+    isLoading: Boolean = false,
+    isLoadingMore: Boolean = false,
+    onRefresh: () -> Unit = {},
+    onLoadMore: () -> Unit = {},
+    onItemClick: (String, String) -> Unit
+) {
+    PullToRefreshBox(
+        isRefreshing = isLoading,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        if (newsItems.isEmpty() && !isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Không có bài viết trong chuyên mục này.")
+            }
+        } else {
+            val listState = rememberLazyListState()
+            val shouldLoadMore = remember {
+                derivedStateOf {
+                    val layoutInfo = listState.layoutInfo
+                    val totalItemsNumber = layoutInfo.totalItemsCount
+                    val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                    totalItemsNumber > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
+                }
+            }
 
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(currentNews) { item ->
-                            NewsItemCard(item = item, onItemClick = onItemClick)
-                        }
+            LaunchedEffect(shouldLoadMore.value) {
+                if (shouldLoadMore.value && !isLoadingMore) {
+                    onLoadMore()
+                }
+            }
 
-                        if (isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                                }
-                            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(newsItems) { item ->
+                    NewsItemCard(item = item, onItemClick = onItemClick)
+                }
+
+                if (isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
                         }
                     }
                 }

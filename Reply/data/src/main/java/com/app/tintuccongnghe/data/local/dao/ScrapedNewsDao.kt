@@ -15,8 +15,35 @@ interface ScrapedNewsDao {
     @Query("SELECT * FROM scraped_news ORDER BY date DESC")
     fun getHomeNews(): Flow<List<ScrapedNewsEntity>>
 
+    @Query("SELECT * FROM scraped_news WHERE link = :link LIMIT 1")
+    suspend fun getNewsByLink(link: String): ScrapedNewsEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(items: List<ScrapedNewsEntity>)
+    suspend fun insertNews(item: ScrapedNewsEntity)
+
+    @Update
+    suspend fun updateNews(item: ScrapedNewsEntity)
+
+    @Transaction
+    suspend fun upsertNews(newItem: ScrapedNewsEntity) {
+        val existing = getNewsByLink(newItem.link)
+        if (existing == null) {
+            insertNews(newItem)
+        } else {
+            val updated = newItem.copy(
+                createdAt = existing.createdAt,
+                updatedAt = System.currentTimeMillis()
+            )
+            updateNews(updated)
+        }
+    }
+
+    @Transaction
+    suspend fun upsertAll(items: List<ScrapedNewsEntity>) {
+        for (item in items) {
+            upsertNews(item)
+        }
+    }
 
     @Query("DELETE FROM scraped_news WHERE categoryId = :categoryId")
     suspend fun deleteForCategory(categoryId: String)
