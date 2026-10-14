@@ -151,29 +151,32 @@ class NewsScrapingViewModel @Inject constructor(
             if (current.selectedMainTab > 0) {
                 val site = current.websites.getOrNull(current.selectedMainTab - 1)
                 if (site != null) {
+                    val cats = current.websiteCategories[site.id] ?: emptyList()
                     val subIndex = current.selectedSubTabMap[site.id] ?: 0
-                    if (subIndex > 0) {
-                        val cats = current.websiteCategories[site.id] ?: emptyList()
-                        val cat = cats.getOrNull(subIndex - 1)
-                        if (cat != null) {
-                            val nextPage = current.currentPage + 1
-                            _uiState.value = current.copy(isLoadingMore = true)
-                            viewModelScope.launch {
-                                try {
-                                    val newItems = scrapeAndSaveNewsUseCase(site.id, cat, page = nextPage, append = true)
-                                    val latest = _uiState.value
-                                    if (latest is NewsScrapingUiState.Success) {
-                                        if (newItems.isEmpty()) {
-                                            _uiState.value = latest.copy(isLoadingMore = false, hasMorePages = false)
-                                        } else {
-                                            _uiState.value = latest.copy(isLoadingMore = false, currentPage = nextPage)
-                                        }
+                    val cat = if (subIndex == 0) {
+                        cats.firstOrNull()
+                    } else {
+                        cats.getOrNull(subIndex - 1)
+                    }
+
+                    if (cat != null) {
+                        val nextPage = current.currentPage + 1
+                        _uiState.value = current.copy(isLoadingMore = true)
+                        viewModelScope.launch {
+                            try {
+                                val newItems = scrapeAndSaveNewsUseCase(site.id, cat, page = nextPage, append = true)
+                                val latest = _uiState.value
+                                if (latest is NewsScrapingUiState.Success) {
+                                    if (newItems.isEmpty()) {
+                                        _uiState.value = latest.copy(isLoadingMore = false, hasMorePages = false)
+                                    } else {
+                                        _uiState.value = latest.copy(isLoadingMore = false, currentPage = nextPage)
                                     }
-                                } catch (_: Exception) {
-                                    val latest = _uiState.value
-                                    if (latest is NewsScrapingUiState.Success) {
-                                        _uiState.value = latest.copy(isLoadingMore = false)
-                                    }
+                                }
+                            } catch (_: Exception) {
+                                val latest = _uiState.value
+                                if (latest is NewsScrapingUiState.Success) {
+                                    _uiState.value = latest.copy(isLoadingMore = false)
                                 }
                             }
                         }

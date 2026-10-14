@@ -193,7 +193,6 @@ fun WebsiteContainerScreen(
 ) {
     when {
         categories.isEmpty() -> {
-            // Case 1: categories.isEmpty()
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -209,7 +208,6 @@ fun WebsiteContainerScreen(
             }
         }
         categories.size == 1 -> {
-            // Case 2: categories.size == 1 (Hide Sub-TabRow and Pager entirely)
             val singleCategory = categories.first()
             val currentNews = categoryNews[singleCategory.id] ?: emptyList()
             CategoryNewsList(
@@ -222,7 +220,6 @@ fun WebsiteContainerScreen(
             )
         }
         else -> {
-            // Case 3: categories.size > 1 (Insert virtual "All" tab + ScrollableTabRow + HorizontalPager)
             val subTabs = listOf("All") + categories.map { it.name }
             val subPagerState = rememberPagerState(pageCount = { subTabs.size })
 
@@ -260,7 +257,9 @@ fun WebsiteContainerScreen(
                         WebsiteAllNewsList(
                             newsItems = websiteNews,
                             isLoading = isLoading,
+                            isLoadingMore = isLoadingMore,
                             onRefresh = onRefresh,
+                            onLoadMore = onLoadMore,
                             onItemClick = onItemClick
                         )
                     } else {
@@ -286,7 +285,9 @@ fun WebsiteContainerScreen(
 fun WebsiteAllNewsList(
     newsItems: List<NewsItem>,
     isLoading: Boolean,
+    isLoadingMore: Boolean,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onItemClick: (String, String) -> Unit
 ) {
     PullToRefreshBox(
@@ -299,13 +300,43 @@ fun WebsiteAllNewsList(
                 Text("Không có bài viết tổng hợp nào cho website này.")
             }
         } else {
+            val listState = rememberLazyListState()
+            val shouldLoadMore = remember {
+                derivedStateOf {
+                    val layoutInfo = listState.layoutInfo
+                    val totalItemsNumber = layoutInfo.totalItemsCount
+                    val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                    totalItemsNumber > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
+                }
+            }
+
+            LaunchedEffect(shouldLoadMore.value) {
+                if (shouldLoadMore.value && !isLoadingMore) {
+                    onLoadMore()
+                }
+            }
+
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(newsItems) { item ->
                     NewsItemCard(item = item, onItemClick = onItemClick)
+                }
+
+                if (isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        }
+                    }
                 }
             }
         }

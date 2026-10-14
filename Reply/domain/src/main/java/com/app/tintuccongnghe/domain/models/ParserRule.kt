@@ -13,7 +13,7 @@ data class ParserRule(
     val strRegex: String = "",
     val isMatches: Boolean = false,
     val isMatchesPos: Int = 0,
-    val groupPos: Int = 1,
+    val groupPos: Int = 3,
     val strPrefix: String = "",
     val strSufix: String = "",
     val isReplace: Boolean = false,
