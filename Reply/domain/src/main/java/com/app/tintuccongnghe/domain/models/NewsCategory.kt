@@ -11,6 +11,10 @@ data class NewsCategory(
     val name: String = "",
     val url: String = "",
     val pageTemplate: String = "",
+    val httpMethod: String = "GET",
+    val postBodyTemplate: String? = null,
+    val jsonResponseKey: String? = null,
+    val headers: Map<String, String> = emptyMap(),
     val isActive: Boolean = true,
     val parserRules: List<ParserRule> = emptyList()
 ) : Parcelable

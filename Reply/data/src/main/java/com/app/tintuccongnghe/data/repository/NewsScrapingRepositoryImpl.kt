@@ -15,6 +15,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
 class NewsScrapingRepositoryImpl @Inject constructor(
@@ -60,7 +62,20 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                 val name = doc.getString("name") ?: ""
                 val url = doc.getString("url") ?: ""
                 val pageTemplate = doc.getString("pageTemplate") ?: doc.getString("strPageTemplate") ?: ""
+                val httpMethod = doc.getString("httpMethod") ?: doc.getString("strHttpMethod") ?: "GET"
+                val postBodyTemplate = doc.getString("postBodyTemplate") ?: doc.getString("strPostBodyTemplate")
+                val jsonResponseKey = doc.getString("jsonResponseKey") ?: doc.getString("strJsonResponseKey")
                 val isActive = doc.getBoolean("isActive") ?: true
+
+                val headersMap = mutableMapOf<String, String>()
+                val rawHeaders = doc.get("headers")
+                if (rawHeaders is Map<*, *>) {
+                    for ((k, v) in rawHeaders) {
+                        if (k is String && v is String) {
+                            headersMap[k] = v
+                        }
+                    }
+                }
 
                 val rulesList = mutableListOf<ParserRule>()
                 val rawRules = doc.get("parserRules") ?: doc.get("rules")
@@ -103,6 +118,10 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                     name = name,
                     url = url,
                     pageTemplate = pageTemplate,
+                    httpMethod = httpMethod,
+                    postBodyTemplate = postBodyTemplate,
+                    jsonResponseKey = jsonResponseKey,
+                    headers = headersMap,
                     isActive = isActive,
                     parserRules = rulesList
                 )
@@ -114,22 +133,47 @@ class NewsScrapingRepositoryImpl @Inject constructor(
 
     override suspend fun scrapeAndSaveNews(websiteId: String, category: NewsCategory, page: Int, append: Boolean): List<NewsItem> {
         return try {
-            val targetUrl = if (page > 1 && category.pageTemplate.isNotEmpty()) {
-                if (category.pageTemplate.contains("{page}")) {
-                    category.pageTemplate.replace("{page}", page.toString())
-                } else {
-                    "${category.pageTemplate}?page=$page"
-                }
-            } else if (page > 1) {
-                if (category.url.contains("?")) "${category.url}&page=$page" else "${category.url}?page=$page"
-            } else {
-                category.url
+            val finalHeaders = mutableMapOf<String, String>().apply {
+                put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                putAll(category.headers)
             }
 
-            if (targetUrl.isEmpty()) return emptyList()
+            val htmlString = if (category.httpMethod.equals("POST", ignoreCase = true)) {
+                val bodyStr = (category.postBodyTemplate ?: "{}").replace("{page}", page.toString())
+                val requestBody = bodyStr.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+                val response = htmlScrapingService.fetchPost(finalHeaders, category.url, requestBody)
+                val rawResponse = response.body()?.string() ?: ""
+                if (!category.jsonResponseKey.isNullOrEmpty()) {
+                    try {
+                        val jsonObject = org.json.JSONObject(rawResponse)
+                        jsonObject.optString(category.jsonResponseKey, rawResponse)
+                    } catch (_: Exception) {
+                        rawResponse
+                    }
+                } else {
+                    rawResponse
+                }
+            } else {
+                val targetUrl = if (page > 1 && category.pageTemplate.isNotEmpty()) {
+                    if (category.pageTemplate.contains("{page}")) {
+                        category.pageTemplate.replace("{page}", page.toString())
+                    } else {
+                        "${category.pageTemplate}?page=$page"
+                    }
+                } else if (page > 1) {
+                    if (category.url.contains("?")) "${category.url}&page=$page" else "${category.url}?page=$page"
+                } else {
+                    category.url
+                }
 
-            val responseBody = htmlScrapingService.fetchHtml(targetUrl)
-            val htmlString = responseBody.string()
+                if (targetUrl.isEmpty()) return emptyList()
+
+                val response = htmlScrapingService.fetchGet(finalHeaders, targetUrl)
+                response.body()?.string() ?: ""
+            }
+
+            if (htmlString.isEmpty()) return emptyList()
+
             val items = HtmlParserEngine.parse(htmlString, category.parserRules)
 
             if (items.isNotEmpty()) {
@@ -229,8 +273,9 @@ class NewsScrapingRepositoryImpl @Inject constructor(
             )
         }
 
-        val responseBody = htmlScrapingService.fetchHtml(link)
-        val htmlString = responseBody.string()
+        val defaultHeaders = mapOf("User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+        val response = htmlScrapingService.fetchGet(defaultHeaders, link)
+        val htmlString = response.body()?.string() ?: ""
         val detail = HtmlDetailParserEngine.parse(link, websiteId, htmlString, detailRuleDocs)
 
         newsDetailDao.insertDetail(

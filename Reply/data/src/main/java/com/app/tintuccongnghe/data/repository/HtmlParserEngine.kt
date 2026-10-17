@@ -1,6 +1,7 @@
 package com.app.tintuccongnghe.data.repository
 
 import android.text.Html
+import android.util.Log
 import com.app.tintuccongnghe.domain.models.EnumNews
 import com.app.tintuccongnghe.domain.models.NewsItem
 import com.app.tintuccongnghe.domain.models.ParserRule
@@ -77,7 +78,8 @@ object HtmlParserEngine {
                     val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
                     listRule.strPrefix + raw + listRule.strSufix
                 }.toList()
-            } catch (_: Exception) {
+            } catch (ex: Exception) {
+                Log.d("TAG", "parse: Exception: ${ex.message}")
                 emptyList()
             }
         } else {
