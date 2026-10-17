@@ -88,7 +88,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                             val strRegex = item["strRegex"] as? String ?: ""
                             val isMatches = item["isMatches"] as? Boolean ?: false
                             val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
-                            val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 1
+                            val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
                             val strPrefix = item["strPrefix"] as? String ?: ""
                             val strSufix = item["strSufix"] as? String ?: ""
                             val isReplace = item["isReplace"] as? Boolean ?: false
@@ -239,7 +239,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                         val strRegex = item["strRegex"] as? String ?: ""
                         val isMatches = item["isMatches"] as? Boolean ?: false
                         val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
-                        val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 1
+                        val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
                         val strPrefix = item["strPrefix"] as? String ?: ""
                         val strSufix = item["strSufix"] as? String ?: ""
                         val isReplace = item["isReplace"] as? Boolean ?: false

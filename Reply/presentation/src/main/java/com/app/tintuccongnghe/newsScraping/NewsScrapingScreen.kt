@@ -1,5 +1,6 @@
 package com.app.tintuccongnghe.newsScraping
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +24,7 @@ import coil3.compose.AsyncImage
 import com.app.tintuccongnghe.domain.models.NewsCategory
 import com.app.tintuccongnghe.domain.models.NewsItem
 import com.app.tintuccongnghe.domain.models.NewsWebsite
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +33,7 @@ fun NewsScrapingScreen(
     viewModel: NewsScrapingViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -113,9 +116,20 @@ fun NewsScrapingScreen(
                         ) { mainPageIndex ->
                             if (mainPageIndex == 0) {
                                 HomeNewsContent(
+                                    websites = state.websites,
                                     newsItems = state.homeNews,
                                     isLoading = state.isLoading,
                                     onRefresh = { viewModel.refresh() },
+                                    onWebsiteHeaderClick = { websiteId ->
+                                        val websiteIndex = state.websites.indexOfFirst { it.id == websiteId }
+                                        if (websiteIndex != -1) {
+                                            val targetTab = websiteIndex + 1
+                                            viewModel.selectMainTab(targetTab)
+                                            scope.launch {
+                                                mainPagerState.animateScrollToPage(targetTab)
+                                            }
+                                        }
+                                    },
                                     onItemClick = onItemClick
                                 )
                             } else {
@@ -146,14 +160,19 @@ fun NewsScrapingScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeNewsContent(
+    websites: List<NewsWebsite>,
     newsItems: List<NewsItem>,
     isLoading: Boolean,
     onRefresh: () -> Unit,
+    onWebsiteHeaderClick: (String) -> Unit,
     onItemClick: (String, String) -> Unit
 ) {
+    val websiteMap = remember(websites) { websites.associateBy { it.id } }
+    val groupedNews = remember(newsItems) { newsItems.groupBy { it.websiteId } }
+
     PullToRefreshBox(
         isRefreshing = isLoading,
         onRefresh = onRefresh,
@@ -169,8 +188,43 @@ fun HomeNewsContent(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(newsItems) { item ->
-                    NewsItemCard(item = item, onItemClick = onItemClick)
+                for ((websiteId, items) in groupedNews) {
+                    val website = websiteMap[websiteId]
+                    val websiteName = website?.name?.ifEmpty { website.baseUrl } ?: "Website $websiteId"
+
+                    stickyHeader {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onWebsiteHeaderClick(websiteId) },
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            tonalElevation = 4.dp
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = websiteName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Text(
+                                    text = "Xem chi tiết →",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    items(items) { item ->
+                        NewsItemCard(item = item, onItemClick = onItemClick)
+                    }
                 }
             }
         }
