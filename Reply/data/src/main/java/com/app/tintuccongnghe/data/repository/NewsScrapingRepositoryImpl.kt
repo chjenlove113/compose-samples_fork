@@ -10,6 +10,7 @@ import com.app.tintuccongnghe.domain.models.NewsDetail
 import com.app.tintuccongnghe.domain.models.NewsItem
 import com.app.tintuccongnghe.domain.models.NewsWebsite
 import com.app.tintuccongnghe.domain.models.ParserRule
+import com.app.tintuccongnghe.domain.models.SigConfig
 import com.app.tintuccongnghe.domain.repository.INewsScrapingRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
@@ -37,11 +38,23 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                 val baseUrl = doc.getString("baseUrl") ?: doc.getString("url") ?: ""
                 val isActive = doc.getBoolean("isActive") ?: true
 
+                val sigMap = doc.get("sigConfig") as? Map<*, *>
+                val sigConfig = if (sigMap != null) {
+                    SigConfig(
+                        pathname = sigMap["pathname"] as? String ?: "",
+                        secretSalt = sigMap["secretSalt"] as? String ?: "",
+                        apiKey = sigMap["apiKey"] as? String ?: "",
+                        version = sigMap["version"] as? String ?: "",
+                        whitelistParams = (sigMap["whitelistParams"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                    )
+                } else null
+
                 NewsWebsite(
                     id = id,
                     name = name,
                     baseUrl = baseUrl,
-                    isActive = isActive
+                    isActive = isActive,
+                    sigConfig = sigConfig
                 )
             }
         } catch (_: Exception) {
@@ -88,7 +101,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                             val strRegex = item["strRegex"] as? String ?: ""
                             val isMatches = item["isMatches"] as? Boolean ?: false
                             val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
-                            val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
+                            val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 1
                             val strPrefix = item["strPrefix"] as? String ?: ""
                             val strSufix = item["strSufix"] as? String ?: ""
                             val isReplace = item["isReplace"] as? Boolean ?: false
@@ -133,6 +146,40 @@ class NewsScrapingRepositoryImpl @Inject constructor(
 
     override suspend fun scrapeAndSaveNews(websiteId: String, category: NewsCategory, page: Int, append: Boolean): List<NewsItem> {
         return try {
+            val websiteDoc = firestore.collection("news_websites").document(websiteId).get().await()
+            val sigMap = websiteDoc.get("sigConfig") as? Map<*, *>
+            val sigConfig = if (sigMap != null) {
+                SigConfig(
+                    pathname = sigMap["pathname"] as? String ?: "",
+                    secretSalt = sigMap["secretSalt"] as? String ?: "",
+                    apiKey = sigMap["apiKey"] as? String ?: "",
+                    version = sigMap["version"] as? String ?: "",
+                    whitelistParams = (sigMap["whitelistParams"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                )
+            } else null
+
+            val targetUrl = if (sigConfig != null && sigConfig.secretSalt.isNotEmpty()) {
+                val websiteBaseUrl = websiteDoc.getString("baseUrl") ?: websiteDoc.getString("url") ?: category.url
+                val customParams = mapOf(
+                    "page" to page.toString(),
+                    "listId" to "53",
+                    "listType" to "3"
+                )
+                DynamicUrlGenerator.generateUrl(websiteBaseUrl, sigConfig, customParams)
+            } else {
+                if (page > 1 && category.pageTemplate.isNotEmpty()) {
+                    if (category.pageTemplate.contains("{page}")) {
+                        category.pageTemplate.replace("{page}", page.toString())
+                    } else {
+                        "${category.pageTemplate}?page=$page"
+                    }
+                } else if (page > 1) {
+                    if (category.url.contains("?")) "${category.url}&page=$page" else "${category.url}?page=$page"
+                } else {
+                    category.url
+                }
+            }
+
             val finalHeaders = mutableMapOf<String, String>().apply {
                 put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
                 putAll(category.headers)
@@ -141,7 +188,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
             val htmlString = if (category.httpMethod.equals("POST", ignoreCase = true)) {
                 val bodyStr = (category.postBodyTemplate ?: "{}").replace("{page}", page.toString())
                 val requestBody = bodyStr.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-                val response = htmlScrapingService.fetchPost(finalHeaders, category.url, requestBody)
+                val response = htmlScrapingService.fetchPost(finalHeaders, targetUrl, requestBody)
                 val rawResponse = response.body()?.string() ?: ""
                 if (!category.jsonResponseKey.isNullOrEmpty()) {
                     try {
@@ -154,20 +201,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                     rawResponse
                 }
             } else {
-                val targetUrl = if (page > 1 && category.pageTemplate.isNotEmpty()) {
-                    if (category.pageTemplate.contains("{page}")) {
-                        category.pageTemplate.replace("{page}", page.toString())
-                    } else {
-                        "${category.pageTemplate}?page=$page"
-                    }
-                } else if (page > 1) {
-                    if (category.url.contains("?")) "${category.url}&page=$page" else "${category.url}?page=$page"
-                } else {
-                    category.url
-                }
-
                 if (targetUrl.isEmpty()) return emptyList()
-
                 val response = htmlScrapingService.fetchGet(finalHeaders, targetUrl)
                 response.body()?.string() ?: ""
             }
@@ -239,7 +273,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                         val strRegex = item["strRegex"] as? String ?: ""
                         val isMatches = item["isMatches"] as? Boolean ?: false
                         val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
-                        val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
+                        val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 1
                         val strPrefix = item["strPrefix"] as? String ?: ""
                         val strSufix = item["strSufix"] as? String ?: ""
                         val isReplace = item["isReplace"] as? Boolean ?: false
