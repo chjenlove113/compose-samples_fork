@@ -18,6 +18,7 @@ data class ScrapedNewsEntity(
     val date: String,
     val subCat: String,
     val isVideo: Boolean,
+    val timestamp: Long = 0L,
     val pageNumber: Int = 1,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()

@@ -1,7 +1,6 @@
 package com.app.tintuccongnghe.data.repository
 
 import android.text.Html
-import android.util.Log
 import com.app.tintuccongnghe.domain.models.EnumNews
 import com.app.tintuccongnghe.domain.models.NewsItem
 import com.app.tintuccongnghe.domain.models.ParserRule
@@ -16,6 +15,16 @@ fun String.decodeHtml(): String {
         }
     } catch (_: Exception) {
         this
+    }
+}
+
+fun Long.formatTimestamp(): String {
+    return try {
+        val millis = if (this < 10000000000L) this * 1000 else this
+        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+        sdf.format(java.util.Date(millis))
+    } catch (_: Exception) {
+        ""
     }
 }
 
@@ -78,8 +87,7 @@ object HtmlParserEngine {
                     val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
                     listRule.strPrefix + raw + listRule.strSufix
                 }.toList()
-            } catch (ex: Exception) {
-                Log.d("TAG", "parse: Exception: ${ex.message}")
+            } catch (_: Exception) {
                 emptyList()
             }
         } else {
@@ -101,6 +109,7 @@ object HtmlParserEngine {
             var date = ""
             var subCat = ""
             var isVideo = false
+            var timestamp = 0L
 
             for ((enumKey, rulesList) in groupedActionRules) {
                 val sortedFieldRules = rulesList.sortedBy { it.stt }
@@ -152,9 +161,19 @@ object HtmlParserEngine {
                         EnumNews.DATE -> date = finalVal
                         EnumNews.SUB_CAT -> subCat = finalVal
                         EnumNews.IS_VIDEO -> isVideo = finalVal.lowercase() in listOf("true", "1", "yes")
+                        EnumNews.TIMESTAMP -> {
+                            timestamp = finalVal.toLongOrNull() ?: 0L
+                            if (timestamp > 0L && date.isEmpty()) {
+                                date = timestamp.formatTimestamp()
+                            }
+                        }
                         else -> {}
                     }
                 }
+            }
+
+            if (date.isEmpty() && timestamp > 0L) {
+                date = timestamp.formatTimestamp()
             }
 
             if (title.isNotEmpty() || link.isNotEmpty()) {
@@ -166,7 +185,8 @@ object HtmlParserEngine {
                         shortDes = shortDes,
                         date = date,
                         subCat = subCat,
-                        isVideo = isVideo
+                        isVideo = isVideo,
+                        timestamp = timestamp
                     )
                 )
             }

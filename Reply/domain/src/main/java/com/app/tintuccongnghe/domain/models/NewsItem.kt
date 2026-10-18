@@ -14,5 +14,6 @@ data class NewsItem(
     val shortDes: String = "",
     val date: String = "",
     val subCat: String = "",
-    val isVideo: Boolean = false
+    val isVideo: Boolean = false,
+    val timestamp: Long = 0L
 ) : Parcelable

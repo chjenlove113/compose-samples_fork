@@ -9,8 +9,8 @@ enum class EnumNews(val value: Int) {
     DATE(5),
     SUB_CAT(6),
     IS_VIDEO(7),
+    TIMESTAMP(8),
     MATCH_LIST(9);
-
 
     companion object {
         fun fromValue(value: Int): EnumNews = entries.find { it.value == value } ?: CONTAINER
