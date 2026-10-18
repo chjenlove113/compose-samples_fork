@@ -1,5 +1,8 @@
 package com.app.tintuccongnghe.newsScraping
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -51,7 +54,7 @@ fun NewsScrapingScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Firestore Toggle Selection (Master-Detail)") },
+                title = { Text("Firestore Optimized Master-Detail") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -186,12 +189,20 @@ fun NewsScrapingScreen(
                         }
                     } else {
                         if (state.selectedNewsItem == null) {
-                            Box(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .animateContentSize()
+                            ) {
                                 mainContent()
                             }
                         } else {
                             if (state.isDetailExpanded) {
-                                Box(modifier = Modifier.fillMaxSize()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .animateContentSize()
+                                ) {
                                     NewsDetailScreen(
                                         websiteId = state.selectedNewsItem.websiteId,
                                         link = state.selectedNewsItem.link,
@@ -203,7 +214,11 @@ fun NewsScrapingScreen(
                                     )
                                 }
                             } else {
-                                Row(modifier = Modifier.fillMaxSize()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .animateContentSize()
+                                ) {
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
@@ -278,7 +293,7 @@ fun HomeNewsContent(
                         val website = websiteMap[websiteId]
                         val websiteName = website?.name?.ifEmpty { website.baseUrl } ?: "Website $websiteId"
 
-                        stickyHeader {
+                        stickyHeader(key = "header_$websiteId") {
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -308,7 +323,7 @@ fun HomeNewsContent(
                             }
                         }
 
-                        items(items) { item ->
+                        items(items, key = { it.link }) { item ->
                             val isSelected = selectedItem?.link == item.link
                             NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
                         }
@@ -327,7 +342,7 @@ fun HomeNewsContent(
                         val website = websiteMap[websiteId]
                         val websiteName = website?.name?.ifEmpty { website.baseUrl } ?: "Website $websiteId"
 
-                        item(span = { GridItemSpan(2) }) {
+                        item(span = { GridItemSpan(2) }, key = "header_$websiteId") {
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -357,7 +372,7 @@ fun HomeNewsContent(
                             }
                         }
 
-                        items(items) { item ->
+                        items(items, key = { it.link }) { item ->
                             val isSelected = selectedItem?.link == item.link
                             NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
                         }
@@ -575,13 +590,13 @@ fun AdaptiveNewsList(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(newsItems) { item ->
+                    items(newsItems, key = { it.link }) { item ->
                         val isSelected = selectedItem?.link == item.link
                         NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
                     }
 
                     if (isLoadingMore) {
-                        item {
+                        item(key = "loading_more") {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -602,13 +617,13 @@ fun AdaptiveNewsList(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(newsItems) { item ->
+                    items(newsItems, key = { it.link }) { item ->
                         val isSelected = selectedItem?.link == item.link
                         NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
                     }
 
                     if (isLoadingMore) {
-                        item(span = { GridItemSpan(2) }) {
+                        item(span = { GridItemSpan(2) }, key = "loading_more_grid") {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -627,6 +642,15 @@ fun AdaptiveNewsList(
 
 @Composable
 fun NewsItemCard(item: NewsItem, isSelected: Boolean = false, onItemClick: (NewsItem) -> Unit) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        label = "cardBackground"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isSelected) 6.dp else 2.dp,
+        label = "cardElevation"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -635,10 +659,8 @@ fun NewsItemCard(item: NewsItem, isSelected: Boolean = false, onItemClick: (News
                     onItemClick(item)
                 }
             },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 6.dp else 2.dp)
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             if (item.image.isNotEmpty()) {
