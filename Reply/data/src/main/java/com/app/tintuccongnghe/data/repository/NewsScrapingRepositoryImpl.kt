@@ -90,6 +90,16 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                     }
                 }
 
+                val queryParamsMap = mutableMapOf<String, String>()
+                val rawQueryParams = doc.get("queryParams")
+                if (rawQueryParams is Map<*, *>) {
+                    for ((k, v) in rawQueryParams) {
+                        if (k is String && v is String) {
+                            queryParamsMap[k] = v
+                        }
+                    }
+                }
+
                 val rulesList = mutableListOf<ParserRule>()
                 val rawRules = doc.get("parserRules") ?: doc.get("rules")
                 if (rawRules is List<*>) {
@@ -101,7 +111,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                             val strRegex = item["strRegex"] as? String ?: ""
                             val isMatches = item["isMatches"] as? Boolean ?: false
                             val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
-                            val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 1
+                            val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
                             val strPrefix = item["strPrefix"] as? String ?: ""
                             val strSufix = item["strSufix"] as? String ?: ""
                             val isReplace = item["isReplace"] as? Boolean ?: false
@@ -135,6 +145,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                     postBodyTemplate = postBodyTemplate,
                     jsonResponseKey = jsonResponseKey,
                     headers = headersMap,
+                    queryParams = queryParamsMap,
                     isActive = isActive,
                     parserRules = rulesList
                 )
@@ -160,11 +171,10 @@ class NewsScrapingRepositoryImpl @Inject constructor(
 
             val targetUrl = if (sigConfig != null && sigConfig.secretSalt.isNotEmpty()) {
                 val websiteBaseUrl = websiteDoc.getString("baseUrl") ?: websiteDoc.getString("url") ?: category.url
-                val customParams = mapOf(
-                    "page" to page.toString(),
-                    "listId" to "53",
-                    "listType" to "3"
-                )
+                val customParams = mutableMapOf<String, String>().apply {
+                    putAll(category.queryParams)
+                    put("page", page.toString())
+                }
                 DynamicUrlGenerator.generateUrl(websiteBaseUrl, sigConfig, customParams)
             } else {
                 if (page > 1 && category.pageTemplate.isNotEmpty()) {
@@ -273,7 +283,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                         val strRegex = item["strRegex"] as? String ?: ""
                         val isMatches = item["isMatches"] as? Boolean ?: false
                         val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
-                        val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 1
+                        val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
                         val strPrefix = item["strPrefix"] as? String ?: ""
                         val strSufix = item["strSufix"] as? String ?: ""
                         val isReplace = item["isReplace"] as? Boolean ?: false
