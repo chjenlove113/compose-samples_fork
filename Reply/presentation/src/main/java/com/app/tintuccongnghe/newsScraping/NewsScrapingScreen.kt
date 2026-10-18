@@ -3,23 +3,20 @@ package com.app.tintuccongnghe.newsScraping
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,14 +44,19 @@ fun NewsScrapingScreen(
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
 
+    // Shared top key holder for scroll restoration across layout switches (2 cols <-> 1 col)
+    var topKeyToRestore by remember { mutableStateOf<String?>(null) }
+    val gridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
+
     val handleItemClick: (NewsItem) -> Unit = { item ->
+        topKeyToRestore = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
         viewModel.selectOrToggleNewsItem(item)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Firestore Optimized Master-Detail") },
+                title = { Text("Key-Based Scroll Restoration") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -137,6 +139,9 @@ fun NewsScrapingScreen(
                                         newsItems = state.homeNews,
                                         selectedItem = state.selectedNewsItem,
                                         isLoading = state.isLoading,
+                                        gridState = gridState,
+                                        topKeyToRestore = topKeyToRestore,
+                                        onTopKeyConsumed = { topKeyToRestore = null },
                                         onRefresh = { viewModel.refresh() },
                                         onWebsiteHeaderClick = { websiteId ->
                                             val websiteIndex = state.websites.indexOfFirst { it.id == websiteId }
@@ -160,6 +165,9 @@ fun NewsScrapingScreen(
                                             categoryNews = state.categoryNews,
                                             selectedSubIndex = state.selectedSubTabMap[website.id] ?: 0,
                                             selectedItem = state.selectedNewsItem,
+                                            gridState = gridState,
+                                            topKeyToRestore = topKeyToRestore,
+                                            onTopKeyConsumed = { topKeyToRestore = null },
                                             onSubTabSelected = { subIndex ->
                                                 viewModel.selectSubTab(website.id, subIndex)
                                             },
@@ -209,6 +217,7 @@ fun NewsScrapingScreen(
                                         isExpanded = true,
                                         onToggleExpand = { viewModel.toggleDetailExpansion() },
                                         onBack = {
+                                            topKeyToRestore = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
                                             viewModel.selectOrToggleNewsItem(state.selectedNewsItem)
                                         }
                                     )
@@ -238,6 +247,7 @@ fun NewsScrapingScreen(
                                             isExpanded = false,
                                             onToggleExpand = { viewModel.toggleDetailExpansion() },
                                             onBack = {
+                                                topKeyToRestore = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
                                                 viewModel.selectOrToggleNewsItem(state.selectedNewsItem)
                                             }
                                         )
@@ -252,13 +262,16 @@ fun NewsScrapingScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeNewsContent(
     websites: List<NewsWebsite>,
     newsItems: List<NewsItem>,
     selectedItem: NewsItem?,
     isLoading: Boolean,
+    gridState: LazyGridState,
+    topKeyToRestore: String?,
+    onTopKeyConsumed: () -> Unit,
     onRefresh: () -> Unit,
     onWebsiteHeaderClick: (String) -> Unit,
     onItemClick: (NewsItem) -> Unit
@@ -268,6 +281,45 @@ fun HomeNewsContent(
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
     val isSplitView = !isCompact && selectedItem != null
+    val columnsCount = if (isCompact || isSplitView) 1 else 2
+
+    // Key-based scroll restoration & auto-scroll
+    LaunchedEffect(selectedItem, topKeyToRestore) {
+        if (topKeyToRestore != null) {
+            val allFlattened = groupedNews.values.flatten()
+            val foundIndex = allFlattened.indexOfFirst { it.link == topKeyToRestore }
+            if (foundIndex != -1) {
+                var targetIndex = 0
+                for ((_, items) in groupedNews) {
+                    targetIndex += 1 // header
+                    val found = items.indexOfFirst { it.link == topKeyToRestore }
+                    if (found != -1) {
+                        targetIndex += found
+                        break
+                    }
+                    targetIndex += items.size
+                }
+                gridState.scrollToItem(targetIndex)
+                onTopKeyConsumed()
+            }
+        } else if (selectedItem != null) {
+            val allFlattened = groupedNews.values.flatten()
+            val index = allFlattened.indexOfFirst { it.link == selectedItem.link }
+            if (index != -1) {
+                var targetIndex = 0
+                for ((_, items) in groupedNews) {
+                    targetIndex += 1 // header
+                    val found = items.indexOfFirst { it.link == selectedItem.link }
+                    if (found != -1) {
+                        targetIndex += found
+                        break
+                    }
+                    targetIndex += items.size
+                }
+                gridState.animateScrollToItem(targetIndex)
+            }
+        }
+    }
 
     PullToRefreshBox(
         isRefreshing = isLoading,
@@ -279,103 +331,57 @@ fun HomeNewsContent(
                 Text("Chưa có tin tức tổng hợp nào.")
             }
         } else {
-            val listState = rememberLazyListState()
-            val gridState = rememberLazyGridState()
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columnsCount),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                for ((websiteId, items) in groupedNews) {
+                    val website = websiteMap[websiteId]
+                    val websiteName = website?.name?.ifEmpty { website.baseUrl } ?: "Website $websiteId"
 
-            if (isCompact || isSplitView) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    for ((websiteId, items) in groupedNews) {
-                        val website = websiteMap[websiteId]
-                        val websiteName = website?.name?.ifEmpty { website.baseUrl } ?: "Website $websiteId"
-
-                        stickyHeader(key = "header_$websiteId") {
-                            Surface(
+                    item(span = { GridItemSpan(columnsCount) }, key = "header_$websiteId") {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onWebsiteHeaderClick(websiteId) },
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            tonalElevation = 4.dp
+                        ) {
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onWebsiteHeaderClick(websiteId) },
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                tonalElevation = 4.dp
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = websiteName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Text(
-                                        text = "Xem chi tiết →",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+                                Text(
+                                    text = websiteName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Text(
+                                    text = "Xem chi tiết →",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
-                        }
-
-                        items(items, key = { it.link }) { item ->
-                            val isSelected = selectedItem?.link == item.link
-                            NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
                         }
                     }
-                }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    state = gridState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    for ((websiteId, items) in groupedNews) {
-                        val website = websiteMap[websiteId]
-                        val websiteName = website?.name?.ifEmpty { website.baseUrl } ?: "Website $websiteId"
 
-                        item(span = { GridItemSpan(2) }, key = "header_$websiteId") {
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onWebsiteHeaderClick(websiteId) },
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                tonalElevation = 4.dp
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = websiteName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Text(
-                                        text = "Xem chi tiết →",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+                    items(items, key = { it.link }) { item ->
+                        val isSelected = selectedItem?.link == item.link
+                        NewsItemCard(
+                            item = item,
+                            isSelected = isSelected,
+                            onItemClick = { clicked ->
+                                onItemClick(clicked)
                             }
-                        }
-
-                        items(items, key = { it.link }) { item ->
-                            val isSelected = selectedItem?.link == item.link
-                            NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
-                        }
+                        )
                     }
                 }
             }
@@ -391,6 +397,9 @@ fun WebsiteContainerScreen(
     categoryNews: Map<String, List<NewsItem>>,
     selectedSubIndex: Int,
     selectedItem: NewsItem?,
+    gridState: LazyGridState,
+    topKeyToRestore: String?,
+    onTopKeyConsumed: () -> Unit,
     onSubTabSelected: (Int) -> Unit,
     isLoading: Boolean,
     isLoadingMore: Boolean,
@@ -420,6 +429,9 @@ fun WebsiteContainerScreen(
             AdaptiveNewsList(
                 newsItems = currentNews,
                 selectedItem = selectedItem,
+                gridState = gridState,
+                topKeyToRestore = topKeyToRestore,
+                onTopKeyConsumed = onTopKeyConsumed,
                 isLoading = isLoading,
                 isLoadingMore = isLoadingMore,
                 onRefresh = onRefresh,
@@ -465,6 +477,9 @@ fun WebsiteContainerScreen(
                         WebsiteAllNewsList(
                             newsItems = websiteNews,
                             selectedItem = selectedItem,
+                            gridState = gridState,
+                            topKeyToRestore = topKeyToRestore,
+                            onTopKeyConsumed = onTopKeyConsumed,
                             isLoading = isLoading,
                             isLoadingMore = isLoadingMore,
                             onRefresh = onRefresh,
@@ -477,6 +492,9 @@ fun WebsiteContainerScreen(
                         CategoryNewsList(
                             newsItems = currentNews,
                             selectedItem = selectedItem,
+                            gridState = gridState,
+                            topKeyToRestore = topKeyToRestore,
+                            onTopKeyConsumed = onTopKeyConsumed,
                             isLoading = isLoading,
                             isLoadingMore = isLoadingMore,
                             onRefresh = onRefresh,
@@ -495,6 +513,9 @@ fun WebsiteContainerScreen(
 fun WebsiteAllNewsList(
     newsItems: List<NewsItem>,
     selectedItem: NewsItem?,
+    gridState: LazyGridState,
+    topKeyToRestore: String?,
+    onTopKeyConsumed: () -> Unit,
     isLoading: Boolean,
     isLoadingMore: Boolean,
     onRefresh: () -> Unit,
@@ -504,6 +525,9 @@ fun WebsiteAllNewsList(
     AdaptiveNewsList(
         newsItems = newsItems,
         selectedItem = selectedItem,
+        gridState = gridState,
+        topKeyToRestore = topKeyToRestore,
+        onTopKeyConsumed = onTopKeyConsumed,
         isLoading = isLoading,
         isLoadingMore = isLoadingMore,
         onRefresh = onRefresh,
@@ -517,6 +541,9 @@ fun WebsiteAllNewsList(
 fun CategoryNewsList(
     newsItems: List<NewsItem>,
     selectedItem: NewsItem?,
+    gridState: LazyGridState,
+    topKeyToRestore: String?,
+    onTopKeyConsumed: () -> Unit,
     isLoading: Boolean = false,
     isLoadingMore: Boolean = false,
     onRefresh: () -> Unit = {},
@@ -526,6 +553,9 @@ fun CategoryNewsList(
     AdaptiveNewsList(
         newsItems = newsItems,
         selectedItem = selectedItem,
+        gridState = gridState,
+        topKeyToRestore = topKeyToRestore,
+        onTopKeyConsumed = onTopKeyConsumed,
         isLoading = isLoading,
         isLoadingMore = isLoadingMore,
         onRefresh = onRefresh,
@@ -538,6 +568,9 @@ fun CategoryNewsList(
 fun AdaptiveNewsList(
     newsItems: List<NewsItem>,
     selectedItem: NewsItem?,
+    gridState: LazyGridState,
+    topKeyToRestore: String?,
+    onTopKeyConsumed: () -> Unit,
     isLoading: Boolean = false,
     isLoadingMore: Boolean = false,
     onRefresh: () -> Unit = {},
@@ -547,6 +580,23 @@ fun AdaptiveNewsList(
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
     val isSplitView = !isCompact && selectedItem != null
+    val columnsCount = if (isCompact || isSplitView) 1 else 2
+
+    // Key-based scroll restoration & auto-scroll
+    LaunchedEffect(selectedItem, topKeyToRestore) {
+        if (topKeyToRestore != null) {
+            val targetIndex = newsItems.indexOfFirst { it.link == topKeyToRestore }
+            if (targetIndex != -1) {
+                gridState.scrollToItem(targetIndex)
+                onTopKeyConsumed()
+            }
+        } else if (selectedItem != null) {
+            val index = newsItems.indexOfFirst { it.link == selectedItem.link }
+            if (index != -1) {
+                gridState.animateScrollToItem(index)
+            }
+        }
+    }
 
     PullToRefreshBox(
         isRefreshing = isLoading,
@@ -558,22 +608,13 @@ fun AdaptiveNewsList(
                 Text("Không có bài viết trong danh sách này.")
             }
         } else {
-            val listState = rememberLazyListState()
-            val gridState = rememberLazyGridState()
-
             val shouldLoadMore = remember {
                 derivedStateOf {
-                    if (isCompact || isSplitView) {
-                        val layoutInfo = listState.layoutInfo
-                        val totalItemsNumber = layoutInfo.totalItemsCount
-                        val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        totalItemsNumber > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
-                    } else {
-                        val layoutInfo = gridState.layoutInfo
-                        val totalItemsNumber = layoutInfo.totalItemsCount
-                        val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        totalItemsNumber > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
-                    }
+                    val layoutInfo = gridState.layoutInfo
+                    val totalItemsNumber = layoutInfo.totalItemsCount
+                    val lastItem = layoutInfo.visibleItemsInfo.lastOrNull()
+                    val lastVisibleItemIndex = lastItem?.index ?: 0
+                    totalItemsNumber > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
                 }
             }
 
@@ -583,55 +624,28 @@ fun AdaptiveNewsList(
                 }
             }
 
-            if (isCompact || isSplitView) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(newsItems, key = { it.link }) { item ->
-                        val isSelected = selectedItem?.link == item.link
-                        NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
-                    }
-
-                    if (isLoadingMore) {
-                        item(key = "loading_more") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                            }
-                        }
-                    }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columnsCount),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(newsItems, key = { it.link }) { item ->
+                    val isSelected = selectedItem?.link == item.link
+                    NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
                 }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    state = gridState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(newsItems, key = { it.link }) { item ->
-                        val isSelected = selectedItem?.link == item.link
-                        NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
-                    }
 
-                    if (isLoadingMore) {
-                        item(span = { GridItemSpan(2) }, key = "loading_more_grid") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                            }
+                if (isLoadingMore) {
+                    item(span = { GridItemSpan(columnsCount) }, key = "loading_more_grid") {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
                         }
                     }
                 }
