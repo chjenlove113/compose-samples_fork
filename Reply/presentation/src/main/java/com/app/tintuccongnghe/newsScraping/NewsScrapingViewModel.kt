@@ -27,6 +27,8 @@ sealed interface NewsScrapingUiState {
         val categoryNews: Map<String, List<NewsItem>> = emptyMap(),
         val selectedMainTab: Int = 0, // 0 = Home, 1..N = Website
         val selectedSubTabMap: Map<String, Int> = emptyMap(), // websiteId -> sub-tab index (0 = All, 1..M = Category)
+        val selectedNewsItem: NewsItem? = null,
+        val isDetailExpanded: Boolean = false,
         val isLoading: Boolean = false,
         val isLoadingMore: Boolean = false,
         val currentPage: Int = 1,
@@ -132,7 +134,13 @@ class NewsScrapingViewModel @Inject constructor(
     fun selectMainTab(index: Int) {
         val current = _uiState.value
         if (current is NewsScrapingUiState.Success) {
-            _uiState.value = current.copy(selectedMainTab = index, currentPage = 1, hasMorePages = true)
+            _uiState.value = current.copy(
+                selectedMainTab = index,
+                currentPage = 1,
+                hasMorePages = true,
+                selectedNewsItem = null,
+                isDetailExpanded = false
+            )
         }
     }
 
@@ -141,7 +149,38 @@ class NewsScrapingViewModel @Inject constructor(
         if (current is NewsScrapingUiState.Success) {
             val updatedSubMap = current.selectedSubTabMap.toMutableMap()
             updatedSubMap[websiteId] = subIndex
-            _uiState.value = current.copy(selectedSubTabMap = updatedSubMap, currentPage = 1, hasMorePages = true)
+            _uiState.value = current.copy(
+                selectedSubTabMap = updatedSubMap,
+                currentPage = 1,
+                hasMorePages = true,
+                selectedNewsItem = null,
+                isDetailExpanded = false
+            )
+        }
+    }
+
+    fun selectOrToggleNewsItem(item: NewsItem) {
+        val current = _uiState.value
+        if (current is NewsScrapingUiState.Success) {
+            if (current.selectedNewsItem?.link == item.link) {
+                _uiState.value = current.copy(selectedNewsItem = null, isDetailExpanded = false)
+            } else {
+                _uiState.value = current.copy(selectedNewsItem = item, isDetailExpanded = false)
+            }
+        }
+    }
+
+    fun toggleDetailExpansion() {
+        val current = _uiState.value
+        if (current is NewsScrapingUiState.Success) {
+            _uiState.value = current.copy(isDetailExpanded = !current.isDetailExpanded)
+        }
+    }
+
+    fun clearSelection() {
+        val current = _uiState.value
+        if (current is NewsScrapingUiState.Success) {
+            _uiState.value = current.copy(selectedNewsItem = null, isDetailExpanded = false)
         }
     }
 
