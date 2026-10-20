@@ -1,9 +1,14 @@
 package com.app.tintuccongnghe.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import com.app.tintuccongnghe.domain.models.AppUserSite
 
-@Entity(tableName = "app_user_sites", primaryKeys = ["Id", "GROUP", "Kind"])
+@Entity(
+    tableName = "app_user_sites",
+    primaryKeys = ["Id"],
+    indices = [Index(value = ["Id", "GROUP", "Kind"], unique = true)]
+)
 data class AppUserSiteEntity(
     val Id: Int,
     val Key: String,

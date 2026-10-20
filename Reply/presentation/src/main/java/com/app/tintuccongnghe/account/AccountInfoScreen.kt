@@ -95,50 +95,48 @@ fun AccountInfoScreen(
                 onClick = onNavigateToNotifications
             )
 
-            if(authInfo != null){
-                SettingItem(
-                    icon = Icons.Default.Category,
-                    title = "Home Categories",
-                    onClick = onNavigateToUserCategories
-                )
-                SettingItem(
-                    icon = Icons.AutoMirrored.Filled.Article,
-                    title = "RSS Website Sources",
-                    onClick = onNavigateToUserSites
-                )
-                SettingItem(
-                    icon = Icons.Default.Cloud,
-                    title = "Firestore ETL News Scraping",
-                    onClick = onNavigateToNewsScraping
-                )
+            SettingItem(
+                icon = Icons.Default.Category,
+                title = "Home Categories",
+                onClick = onNavigateToUserCategories
+            )
+            SettingItem(
+                icon = Icons.AutoMirrored.Filled.Article,
+                title = "RSS Website Sources",
+                onClick = onNavigateToUserSites
+            )
+            SettingItem(
+                icon = Icons.Default.Cloud,
+                title = "Firestore ETL News Scraping",
+                onClick = onNavigateToNewsScraping
+            )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-                Text(
-                    text = "RSS Sync Strategy",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
+            Text(
+                text = "RSS Sync Strategy",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            SettingStrategyItem(
+                currentStrategy = refreshStrategy,
+                onStrategyChange = { viewModel.setRefreshStrategy(it) }
+            )
+
+            if (refreshStrategy == "INTERVAL") {
+                SettingRefreshIntervalItem(
+                    currentInterval = refreshInterval,
+                    onIntervalChange = { viewModel.setRefreshInterval(it) }
                 )
-
-                SettingStrategyItem(
-                    currentStrategy = refreshStrategy,
-                    onStrategyChange = { viewModel.setRefreshStrategy(it) }
+            } else {
+                SettingDailyRefreshItem(
+                    settings = dailyRefreshSettings,
+                    onTimesChange = { times ->
+                        viewModel.setDailyRefreshSettings(true, times)
+                    }
                 )
-
-                if (refreshStrategy == "INTERVAL") {
-                    SettingRefreshIntervalItem(
-                        currentInterval = refreshInterval,
-                        onIntervalChange = { viewModel.setRefreshInterval(it) }
-                    )
-                } else {
-                    SettingDailyRefreshItem(
-                        settings = dailyRefreshSettings,
-                        onTimesChange = { times ->
-                            viewModel.setDailyRefreshSettings(true, times)
-                        }
-                    )
-                }
             }
 
             SettingSwitchItem(

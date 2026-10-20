@@ -33,6 +33,7 @@ data class ShowHomeRssUiState(
     val isLoggedIn: Boolean = true
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ShowHomeRssViewModel @Inject constructor(
     private val appDatabase: AppDatabase,
@@ -50,20 +51,21 @@ class ShowHomeRssViewModel @Inject constructor(
 
     private fun loadSites() {
         viewModelScope.launch {
-            getAuthInfoUseCase().collect { auth ->
-                if (auth != null) {
-                    _uiState.update { it.copy(isLoggedIn = true, isLoading = true) }
-                    appDatabase.appUserSiteDao().getAppUserSites(auth.IdentityId, AppContants.app_Id)
-                        .map { entities -> 
-                            entities.filter { it.GROUP == "1" }.map { it.toDomain() } 
-                        }
-                        .collect { sites ->
-                            _uiState.update { it.copy(sites = sites, isLoading = false) }
-                        }
-                } else {
-                    _uiState.update { it.copy(isLoggedIn = false, isLoading = false) }
+            getAuthInfoUseCase()
+                .flatMapLatest { auth ->
+                    _uiState.update { it.copy(isLoggedIn = auth != null, isLoading = true) }
+                    val flow = if (auth != null) {
+                        appDatabase.appUserSiteDao().getAppUserSites(auth.IdentityId, AppContants.app_Id)
+                    } else {
+                        appDatabase.appUserSiteDao().getAllSitesFlow()
+                    }
+                    flow.map { entities ->
+                        entities.filter { it.GROUP == "1" }.map { it.toDomain() }
+                    }
                 }
-            }
+                .collect { sites ->
+                    _uiState.update { it.copy(sites = sites, isLoading = false) }
+                }
         }
     }
 

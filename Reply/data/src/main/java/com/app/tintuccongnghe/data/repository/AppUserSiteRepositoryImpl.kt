@@ -24,7 +24,7 @@ class AppUserSiteRepositoryImpl @Inject constructor(
     private val dao = database.appUserSiteDao()
 
     override fun getAppUserSiteList(request: AppUserSiteRequest): Flow<List<AppUserSite>> {
-        return dao.getAppUserSites(request.IdentityId, request.AppIdEncrypt).map { entities ->
+        return dao.getAppUserSitesWithCommon(request.IdentityId, request.AppIdEncrypt).map { entities ->
             entities.map { it.toDomain() }
         }
     }
@@ -105,15 +105,22 @@ class AppUserSiteRepositoryImpl @Inject constructor(
 
             val localList = dao.getAllSites()
 
-            // 3. Compare with local data based on Key. If local does not have it, insert into local Room DB.
+            // 3. Compare with local data based on IdentityId and Key. If local data does not have it, insert into local Room DB.
             remoteItems.forEach { remote ->
-                val existingLocal = localList.find { it.Key == remote.Key }
+                val existingLocal = if (request.IdentityId != "local_user" && remote.IdentityId == request.IdentityId) {
+                    localList.find { it.IdentityId == request.IdentityId && it.Key == remote.Key }
+                } else {
+                    localList.find { it.Key == remote.Key }
+                }
+
                 if (existingLocal == null) {
-                    dao.insert(remote.toEntity().copy(IdentityId = if (request.IdentityId != "local_user") request.IdentityId else "local_user"))
+                    val targetIdentityId = if (remote.IdentityId == request.IdentityId) request.IdentityId else "common"
+                    dao.insert(remote.toEntity().copy(IdentityId = targetIdentityId))
                 } else {
                     if (existingLocal.isSynced) {
                         val updatedEntity = remote.toEntity().copy(
                             IdentityId = existingLocal.IdentityId,
+                            GROUP = existingLocal.GROUP,
                             lastRefreshTime = existingLocal.lastRefreshTime,
                             nextRefreshTime = existingLocal.nextRefreshTime,
                             itemCount = existingLocal.itemCount,
@@ -247,7 +254,7 @@ class AppUserSiteRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse {
-        dao.deleteById(request.Id, request.GROUP, request.Kind)
+        dao.deleteById(request.Id)
 
         if (request.IdentityId != "local_user") {
             try {

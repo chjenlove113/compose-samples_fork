@@ -68,11 +68,10 @@ class AppUserSiteViewModel @Inject constructor(
         viewModelScope.launch {
             getAuthInfoUseCase().collect { auth ->
                 _uiState.update { it.copy(isLoggedIn = auth != null) }
-                auth?.let {
-                    initData(it.IdentityId)
-                } ?: run {
-                    _uiState.update { it.copy(sites = emptyMap()) }
-                    dataCollectionJob?.cancel()
+                if (auth != null) {
+                    initData(auth.IdentityId)
+                } else {
+                    initData("local_user")
                 }
             }
         }
@@ -224,7 +223,18 @@ class AppUserSiteViewModel @Inject constructor(
         viewModelScope.launch {
             site.IdentityId = currentIdentityId
             site.AppIdEncrypt = AppContants.app_Id
-            val updatedSite = site.copy(IsActive = !site.IsActive)
+            val newGroup = if (site.GROUP == "1") "0" else "1"
+            val updatedSite = site.copy(GROUP = newGroup)
+            updateAppUserSiteUseCase(updatedSite)
+        }
+    }
+
+    fun toggleActive(site: AppUserSite, isChecked: Boolean) {
+        viewModelScope.launch {
+            site.IdentityId = currentIdentityId
+            site.AppIdEncrypt = AppContants.app_Id
+            val newGroup = if (isChecked) "1" else "0"
+            val updatedSite = site.copy(GROUP = newGroup)
             updateAppUserSiteUseCase(updatedSite)
         }
     }

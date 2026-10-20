@@ -103,14 +103,7 @@ fun ShowHomeRSSFeedScreen(
         currentDestination = navigator.currentDestination
     )
 
-    if (!uiState.isLoggedIn) {
-        EmptyStateWithButton(
-            message = "Please login to view RSS feeds",
-            buttonText = "Go to Login",
-            onClick = onNavigateToLogin
-        )
-        return
-    }
+
 
     if (uiState.sites.isEmpty() && !uiState.isLoading) {
         EmptyStateWithButton(

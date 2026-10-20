@@ -27,16 +27,6 @@ import com.app.tintuccongnghe.domain.models.AppUserSite
 import com.app.tintuccongnghe.presentation.R
 import java.text.SimpleDateFormat
 import java.util.*
-import android.app.Activity
-import android.content.Context
-import androidx.compose.ui.platform.LocalContext
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
-import com.app.tintuccongnghe.components.loadInterstitialAd
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -52,20 +42,8 @@ fun AppUserSiteScreen(
     var selectedSite by remember { mutableStateOf<AppUserSite?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val context = LocalContext.current
-    var interstitialAd by remember { mutableStateOf<InterstitialAd?>(null) }
-
-    LaunchedEffect(Unit) {
-        loadInterstitialAd(context) { ad ->
-            interstitialAd = ad
-        }
-    }
-
-    // Filter sites to exclude those with GROUP == "0"
-    val nonGroup0Sites = remember(uiState.sites) {
-        uiState.sites.mapValues { (_, sites) ->
-            sites.filter { it.GROUP != "0" }
-        }.filter { it.value.isNotEmpty() }
+    val sitesMap = remember(uiState.sites) {
+        uiState.sites.filter { it.value.isNotEmpty() }
     }
 
     LaunchedEffect(uiState.error) {
@@ -108,30 +86,8 @@ fun AppUserSiteScreen(
                     }
 
                     IconButton(onClick = {
-                        if (uiState.isLoggedIn) {
-                            if (interstitialAd != null) {
-                                interstitialAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
-                                    override fun onAdDismissedFullScreenContent() {
-                                        interstitialAd = null
-                                        loadInterstitialAd(context) { newAd -> interstitialAd = newAd }
-                                        selectedSite = null
-                                        showDialog = true
-                                    }
-
-                                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                        interstitialAd = null
-                                        selectedSite = null
-                                        showDialog = true
-                                    }
-                                }
-                                interstitialAd?.show(context as Activity)
-                            } else {
-                                selectedSite = null
-                                showDialog = true
-                            }
-                        } else {
-                            showLoginRequiredDialog = true
-                        }
+                        selectedSite = null
+                        showDialog = true
                     }) {
                         Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_site))
                     }
@@ -142,11 +98,11 @@ fun AppUserSiteScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (uiState.isLoading && nonGroup0Sites.isEmpty()) {
+                if (uiState.isLoading && sitesMap.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         LoadingIndicator()
                     }
-                } else if (uiState.error != null && nonGroup0Sites.isEmpty()) {
+                } else if (uiState.error != null && sitesMap.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
@@ -159,7 +115,7 @@ fun AppUserSiteScreen(
                             }
                         }
                     }
-                } else if (nonGroup0Sites.isEmpty() && !uiState.isLoading) {
+                } else if (sitesMap.isEmpty() && !uiState.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(stringResource(R.string.no_sites_found))
@@ -171,41 +127,22 @@ fun AppUserSiteScreen(
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        nonGroup0Sites.forEach { (kind, sites) ->
+                        sitesMap.forEach { (kind, sites) ->
                             stickyHeader {
                                 HeaderItem(kind)
                             }
                             items(sites, key = { "${kind}_${it.GROUP}_${it.Id}" }) { site ->
                                 SiteListItem(
                                     site = site,
-                                    onToggleActive = {
-                                        if (uiState.isLoggedIn) {
-                                            viewModel.toggleActive(site)
-                                        } else {
-                                            showLoginRequiredDialog = true
-                                        }
+                                    onToggleActive = { isChecked ->
+                                        viewModel.toggleActive(site, isChecked)
                                     },
                                     onEdit = {
-                                        if (uiState.isLoggedIn) {
-                                            selectedSite = site
-                                            showDialog = true
-                                        } else {
-                                            showLoginRequiredDialog = true
-                                        }
+                                        selectedSite = site
+                                        showDialog = true
                                     },
                                     onSync = {
-                                        if (uiState.isLoggedIn) {
-                                            viewModel.syncSite(site)
-                                        } else {
-                                            showLoginRequiredDialog = true
-                                        }
-                                    },
-                                    onCopy = {
-                                        if (uiState.isLoggedIn) {
-                                            viewModel.copySite(site.Id)
-                                        } else {
-                                            showLoginRequiredDialog = true
-                                        }
+                                        viewModel.syncSite(site)
                                     },
                                     isSyncing = uiState.syncingSiteIds.contains(site.Id),
                                     onNavigateToRss = onNavigateToRss
@@ -246,12 +183,12 @@ fun AppUserSiteScreen(
             site = selectedSite,
             rssCount = rssCount,
             onDismiss = { showDialog = false },
-            onConfirm = { id, name, url, icon, kind, group, isActive, otherCanSee ->
-                viewModel.createOrUpdateSite(id, name, url, icon, kind, group, isActive, otherCanSee)
+            onConfirm = { id, name, url, icon, kind, group, isActive ->
+                viewModel.createOrUpdateSite(id, name, url, icon, kind, group, isActive, false)
                 showDialog = false
             },
-            onDelete = { id, name, url, icon, kind, group, isActive, otherCanSee ->
-                viewModel.deleteSite(id, name, url, icon, kind, group, isActive, otherCanSee)
+            onDelete = { id, name, url, icon, kind, group, isActive ->
+                viewModel.deleteSite(id, name, url, icon, kind, group, isActive, false)
                 showDialog = false
             }
         )
@@ -278,10 +215,9 @@ fun HeaderItem(kind: String) {
 @Composable
 fun SiteListItem(
     site: AppUserSite,
-    onToggleActive: () -> Unit,
+    onToggleActive: (Boolean) -> Unit,
     onEdit: () -> Unit,
     onSync: () -> Unit,
-    onCopy: () -> Unit,
     isSyncing: Boolean,
     onNavigateToRss: (Int, String) -> Unit
 ) {
@@ -340,7 +276,8 @@ fun SiteListItem(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (site.AllowEdit) {
+                    if (site.GROUP == "1" && site.Url.isNotBlank()) {
+
                         Button(
                             onClick = { onNavigateToRss(site.Id, site.GROUP) },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -348,9 +285,7 @@ fun SiteListItem(
                         ) {
                             Text("Go to News", style = MaterialTheme.typography.labelMedium)
                         }
-                    }
 
-                    if (site.GROUP == "1" && site.Url.isNotBlank()) {
                         Button(
                             onClick = onSync,
                             enabled = !isSyncing,
@@ -370,23 +305,15 @@ fun SiteListItem(
                         }
                     }
 
-                    if (site.GROUP == "2") {
-                        Button(
-                            onClick = onCopy,
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Text("Copy site", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
+
                 }
             }
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(
-                    checked = site.IsActive,
-                    onCheckedChange = { onToggleActive() }
+                    checked = site.GROUP == "1",
+                    onCheckedChange = { isChecked -> onToggleActive(isChecked) }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
@@ -410,8 +337,8 @@ fun SiteDialog(
     site: AppUserSite? = null,
     rssCount: Int = 0,
     onDismiss: () -> Unit,
-    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) -> Unit,
-    onDelete: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) -> Unit
+    onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean) -> Unit,
+    onDelete: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean) -> Unit
 ) {
     val isEdit = site != null
     var name by remember { mutableStateOf(site?.Name ?: "") }
@@ -419,7 +346,6 @@ fun SiteDialog(
     var icon by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(site?.Kind ?: "") }
     var isActive by remember { mutableStateOf(site?.IsActive ?: true) }
-    var otherCanSee by remember { mutableStateOf(site?.OtherCanSee ?: false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -483,30 +409,6 @@ fun SiteDialog(
                                 onCheckedChange = { isActive = it }
                             )
                         }
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stringResource(R.string.visibility),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = stringResource(R.string.allow_others_visibility),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                            Switch(
-                                checked = otherCanSee,
-                                onCheckedChange = { otherCanSee = it }
-                            )
-                        }
                     }
                 }
             }
@@ -520,7 +422,7 @@ fun SiteDialog(
                 if (site != null && site.GROUP == "1") {
                     val group = site.GROUP
                     TextButton(
-                        onClick = { onDelete(site.Id, name, url, icon, kind, group, isActive, otherCanSee) },
+                        onClick = { onDelete(site.Id, name, url, icon, kind, group, isActive) },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
                         Text(stringResource(R.string.delete))
@@ -540,7 +442,7 @@ fun SiteDialog(
                 Button(
                     onClick = {
                         val group = site?.GROUP ?: "1" // Default to 1 for new RSS sites
-                        onConfirm(site?.Id ?: 0, name, url, icon, kind, group, isActive, otherCanSee)
+                        onConfirm(site?.Id ?: 0, name, url, icon, kind, group, isActive)
                     },
                     enabled = name.isNotBlank() && url.isNotBlank() && (isEdit || rssCount < 10)
                 ) {
