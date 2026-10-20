@@ -29,7 +29,8 @@ data class AppUserSite(
     var AppIdEncrypt: String,
     val lastRefreshTime: Long? = null,
     val nextRefreshTime: Long? = null,
-    val itemCount: Int = 0
+    val itemCount: Int = 0,
+    val isSynced: Boolean = true
 ) : Parcelable
 
 data class AppUserSiteCreateRequest(

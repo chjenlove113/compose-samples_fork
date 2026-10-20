@@ -20,7 +20,7 @@ import com.app.tintuccongnghe.data.local.entities.*
         ScrapedNewsEntity::class,
         NewsDetailEntity::class
     ],
-    version = 19
+    version = 20
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

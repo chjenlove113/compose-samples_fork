@@ -1,8 +1,12 @@
 package com.app.tintuccongnghe.newsScraping
 
+import android.util.Log
+import android.view.View
+import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +19,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -37,6 +43,9 @@ fun NewsDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+
+    val colorScheme = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
 
     LaunchedEffect(websiteId, link) {
         viewModel.loadDetail(websiteId, link)
@@ -104,6 +113,25 @@ fun NewsDetailScreen(
                 }
                 is NewsDetailUiState.Success -> {
                     val detail = state.detail
+                    val processedHtml = remember(detail.contentHtml, colorScheme, isDark) {
+                        try {
+                            val baseFontSize = 18
+                            context.assets.open("news_template_v0.html").bufferedReader().use { it.readText() }
+                                .replace("#BG_COLOR", colorScheme.surfaceContainer.toHtmlHex().substring(1))
+                                .replace("#TEXT_PRIMARY", colorScheme.onBackground.toHtmlHex().substring(1))
+                                .replace("#TEXT_SECONDARY", colorScheme.onSurfaceVariant.toHtmlHex().substring(1))
+                                .replace("#SURFACE", colorScheme.surfaceVariant.toHtmlHex().substring(1))
+                                .replace("#PRIMARY", colorScheme.primary.toHtmlHex().substring(1))
+                                .replace("#FONT_SIZE", baseFontSize.toString())
+                                .replace("#PADDING_H", "0")
+                                .replace("#PADDING_V", "0")
+                                .replace("#CONTENT", detail.contentHtml)
+                        } catch (e: Exception) {
+                            Log.e("NewsDetailScreen", "Error loading template", e)
+                            detail.contentHtml
+                        }
+                    }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -141,21 +169,41 @@ fun NewsDetailScreen(
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        if (detail.contentHtml.isNotEmpty()) {
+                        if (processedHtml.isNotEmpty()) {
                             AndroidView(
                                 factory = { context ->
                                     WebView(context).apply {
                                         webViewClient = WebViewClient()
-                                        settings.loadWithOverviewMode = true
-                                        settings.useWideViewPort = true
+                                        settings.apply {
+                                            javaScriptEnabled = true
+                                            domStorageEnabled = true
+                                            loadWithOverviewMode = true
+                                            useWideViewPort = true
+                                            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                                        }
+                                        isVerticalScrollBarEnabled = false
+                                        isHorizontalScrollBarEnabled = false
+                                        overScrollMode = View.OVER_SCROLL_NEVER
+                                        setBackgroundColor(0)
+                                        isNestedScrollingEnabled = false
+                                        isFocusable = false
+                                        isFocusableInTouchMode = false
+
+                                        layoutParams = ViewGroup.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.WRAP_CONTENT
+                                        )
                                     }
                                 },
                                 update = { webView ->
-                                    webView.loadDataWithBaseURL(null, detail.contentHtml, "text/html", "UTF-8", null)
+                                    if (webView.tag != processedHtml) {
+                                        webView.loadDataWithBaseURL(null, processedHtml, "text/html", "UTF-8", null)
+                                        webView.tag = processedHtml
+                                    }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(min = 400.dp, max = 2000.dp)
+                                    .heightIn(min = 400.dp, max = 3000.dp)
                             )
                         } else {
                             Text(
@@ -169,4 +217,8 @@ fun NewsDetailScreen(
             }
         }
     }
+}
+
+private fun Color.toHtmlHex(): String {
+    return String.format("#%06X", (0xFFFFFF and this.toArgb()))
 }

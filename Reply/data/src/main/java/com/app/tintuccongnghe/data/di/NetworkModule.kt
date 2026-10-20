@@ -9,6 +9,7 @@ import com.app.tintuccongnghe.data.api.NewsDetailService
 import com.app.tintuccongnghe.data.api.NewsTagService
 import com.app.tintuccongnghe.data.api.ShowHomeService
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
 import com.app.tintuccongnghe.data.networks.HeaderInterceptor
 import com.app.tintuccongnghe.data.networks.NetworkConnectionInterceptor
 import com.app.tintuccongnghe.data.networks.UserAgentInterceptor
@@ -135,5 +136,11 @@ class NetworkModule {
     @Singleton
     fun provideFirebaseFirestore(): FirebaseFirestore {
         return FirebaseFirestore.getInstance()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseAuth(): com.google.firebase.auth.FirebaseAuth {
+        return com.google.firebase.auth.FirebaseAuth.getInstance()
     }
 }

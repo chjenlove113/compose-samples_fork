@@ -306,6 +306,34 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                         )
                     }
                 }
+            } else if (rawRules is Map<*, *>){
+                val stt = (rawRules["stt"] as? Number)?.toInt() ?: 0
+                val enumNews = (rawRules["enumNews"] as? Number)?.toInt() ?: 0
+                val strRegexName = rawRules["strRegexName"] as? String ?: ""
+                val strRegex = rawRules["strRegex"] as? String ?: ""
+                val isMatches = rawRules["isMatches"] as? Boolean ?: false
+                val isMatchesPos = (rawRules["isMatchesPos"] as? Number)?.toInt() ?: 0
+                val groupPos = (rawRules["groupPos"] as? Number)?.toInt() ?: 3
+                val strPrefix = rawRules["strPrefix"] as? String ?: ""
+                val strSufix = rawRules["strSufix"] as? String ?: ""
+                val isReplace = rawRules["isReplace"] as? Boolean ?: false
+                val textReplace = rawRules["textReplace"] as? String ?: ""
+
+                rulesList.add(
+                    ParserRule(
+                        stt = stt,
+                        enumNews = enumNews,
+                        strRegexName = strRegexName,
+                        strRegex = strRegex,
+                        isMatches = isMatches,
+                        isMatchesPos = isMatchesPos,
+                        groupPos = groupPos,
+                        strPrefix = strPrefix,
+                        strSufix = strSufix,
+                        isReplace = isReplace,
+                        textReplace = textReplace
+                    )
+                )
             }
 
             DetailRuleDocument(

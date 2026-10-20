@@ -1,7 +1,5 @@
 package com.app.tintuccongnghe.data.di
 
-import com.app.tintuccongnghe.data.api.AppUserSiteService
-import com.app.tintuccongnghe.data.api.AuthService
 import com.app.tintuccongnghe.data.api.HtmlScrapingService
 import com.app.tintuccongnghe.data.api.NewsDetailService
 import com.app.tintuccongnghe.data.api.NewsSiteService
@@ -71,10 +69,10 @@ class RepositoryModule {
     @Provides
     @Singleton
     fun provideAuthRepository(
-        authService: AuthService,
+        firebaseAuth: com.google.firebase.auth.FirebaseAuth,
         appDatabase: AppDatabase
     ): IAuthRepository {
-        return AuthRepositoryImpl(authService, appDatabase)
+        return AuthRepositoryImpl(firebaseAuth, appDatabase)
     }
 
     @Provides
@@ -86,10 +84,10 @@ class RepositoryModule {
     @Provides
     @Singleton
     fun provideAppUserSiteRepository(
-        appUserSiteService: AppUserSiteService,
+        firestore: FirebaseFirestore,
         appDatabase: AppDatabase
     ): IAppUserSiteRepository {
-        return AppUserSiteRepositoryImpl(appUserSiteService, appDatabase)
+        return AppUserSiteRepositoryImpl(firestore, appDatabase)
     }
 
     @Provides

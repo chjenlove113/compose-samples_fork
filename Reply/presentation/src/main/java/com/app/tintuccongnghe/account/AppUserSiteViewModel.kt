@@ -121,6 +121,20 @@ class AppUserSiteViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
+    fun syncData() {
+        if (currentIdentityId.isNotEmpty()) {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+                try {
+                    refreshAppUserSiteListUseCase(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
+                    _uiState.update { it.copy(isLoading = false, error = "Synced successfully with Firestore") }
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Sync failed") }
+                }
+            }
+        }
+    }
+
     fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) {
         if (id == 0) {
             val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" }

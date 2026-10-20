@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,6 +96,17 @@ fun AppUserSiteScreen(
                             modifier = Modifier.padding(end = 4.dp)
                         )
                     }
+                    // Sync Data Button with login check
+                    IconButton(onClick = {
+                        if (uiState.isLoggedIn) {
+                            viewModel.syncData()
+                        } else {
+                            showLoginRequiredDialog = true
+                        }
+                    }) {
+                        Icon(Icons.Default.Sync, contentDescription = "Sync Data")
+                    }
+
                     IconButton(onClick = {
                         if (uiState.isLoggedIn) {
                             if (interstitialAd != null) {
@@ -274,7 +286,29 @@ fun SiteListItem(
     onNavigateToRss: (Int, String) -> Unit
 ) {
     ListItem(
-        headlineContent = { Text(site.Name) },
+        headlineContent = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(site.Name, modifier = Modifier.weight(1f, false))
+                if (!site.isSynced) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = "Unsynced",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        },
         supportingContent = {
             Column {
                 Text(site.Url)
