@@ -13,6 +13,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 data class ShowHomeRssChildUiState(
     val isLoading: Boolean = false
@@ -36,6 +37,13 @@ class ShowHomeRssChildViewModel @AssistedInject constructor(
         ),
         pagingSourceFactory = { appDatabase.rssItemDao().getRssItemsForSitePaging(siteId, siteGroup, siteKind) }
     ).flow.cachedIn(viewModelScope)
+
+    fun toggleFavorite(item: RssItemEntity) {
+        viewModelScope.launch {
+            val updated = item.copy(isFavorite = !item.isFavorite)
+            appDatabase.rssItemDao().update(updated)
+        }
+    }
 
     @AssistedFactory
     interface Factory {

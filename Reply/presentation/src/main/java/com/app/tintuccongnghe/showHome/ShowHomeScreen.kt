@@ -327,7 +327,12 @@ fun ShowHomeContent(x0: ShowHomeDataModel, x1: (News) -> Unit) {
     LazyColumn {
         items(
             count = x0.LstNewsHeader?.size ?: 0,
-            itemContent = { NewsHeaderItem(x0.LstNewsHeader!![it], x1) })
+            itemContent = {
+                x0.LstNewsHeader?.getOrNull(it)?.let { news ->
+                    NewsHeaderItem(news, x1)
+                }
+            }
+        )
     }
 }
 
@@ -497,13 +502,13 @@ fun ExploreContent(
                 if (viewMode == "grid") {
                     val chunks = categoryNews.chunked(2)
                     items(chunks.size) { index ->
+                        val rowItems = chunks.getOrNull(index) ?: return@items
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = pagePadding, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            val rowItems = chunks[index]
                             rowItems.forEach { news ->
                                 NewsGridItem(
                                     news = news,
@@ -519,7 +524,7 @@ fun ExploreContent(
                     }
                 } else {
                     items(categoryNews.size) { index ->
-                        val news = categoryNews[index]
+                        val news = categoryNews.getOrNull(index) ?: return@items
                         val hadSelectedItem = selectedNews?.Id != null
                         NewsListItem(
                             news = news,
@@ -809,7 +814,7 @@ fun AutoAdvancePager(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-            val newsItem = pageItems[page]
+            val newsItem = pageItems.getOrNull(page) ?: return@HorizontalPager
             Box(Modifier.fillMaxSize().clickable {
                 onEventClickNewsItem(newsItem)
             }) {

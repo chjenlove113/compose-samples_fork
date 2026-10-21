@@ -5,6 +5,8 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -31,6 +33,8 @@ import coil3.compose.AsyncImage
 import com.app.tintuccongnghe.domain.models.NewsCategory
 import com.app.tintuccongnghe.domain.models.NewsItem
 import com.app.tintuccongnghe.domain.models.NewsWebsite
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,12 +48,36 @@ fun NewsScrapingScreen(
     val adaptiveInfo = currentWindowAdaptiveInfo()
     val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
 
-    // Shared top key holder for scroll restoration across layout switches (2 cols <-> 1 col)
-    var topKeyToRestore by remember { mutableStateOf<String?>(null) }
-    val gridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
+    // ViewModel-backed LazyGridStates to survive folding, unfolding, and configuration changes
+    val gridStates = remember { mutableStateMapOf<String, LazyGridState>() }
+
+    val getGridState: (String) -> LazyGridState = { key ->
+        gridStates.getOrPut(key) {
+            val saved = viewModel.getScrollState(key)
+            LazyGridState(
+                firstVisibleItemIndex = saved?.first ?: 0,
+                firstVisibleItemScrollOffset = saved?.second ?: 0
+            )
+        }
+    }
+
+    val saveCurrentScrollState: () -> Unit = {
+        val currentSuccess = uiState as? NewsScrapingUiState.Success
+        if (currentSuccess != null) {
+            val mainTab = currentSuccess.selectedMainTab
+            if (mainTab > 0) {
+                val website = currentSuccess.websites.getOrNull(mainTab - 1)
+                val subIndex = website?.let { currentSuccess.selectedSubTabMap[it.id] } ?: 0
+                val key = "website_${website?.id ?: ""}_sub_$subIndex"
+                gridStates[key]?.let { grid ->
+                    viewModel.saveScrollState(key, grid.firstVisibleItemIndex, grid.firstVisibleItemScrollOffset)
+                }
+            }
+        }
+    }
 
     val handleItemClick: (NewsItem) -> Unit = { item ->
-        topKeyToRestore = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
+        saveCurrentScrollState()
         viewModel.selectOrToggleNewsItem(item)
     }
 
@@ -104,24 +132,27 @@ fun NewsScrapingScreen(
                     val mainPagerState = rememberPagerState(pageCount = { mainTabs.size })
 
                     LaunchedEffect(mainPagerState.currentPage) {
-                        viewModel.selectMainTab(mainPagerState.currentPage)
-                    }
-                    LaunchedEffect(state.selectedMainTab) {
-                        if (mainPagerState.currentPage != state.selectedMainTab) {
-                            mainPagerState.animateScrollToPage(state.selectedMainTab)
+                        if (state.selectedMainTab != mainPagerState.currentPage) {
+                            viewModel.selectMainTab(mainPagerState.currentPage)
                         }
                     }
 
                     val mainContent = @Composable {
+                        val safeMainTab = if (mainTabs.isEmpty()) 0 else state.selectedMainTab.coerceIn(0, mainTabs.size - 1)
                         Column(modifier = Modifier.fillMaxSize()) {
                             ScrollableTabRow(
-                                selectedTabIndex = state.selectedMainTab,
+                                selectedTabIndex = safeMainTab,
                                 edgePadding = 16.dp
                             ) {
                                 mainTabs.forEachIndexed { index, title ->
                                     Tab(
-                                        selected = state.selectedMainTab == index,
-                                        onClick = { viewModel.selectMainTab(index) },
+                                        selected = safeMainTab == index,
+                                        onClick = {
+                                            viewModel.selectMainTab(index)
+                                            scope.launch {
+                                                mainPagerState.animateScrollToPage(index)
+                                            }
+                                        },
                                         text = { Text(text = title, fontWeight = FontWeight.Bold) }
                                     )
                                 }
@@ -139,9 +170,6 @@ fun NewsScrapingScreen(
                                         newsItems = state.homeNews,
                                         selectedItem = state.selectedNewsItem,
                                         isLoading = state.isLoading,
-                                        gridState = gridState,
-                                        topKeyToRestore = topKeyToRestore,
-                                        onTopKeyConsumed = { topKeyToRestore = null },
                                         onRefresh = { viewModel.refresh() },
                                         onWebsiteHeaderClick = { websiteId ->
                                             val websiteIndex = state.websites.indexOfFirst { it.id == websiteId }
@@ -165,14 +193,14 @@ fun NewsScrapingScreen(
                                             categoryNews = state.categoryNews,
                                             selectedSubIndex = state.selectedSubTabMap[website.id] ?: 0,
                                             selectedItem = state.selectedNewsItem,
-                                            gridState = gridState,
-                                            topKeyToRestore = topKeyToRestore,
-                                            onTopKeyConsumed = { topKeyToRestore = null },
+                                            gridStates = gridStates,
+                                            getGridState = getGridState,
                                             onSubTabSelected = { subIndex ->
                                                 viewModel.selectSubTab(website.id, subIndex)
                                             },
                                             isLoading = state.isLoading,
                                             isLoadingMore = state.isLoadingMore,
+                                            hasMorePages = state.hasMorePages,
                                             onRefresh = { viewModel.refresh() },
                                             onLoadMore = { viewModel.loadMore() },
                                             onItemClick = handleItemClick
@@ -196,62 +224,38 @@ fun NewsScrapingScreen(
                             }
                         }
                     } else {
-                        if (state.selectedNewsItem == null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .animateContentSize()
-                            ) {
-                                mainContent()
-                            }
-                        } else {
-                            if (state.isDetailExpanded) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                        ) {
+                            if (!state.isDetailExpanded || state.selectedNewsItem == null) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .animateContentSize()
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                ) {
+                                    mainContent()
+                                }
+                            }
+                            if (state.selectedNewsItem != null) {
+                                if (!state.isDetailExpanded) {
+                                    VerticalDivider()
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .weight(if (state.isDetailExpanded) 1f else 1.2f)
+                                        .fillMaxHeight()
                                 ) {
                                     NewsDetailScreen(
                                         websiteId = state.selectedNewsItem.websiteId,
                                         link = state.selectedNewsItem.link,
-                                        isExpanded = true,
+                                        isExpanded = state.isDetailExpanded,
                                         onToggleExpand = { viewModel.toggleDetailExpansion() },
                                         onBack = {
-                                            topKeyToRestore = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
+                                            saveCurrentScrollState()
                                             viewModel.selectOrToggleNewsItem(state.selectedNewsItem)
                                         }
                                     )
-                                }
-                            } else {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .animateContentSize()
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxHeight()
-                                    ) {
-                                        mainContent()
-                                    }
-                                    VerticalDivider()
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1.2f)
-                                            .fillMaxHeight()
-                                    ) {
-                                        NewsDetailScreen(
-                                            websiteId = state.selectedNewsItem.websiteId,
-                                            link = state.selectedNewsItem.link,
-                                            isExpanded = false,
-                                            onToggleExpand = { viewModel.toggleDetailExpansion() },
-                                            onBack = {
-                                                topKeyToRestore = gridState.layoutInfo.visibleItemsInfo.firstOrNull()?.key as? String
-                                                viewModel.selectOrToggleNewsItem(state.selectedNewsItem)
-                                            }
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -262,16 +266,13 @@ fun NewsScrapingScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun HomeNewsContent(
     websites: List<NewsWebsite>,
     newsItems: List<NewsItem>,
     selectedItem: NewsItem?,
     isLoading: Boolean,
-    gridState: LazyGridState,
-    topKeyToRestore: String?,
-    onTopKeyConsumed: () -> Unit,
     onRefresh: () -> Unit,
     onWebsiteHeaderClick: (String) -> Unit,
     onItemClick: (NewsItem) -> Unit
@@ -283,40 +284,14 @@ fun HomeNewsContent(
     val isSplitView = !isCompact && selectedItem != null
     val columnsCount = if (isCompact || isSplitView) 1 else 2
 
-    // Key-based scroll restoration & auto-scroll
-    LaunchedEffect(selectedItem, topKeyToRestore) {
-        if (topKeyToRestore != null) {
-            val allFlattened = groupedNews.values.flatten()
-            val foundIndex = allFlattened.indexOfFirst { it.link == topKeyToRestore }
-            if (foundIndex != -1) {
-                var targetIndex = 0
-                for ((_, items) in groupedNews) {
-                    targetIndex += 1 // header
-                    val found = items.indexOfFirst { it.link == topKeyToRestore }
-                    if (found != -1) {
-                        targetIndex += found
-                        break
-                    }
-                    targetIndex += items.size
-                }
-                gridState.scrollToItem(targetIndex)
-                onTopKeyConsumed()
-            }
-        } else if (selectedItem != null) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedItem) {
+        if (selectedItem != null) {
             val allFlattened = groupedNews.values.flatten()
             val index = allFlattened.indexOfFirst { it.link == selectedItem.link }
             if (index != -1) {
-                var targetIndex = 0
-                for ((_, items) in groupedNews) {
-                    targetIndex += 1 // header
-                    val found = items.indexOfFirst { it.link == selectedItem.link }
-                    if (found != -1) {
-                        targetIndex += found
-                        break
-                    }
-                    targetIndex += items.size
-                }
-                gridState.animateScrollToItem(targetIndex)
+                listState.animateScrollToItem(index)
             }
         }
     }
@@ -331,19 +306,17 @@ fun HomeNewsContent(
                 Text("Chưa có tin tức tổng hợp nào.")
             }
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columnsCount),
-                state = gridState,
+            LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 for ((websiteId, items) in groupedNews) {
                     val website = websiteMap[websiteId]
                     val websiteName = website?.name?.ifEmpty { website.baseUrl } ?: "Website $websiteId"
 
-                    item(span = { GridItemSpan(columnsCount) }, key = "header_$websiteId") {
+                    stickyHeader(key = "header_$websiteId") {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -373,15 +346,27 @@ fun HomeNewsContent(
                         }
                     }
 
-                    items(items, key = { it.link }) { item ->
-                        val isSelected = selectedItem?.link == item.link
-                        NewsItemCard(
-                            item = item,
-                            isSelected = isSelected,
-                            onItemClick = { clicked ->
-                                onItemClick(clicked)
+                    val chunkedItems = items.chunked(columnsCount)
+                    items(chunkedItems.size, key = { rowIndex -> "row_${websiteId}_$rowIndex" }) { rowIndex ->
+                        val rowItems = chunkedItems.getOrNull(rowIndex) ?: return@items
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowItems.forEach { newsItem ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    val isSelected = selectedItem?.link == newsItem.link
+                                    NewsItemCard(
+                                        item = newsItem,
+                                        isSelected = isSelected,
+                                        onItemClick = onItemClick
+                                    )
+                                }
                             }
-                        )
+                            if (rowItems.size < columnsCount) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }
@@ -397,16 +382,17 @@ fun WebsiteContainerScreen(
     categoryNews: Map<String, List<NewsItem>>,
     selectedSubIndex: Int,
     selectedItem: NewsItem?,
-    gridState: LazyGridState,
-    topKeyToRestore: String?,
-    onTopKeyConsumed: () -> Unit,
+    gridStates: MutableMap<String, LazyGridState>,
+    getGridState: (String) -> LazyGridState,
     onSubTabSelected: (Int) -> Unit,
     isLoading: Boolean,
     isLoadingMore: Boolean,
+    hasMorePages: Boolean,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onItemClick: (NewsItem) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     when {
         categories.isEmpty() -> {
             Box(
@@ -426,14 +412,14 @@ fun WebsiteContainerScreen(
         categories.size == 1 -> {
             val singleCategory = categories.first()
             val currentNews = categoryNews[singleCategory.id] ?: emptyList()
+            val gridState = getGridState("website_${website.id}_single")
             AdaptiveNewsList(
                 newsItems = currentNews,
                 selectedItem = selectedItem,
                 gridState = gridState,
-                topKeyToRestore = topKeyToRestore,
-                onTopKeyConsumed = onTopKeyConsumed,
                 isLoading = isLoading,
                 isLoadingMore = isLoadingMore,
+                hasMorePages = hasMorePages,
                 onRefresh = onRefresh,
                 onLoadMore = onLoadMore,
                 onItemClick = onItemClick
@@ -444,24 +430,27 @@ fun WebsiteContainerScreen(
             val subPagerState = rememberPagerState(pageCount = { subTabs.size })
 
             LaunchedEffect(subPagerState.currentPage) {
-                onSubTabSelected(subPagerState.currentPage)
-            }
-            LaunchedEffect(selectedSubIndex) {
-                if (subPagerState.currentPage != selectedSubIndex) {
-                    subPagerState.animateScrollToPage(selectedSubIndex)
+                if (selectedSubIndex != subPagerState.currentPage) {
+                    onSubTabSelected(subPagerState.currentPage)
                 }
             }
 
+            val safeSubTab = if (subTabs.isEmpty()) 0 else selectedSubIndex.coerceIn(0, subTabs.size - 1)
             Column(modifier = Modifier.fillMaxSize()) {
                 ScrollableTabRow(
-                    selectedTabIndex = selectedSubIndex,
+                    selectedTabIndex = safeSubTab,
                     edgePadding = 16.dp,
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     subTabs.forEachIndexed { index, title ->
                         Tab(
-                            selected = selectedSubIndex == index,
-                            onClick = { onSubTabSelected(index) },
+                            selected = safeSubTab == index,
+                            onClick = {
+                                onSubTabSelected(index)
+                                scope.launch {
+                                    subPagerState.animateScrollToPage(index)
+                                }
+                            },
                             text = { Text(text = title, fontWeight = if (selectedSubIndex == index) FontWeight.Bold else FontWeight.Normal) }
                         )
                     }
@@ -473,15 +462,15 @@ fun WebsiteContainerScreen(
                         .fillMaxWidth()
                         .weight(1f)
                 ) { subPageIndex ->
+                    val gridState = getGridState("website_${website.id}_sub_$subPageIndex")
                     if (subPageIndex == 0) {
                         WebsiteAllNewsList(
                             newsItems = websiteNews,
                             selectedItem = selectedItem,
                             gridState = gridState,
-                            topKeyToRestore = topKeyToRestore,
-                            onTopKeyConsumed = onTopKeyConsumed,
                             isLoading = isLoading,
                             isLoadingMore = isLoadingMore,
+                            hasMorePages = hasMorePages,
                             onRefresh = onRefresh,
                             onLoadMore = onLoadMore,
                             onItemClick = onItemClick
@@ -493,10 +482,9 @@ fun WebsiteContainerScreen(
                             newsItems = currentNews,
                             selectedItem = selectedItem,
                             gridState = gridState,
-                            topKeyToRestore = topKeyToRestore,
-                            onTopKeyConsumed = onTopKeyConsumed,
                             isLoading = isLoading,
                             isLoadingMore = isLoadingMore,
+                            hasMorePages = hasMorePages,
                             onRefresh = onRefresh,
                             onLoadMore = onLoadMore,
                             onItemClick = onItemClick
@@ -514,10 +502,9 @@ fun WebsiteAllNewsList(
     newsItems: List<NewsItem>,
     selectedItem: NewsItem?,
     gridState: LazyGridState,
-    topKeyToRestore: String?,
-    onTopKeyConsumed: () -> Unit,
     isLoading: Boolean,
     isLoadingMore: Boolean,
+    hasMorePages: Boolean,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onItemClick: (NewsItem) -> Unit
@@ -526,10 +513,9 @@ fun WebsiteAllNewsList(
         newsItems = newsItems,
         selectedItem = selectedItem,
         gridState = gridState,
-        topKeyToRestore = topKeyToRestore,
-        onTopKeyConsumed = onTopKeyConsumed,
         isLoading = isLoading,
         isLoadingMore = isLoadingMore,
+        hasMorePages = hasMorePages,
         onRefresh = onRefresh,
         onLoadMore = onLoadMore,
         onItemClick = onItemClick
@@ -542,39 +528,37 @@ fun CategoryNewsList(
     newsItems: List<NewsItem>,
     selectedItem: NewsItem?,
     gridState: LazyGridState,
-    topKeyToRestore: String?,
-    onTopKeyConsumed: () -> Unit,
-    isLoading: Boolean = false,
-    isLoadingMore: Boolean = false,
-    onRefresh: () -> Unit = {},
-    onLoadMore: () -> Unit = {},
+    isLoading: Boolean,
+    isLoadingMore: Boolean,
+    hasMorePages: Boolean,
+    onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onItemClick: (NewsItem) -> Unit
 ) {
     AdaptiveNewsList(
         newsItems = newsItems,
         selectedItem = selectedItem,
         gridState = gridState,
-        topKeyToRestore = topKeyToRestore,
-        onTopKeyConsumed = onTopKeyConsumed,
         isLoading = isLoading,
         isLoadingMore = isLoadingMore,
+        hasMorePages = hasMorePages,
         onRefresh = onRefresh,
         onLoadMore = onLoadMore,
         onItemClick = onItemClick
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdaptiveNewsList(
     newsItems: List<NewsItem>,
     selectedItem: NewsItem?,
     gridState: LazyGridState,
-    topKeyToRestore: String?,
-    onTopKeyConsumed: () -> Unit,
-    isLoading: Boolean = false,
-    isLoadingMore: Boolean = false,
-    onRefresh: () -> Unit = {},
-    onLoadMore: () -> Unit = {},
+    isLoading: Boolean,
+    isLoadingMore: Boolean,
+    hasMorePages: Boolean,
+    onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onItemClick: (NewsItem) -> Unit
 ) {
     val adaptiveInfo = currentWindowAdaptiveInfo()
@@ -582,15 +566,23 @@ fun AdaptiveNewsList(
     val isSplitView = !isCompact && selectedItem != null
     val columnsCount = if (isCompact || isSplitView) 1 else 2
 
-    // Key-based scroll restoration & auto-scroll
-    LaunchedEffect(selectedItem, topKeyToRestore) {
-        if (topKeyToRestore != null) {
-            val targetIndex = newsItems.indexOfFirst { it.link == topKeyToRestore }
-            if (targetIndex != -1) {
-                gridState.scrollToItem(targetIndex)
-                onTopKeyConsumed()
+    // Detect scroll near end to trigger loadMore
+    LaunchedEffect(gridState) {
+        snapshotFlow {
+            val layoutInfo = gridState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            totalItems > 0 && lastVisibleItemIndex >= totalItems - 4
+        }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                onLoadMore()
             }
-        } else if (selectedItem != null) {
+    }
+
+    LaunchedEffect(selectedItem) {
+        if (selectedItem != null) {
             val index = newsItems.indexOfFirst { it.link == selectedItem.link }
             if (index != -1) {
                 gridState.animateScrollToItem(index)
@@ -605,25 +597,9 @@ fun AdaptiveNewsList(
     ) {
         if (newsItems.isEmpty() && !isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Không có bài viết trong danh sách này.")
+                Text("Không có tin tức trong chuyên mục này.")
             }
         } else {
-            val shouldLoadMore = remember {
-                derivedStateOf {
-                    val layoutInfo = gridState.layoutInfo
-                    val totalItemsNumber = layoutInfo.totalItemsCount
-                    val lastItem = layoutInfo.visibleItemsInfo.lastOrNull()
-                    val lastVisibleItemIndex = lastItem?.index ?: 0
-                    totalItemsNumber > 0 && lastVisibleItemIndex >= totalItemsNumber - 3
-                }
-            }
-
-            LaunchedEffect(shouldLoadMore.value) {
-                if (shouldLoadMore.value && !isLoadingMore) {
-                    onLoadMore()
-                }
-            }
-
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columnsCount),
                 state = gridState,
@@ -634,18 +610,47 @@ fun AdaptiveNewsList(
             ) {
                 items(newsItems, key = { it.link }) { item ->
                     val isSelected = selectedItem?.link == item.link
-                    NewsItemCard(item = item, isSelected = isSelected, onItemClick = onItemClick)
+                    NewsItemCard(
+                        item = item,
+                        isSelected = isSelected,
+                        onItemClick = { clicked ->
+                            onItemClick(clicked)
+                        }
+                    )
                 }
 
                 if (isLoadingMore) {
-                    item(span = { GridItemSpan(columnsCount) }, key = "loading_more_grid") {
+                    item(span = { GridItemSpan(columnsCount) }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Đang tải thêm tin tức...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else if (!hasMorePages && newsItems.isNotEmpty()) {
+                    item(span = { GridItemSpan(columnsCount) }) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                            Text(
+                                text = "Đã xảy ra lỗi hoặc hết tin tức. Vui lòng quay lại sau",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
@@ -656,70 +661,40 @@ fun AdaptiveNewsList(
 
 @Composable
 fun NewsItemCard(item: NewsItem, isSelected: Boolean = false, onItemClick: (NewsItem) -> Unit) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-        label = "cardBackground"
-    )
-    val elevation by animateDpAsState(
-        targetValue = if (isSelected) 6.dp else 2.dp,
-        label = "cardElevation"
-    )
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                if (item.link.isNotEmpty() && item.websiteId.isNotEmpty()) {
-                    onItemClick(item)
-                }
-            },
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation)
+            .clickable { onItemClick(item) },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            if (item.image.isNotEmpty()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (!item.image.isBlank()) {
                 AsyncImage(
                     model = item.image,
                     contentDescription = item.title,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
+                        .height(140.dp)
                         .clip(MaterialTheme.shapes.medium),
                     contentScale = ContentScale.Crop
                 )
-                Spacer(modifier = Modifier.height(8.dp))
             }
-
-            if (item.subCat.isNotEmpty()) {
+            Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = item.subCat.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            Text(
-                text = item.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            if (item.shortDes.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = item.shortDes,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 3,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (item.date.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = item.date,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
                 )
             }
         }

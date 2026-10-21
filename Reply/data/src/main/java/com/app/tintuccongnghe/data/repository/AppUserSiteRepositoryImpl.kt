@@ -31,9 +31,53 @@ class AppUserSiteRepositoryImpl @Inject constructor(
 
     override suspend fun refreshAppUserSiteList(request: AppUserSiteRequest) {
         try {
+            // 1. PUSH: Upload unsynced local items to Firestore server ONLY if logged in
+            if (request.IdentityId != "local_user") {
+                val localListForPush = dao.getAllSites()
+                val unsyncedItems = localListForPush.filter { !it.isSynced && it.IdentityId == request.IdentityId }
+
+                unsyncedItems.forEach { local ->
+                    try {
+                        val querySnapshot = firestore.collection("user_sites")
+                            .whereEqualTo("IdentityId", local.IdentityId)
+                            .whereEqualTo("Id", local.Id)
+                            .get()
+                            .await()
+
+                        val siteMap = mapOf(
+                            "Id" to local.Id,
+                            "Key" to local.Key,
+                            "Name" to local.Name,
+                            "TextColor" to local.TextColor,
+                            "BackgroundColor" to local.BackgroundColor,
+                            "Url" to local.Url,
+                            "IsActive" to local.IsActive,
+                            "Kind" to local.Kind,
+                            "GROUP" to local.GROUP,
+                            "Stt" to local.Stt,
+                            "LimitEdit" to local.LimitEdit,
+                            "AllowEdit" to local.AllowEdit,
+                            "OtherCanSee" to local.OtherCanSee,
+                            "IdentityId" to local.IdentityId,
+                            "AppIdEncrypt" to local.AppIdEncrypt
+                        )
+
+                        if (!querySnapshot.isEmpty) {
+                            for (doc in querySnapshot.documents) {
+                                doc.reference.set(siteMap, SetOptions.merge()).await()
+                            }
+                        } else {
+                            firestore.collection("user_sites").add(siteMap).await()
+                        }
+
+                        dao.update(local.copy(isSynced = true))
+                    } catch (_: Exception) {}
+                }
+            }
+
+            // 2. PULL: Fetch remote items from Firestore (always fetch "common", and user specific if logged in)
             val remoteItems = mutableListOf<AppUserSite>()
 
-            // 1. Load common/public list for all users (IdentityId == "common")
             try {
                 val commonSnapshot = firestore.collection("user_sites")
                     .whereEqualTo("IdentityId", "common")
@@ -67,7 +111,6 @@ class AppUserSiteRepositoryImpl @Inject constructor(
                 remoteItems.addAll(commonList)
             } catch (_: Exception) {}
 
-            // 2. If logged in, also load user's specific list
             if (request.IdentityId != "local_user") {
                 try {
                     val userSnapshot = firestore.collection("user_sites")
@@ -105,7 +148,6 @@ class AppUserSiteRepositoryImpl @Inject constructor(
 
             val localList = dao.getAllSites()
 
-            // 3. Compare with local data based on IdentityId and Key. If local data does not have it, insert into local Room DB.
             remoteItems.forEach { remote ->
                 val existingLocal = if (request.IdentityId != "local_user" && remote.IdentityId == request.IdentityId) {
                     localList.find { it.IdentityId == request.IdentityId && it.Key == remote.Key }
@@ -136,98 +178,22 @@ class AppUserSiteRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateAppUserSite(site: AppUserSite): Boolean {
-        val isLoggedIn = site.IdentityId != "local_user"
-        val synced = if (isLoggedIn) {
-            try {
-                val querySnapshot = firestore.collection("user_sites")
-                    .whereEqualTo("IdentityId", site.IdentityId)
-                    .whereEqualTo("Id", site.Id)
-                    .get()
-                    .await()
-
-                val siteMap = mapOf(
-                    "Id" to site.Id,
-                    "Key" to site.Key,
-                    "Name" to site.Name,
-                    "TextColor" to site.TextColor,
-                    "BackgroundColor" to site.BackgroundColor,
-                    "Url" to site.Url,
-                    "IsActive" to site.IsActive,
-                    "Kind" to site.Kind,
-                    "GROUP" to site.GROUP,
-                    "Stt" to site.Stt,
-                    "LimitEdit" to site.LimitEdit,
-                    "AllowEdit" to site.AllowEdit,
-                    "OtherCanSee" to site.OtherCanSee,
-                    "IdentityId" to site.IdentityId,
-                    "AppIdEncrypt" to site.AppIdEncrypt
-                )
-
-                if (!querySnapshot.isEmpty) {
-                    for (doc in querySnapshot.documents) {
-                        doc.reference.set(siteMap, SetOptions.merge()).await()
-                    }
-                } else {
-                    firestore.collection("user_sites").add(siteMap).await()
-                }
-                true
-            } catch (_: Exception) {
-                false
-            }
-        } else {
-            true
-        }
-
-        try {
-            val entity = site.toEntity().copy(isSynced = synced)
+        return try {
+            val isLoggedIn = site.IdentityId != "local_user"
+            // CRUD operations only modify local database first (isSynced = false if logged in)
+            val entity = site.toEntity().copy(isSynced = !isLoggedIn)
             dao.insert(entity)
-            return true
+            true
         } catch (e: Exception) {
-            return false
+            false
         }
     }
 
     override suspend fun createOrUpdateAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse {
-        val siteId = if (request.Id == 0) (System.currentTimeMillis() % Int.MAX_VALUE).toInt() else request.Id
-        val isLoggedIn = request.IdentityId != "local_user"
-        val synced = if (isLoggedIn) {
-            try {
-                val querySnapshot = firestore.collection("user_sites")
-                    .whereEqualTo("IdentityId", request.IdentityId)
-                    .whereEqualTo("Id", siteId)
-                    .get()
-                    .await()
+        return try {
+            val siteId = if (request.Id == 0) (System.currentTimeMillis() % Int.MAX_VALUE).toInt() else request.Id
+            val isLoggedIn = request.IdentityId != "local_user"
 
-                val dataMap = mapOf(
-                    "Id" to siteId,
-                    "Key" to request.Name,
-                    "Name" to request.Name,
-                    "Url" to request.Url,
-                    "Icon" to request.Icon,
-                    "IsActive" to request.Status,
-                    "OtherCanSee" to request.OtherCanSee,
-                    "Kind" to request.Kind,
-                    "GROUP" to request.GROUP,
-                    "IdentityId" to request.IdentityId,
-                    "AppIdEncrypt" to request.AppIdEncrypt
-                )
-
-                if (!querySnapshot.isEmpty) {
-                    for (doc in querySnapshot.documents) {
-                        doc.reference.set(dataMap, SetOptions.merge()).await()
-                    }
-                } else {
-                    firestore.collection("user_sites").add(dataMap).await()
-                }
-                true
-            } catch (_: Exception) {
-                false
-            }
-        } else {
-            true
-        }
-
-        try {
             val site = AppUserSite(
                 Id = siteId,
                 Key = request.Name,
@@ -244,12 +210,12 @@ class AppUserSiteRepositoryImpl @Inject constructor(
                 OtherCanSee = request.OtherCanSee,
                 IdentityId = request.IdentityId,
                 AppIdEncrypt = request.AppIdEncrypt,
-                isSynced = synced
+                isSynced = !isLoggedIn
             )
             dao.insert(site.toEntity())
-            return AppUserSiteCreateResponse(Id = siteId, Mess = "Success")
+            AppUserSiteCreateResponse(Id = siteId, Mess = "Success")
         } catch (e: Exception) {
-            return AppUserSiteCreateResponse(Id = request.Id, Mess = e.message ?: "Error")
+            AppUserSiteCreateResponse(Id = request.Id, Mess = e.message ?: "Error")
         }
     }
 
@@ -283,39 +249,9 @@ class AppUserSiteRepositoryImpl @Inject constructor(
                     Id = newId,
                     Name = "${target.Name} (Copy)",
                     IdentityId = request.IdentityId,
-                    isSynced = false
+                    isSynced = !isLoggedIn
                 )
-
-                val synced = if (isLoggedIn) {
-                    try {
-                        val site = copiedEntity.toDomain()
-                        val siteMap = mapOf(
-                            "Id" to site.Id,
-                            "Key" to site.Key,
-                            "Name" to site.Name,
-                            "TextColor" to site.TextColor,
-                            "BackgroundColor" to site.BackgroundColor,
-                            "Url" to site.Url,
-                            "IsActive" to site.IsActive,
-                            "Kind" to site.Kind,
-                            "GROUP" to site.GROUP,
-                            "Stt" to site.Stt,
-                            "LimitEdit" to site.LimitEdit,
-                            "AllowEdit" to site.AllowEdit,
-                            "OtherCanSee" to site.OtherCanSee,
-                            "IdentityId" to site.IdentityId,
-                            "AppIdEncrypt" to site.AppIdEncrypt
-                        )
-                        firestore.collection("user_sites").add(siteMap).await()
-                        true
-                    } catch (_: Exception) {
-                        false
-                    }
-                } else {
-                    true
-                }
-
-                dao.insert(copiedEntity.copy(isSynced = synced))
+                dao.insert(copiedEntity)
                 AppUserSiteCreateResponse(Id = newId, Mess = "Success")
             } else {
                 AppUserSiteCreateResponse(Id = request.Id, Mess = "Site not found")

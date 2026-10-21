@@ -57,7 +57,8 @@ class NewsScrapingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = NewsScrapingUiState.Loading
             try {
-                val websites = getWebsitesUseCase()
+                val allWebsites = getWebsitesUseCase()
+                val websites = allWebsites.filter { it.isActive }
                 if (websites.isEmpty()) {
                     _uiState.value = NewsScrapingUiState.Empty
                     return@launch
@@ -225,7 +226,57 @@ class NewsScrapingViewModel @Inject constructor(
         }
     }
 
+    private val scrollStateMap = mutableMapOf<String, Pair<Int, Int>>()
+
+    fun saveScrollState(key: String, index: Int, offset: Int) {
+        scrollStateMap[key] = Pair(index, offset)
+    }
+
+    fun getScrollState(key: String): Pair<Int, Int>? {
+        return scrollStateMap[key]
+    }
+
     fun refresh() {
-        loadData()
+        val current = _uiState.value
+        if (current is NewsScrapingUiState.Success) {
+            val mainTab = current.selectedMainTab
+            _uiState.value = current.copy(isLoading = true, currentPage = 1, hasMorePages = true)
+
+            viewModelScope.launch {
+                try {
+                    if (mainTab == 0) {
+                        for (site in current.websites) {
+                            val cats = current.websiteCategories[site.id] ?: emptyList()
+                            for (cat in cats) {
+                                try {
+                                    scrapeAndSaveNewsUseCase(site.id, cat, page = 1, append = false)
+                                } catch (_: Exception) {}
+                            }
+                        }
+                    } else {
+                        val site = current.websites.getOrNull(mainTab - 1)
+                        if (site != null) {
+                            val cats = current.websiteCategories[site.id] ?: emptyList()
+                            val subIndex = current.selectedSubTabMap[site.id] ?: 0
+                            val cat = if (subIndex == 0) {
+                                cats.firstOrNull()
+                            } else {
+                                cats.getOrNull(subIndex - 1)
+                            }
+                            if (cat != null) {
+                                scrapeAndSaveNewsUseCase(site.id, cat, page = 1, append = false)
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                val latest = _uiState.value
+                if (latest is NewsScrapingUiState.Success) {
+                    _uiState.value = latest.copy(isLoading = false)
+                }
+            }
+        } else {
+            loadData()
+        }
     }
 }

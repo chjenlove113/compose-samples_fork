@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface INewsScrapingRepository {
     suspend fun getWebsites(): List<NewsWebsite>
+    suspend fun updateWebsiteActive(id: String, isActive: Boolean)
     suspend fun getCategories(websiteId: String): List<NewsCategory>
     suspend fun scrapeAndSaveNews(websiteId: String, category: NewsCategory, page: Int = 1, append: Boolean = false): List<NewsItem>
     suspend fun getNewsDetail(websiteId: String, link: String): NewsDetail

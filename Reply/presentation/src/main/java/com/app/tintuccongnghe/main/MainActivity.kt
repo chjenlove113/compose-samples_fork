@@ -342,11 +342,7 @@ class MainActivity : ComponentActivity() {
                         route = "user_categories"
                     ) {
                         AppUserCategoryScreen(
-                            onBack = { navHost.popBackStack() },
-                            onNavigateToLogin = { navHost.navigate("login") },
-                            onNavigateToCategoryItems = { id, group ->
-                                // Handle navigation if needed
-                            }
+                            onBack = { navHost.popBackStack() }
                         )
                     }
 

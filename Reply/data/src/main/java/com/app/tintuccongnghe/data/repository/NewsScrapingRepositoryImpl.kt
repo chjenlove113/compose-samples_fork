@@ -4,6 +4,7 @@ import com.app.tintuccongnghe.data.api.HtmlScrapingService
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.NewsDetailEntity
 import com.app.tintuccongnghe.data.local.entities.ScrapedNewsEntity
+import com.app.tintuccongnghe.data.local.entities.toEntity
 import com.app.tintuccongnghe.domain.models.DetailRuleDocument
 import com.app.tintuccongnghe.domain.models.NewsCategory
 import com.app.tintuccongnghe.domain.models.NewsDetail
@@ -28,15 +29,16 @@ class NewsScrapingRepositoryImpl @Inject constructor(
 
     private val scrapedNewsDao = appDatabase.scrapedNewsDao()
     private val newsDetailDao = appDatabase.newsDetailDao()
+    private val newsWebsiteDao = appDatabase.newsWebsiteDao()
 
     override suspend fun getWebsites(): List<NewsWebsite> {
-        return try {
+        try {
             val snapshot = firestore.collection("news_websites").get().await()
-            snapshot.documents.mapNotNull { doc ->
+            val remoteWebsites = snapshot.documents.mapNotNull { doc ->
                 val id = doc.id
                 val name = doc.getString("name") ?: doc.getString("strName") ?: ""
                 val baseUrl = doc.getString("baseUrl") ?: doc.getString("url") ?: ""
-                val isActive = doc.getBoolean("isActive") ?: true
+                val remoteIsActive = doc.getBoolean("isActive") ?: true
 
                 val sigMap = doc.get("sigConfig") as? Map<*, *>
                 val sigConfig = if (sigMap != null) {
@@ -53,13 +55,36 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                     id = id,
                     name = name,
                     baseUrl = baseUrl,
-                    isActive = isActive,
+                    isActive = remoteIsActive,
                     sigConfig = sigConfig
+                )
+            }
+
+            val localWebsites = newsWebsiteDao.getAllWebsitesList()
+            remoteWebsites.forEach { remote ->
+                val existing = localWebsites.find { it.id == remote.id }
+                val activeStatus = existing?.isActive ?: remote.isActive
+                newsWebsiteDao.insert(remote.copy(isActive = activeStatus).toEntity())
+            }
+        } catch (_: Exception) {}
+
+        return try {
+            newsWebsiteDao.getAllWebsitesList().map { entity ->
+                NewsWebsite(
+                    id = entity.id,
+                    name = entity.name,
+                    baseUrl = "",
+                    isActive = entity.isActive,
+                    sigConfig = null
                 )
             }
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    override suspend fun updateWebsiteActive(id: String, isActive: Boolean) {
+        newsWebsiteDao.updateActiveStatus(id, isActive)
     }
 
     override suspend fun getCategories(websiteId: String): List<NewsCategory> {
@@ -377,7 +402,10 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                     subCat = it.subCat,
                     isVideo = it.isVideo
                 )
-            }
+            }.groupBy { it.websiteId }
+             .flatMap { (_, items) ->
+                 items.shuffled().take(10)
+             }
         }
     }
 
