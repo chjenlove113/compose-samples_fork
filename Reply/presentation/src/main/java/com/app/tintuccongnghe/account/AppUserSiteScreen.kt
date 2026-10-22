@@ -66,9 +66,9 @@ fun AppUserSiteScreen(
                 },
                 actions = {
                     val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
-                    if (rssCount >= 10) {
+                    if (rssCount >= 5) {
                         Text(
-                            text = "Limit 10/10 reached",
+                            text = "Limit 5/5 reached",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.padding(end = 4.dp)
@@ -430,9 +430,9 @@ fun SiteDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
-                if (!isEdit && rssCount >= 10) {
+                if (!isEdit && rssCount >= 5) {
                     Text(
-                        text = "Limit 10/10 reached",
+                        text = "Limit 5/5 reached",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(end = 8.dp)
@@ -444,7 +444,7 @@ fun SiteDialog(
                         val group = site?.GROUP ?: "1" // Default to 1 for new RSS sites
                         onConfirm(site?.Id ?: 0, name, url, icon, kind, group, isActive)
                     },
-                    enabled = name.isNotBlank() && url.isNotBlank() && (isEdit || rssCount < 10)
+                    enabled = name.isNotBlank() && url.isNotBlank() && (isEdit || rssCount < 5)
                 ) {
                     Text(if (isEdit) stringResource(R.string.update) else stringResource(R.string.add))
                 }

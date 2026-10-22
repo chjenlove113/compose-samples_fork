@@ -137,8 +137,8 @@ class AppUserSiteViewModel @Inject constructor(
     fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) {
         if (id == 0) {
             val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" }
-            if (rssSiteCount >= 10) {
-                _uiState.update { it.copy(error = "You have reached the limit of 10 RSS sites.") }
+            if (rssSiteCount >= 5) {
+                _uiState.update { it.copy(error = "You have reached the limit of 5 RSS sites.") }
                 return
             }
         }
