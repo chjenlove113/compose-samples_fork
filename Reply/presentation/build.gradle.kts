@@ -90,6 +90,7 @@ dependencies {
     androidTestImplementation(composeBom)
 
     implementation("com.google.android.gms:play-services-ads:23.6.0")
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
 
     // Android Studio Preview support
     implementation("androidx.compose.ui:ui-tooling-preview")

@@ -1,5 +1,6 @@
 package com.app.tintuccongnghe.data.repository
 
+import android.content.Context
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.toDomain
 import com.app.tintuccongnghe.data.local.entities.toEntity
@@ -11,6 +12,7 @@ import com.app.tintuccongnghe.domain.models.AppUserSiteRequest
 import com.app.tintuccongnghe.domain.repository.IAppUserSiteRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
@@ -18,7 +20,8 @@ import javax.inject.Inject
 
 class AppUserSiteRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    @param:ApplicationContext private val context: Context
 ) : IAppUserSiteRepository {
 
     private val dao = database.appUserSiteDao()
@@ -29,7 +32,17 @@ class AppUserSiteRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun refreshAppUserSiteList(request: AppUserSiteRequest) {
+    override suspend fun refreshAppUserSiteList(request: AppUserSiteRequest, force: Boolean) {
+        val prefs = context.getSharedPreferences("app_user_site_prefs", Context.MODE_PRIVATE)
+        val lastFetchTime = prefs.getLong("last_firebase_fetch_${request.IdentityId}", 0L)
+        val currentTime = System.currentTimeMillis()
+        val oneDayMillis = 24 * 60 * 60 * 1000L
+
+        // Condition: Fetch from Firebase at most once per day (unless force == true or local_user)
+        if (!force && currentTime - lastFetchTime < oneDayMillis && request.IdentityId != "local_user") {
+            return
+        }
+
         try {
             // 1. PUSH: Upload unsynced local items to Firestore server ONLY if logged in
             if (request.IdentityId != "local_user") {
@@ -148,6 +161,7 @@ class AppUserSiteRepositoryImpl @Inject constructor(
 
             val localList = dao.getAllSites()
 
+            // 3. Compare remote items with local Room database and update/insert
             remoteItems.forEach { remote ->
                 val existingLocal = if (request.IdentityId != "local_user" && remote.IdentityId == request.IdentityId) {
                     localList.find { it.IdentityId == request.IdentityId && it.Key == remote.Key }
@@ -172,15 +186,17 @@ class AppUserSiteRepositoryImpl @Inject constructor(
                     }
                 }
             }
+
+            // Save last fetch timestamp
+            prefs.edit().putLong("last_firebase_fetch_${request.IdentityId}", currentTime).apply()
         } catch (e: Exception) {
-            // Offline fallback
+            // Offline fallback: UI will gracefully display data from Room database
         }
     }
 
     override suspend fun updateAppUserSite(site: AppUserSite): Boolean {
         return try {
             val isLoggedIn = site.IdentityId != "local_user"
-            // CRUD operations only modify local database first (isSynced = false if logged in)
             val entity = site.toEntity().copy(isSynced = !isLoggedIn)
             dao.insert(entity)
             true

@@ -1,5 +1,6 @@
 package com.app.tintuccongnghe.data.di
 
+import android.content.Context
 import com.app.tintuccongnghe.data.api.HtmlScrapingService
 import com.app.tintuccongnghe.data.api.NewsDetailService
 import com.app.tintuccongnghe.data.api.NewsSiteService
@@ -25,25 +26,16 @@ import com.app.tintuccongnghe.domain.repository.INewsScrapingRepository
 import com.app.tintuccongnghe.domain.repository.IRssRepository
 import com.app.tintuccongnghe.domain.repository.ISettingsRepository
 import com.app.tintuccongnghe.domain.repository.IShowHomeRepository
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Singleton
 
 @Module
-@InstallIn(SingletonComponent::class)
-class RepositoryModule {
-
-    @Provides
-    @Singleton
-    fun provideNewsSiteRepository(
-        newsSiteService: NewsSiteService,
-        appDbService: IAppDbService
-    ): INewsSiteRepository {
-        return NewsSiteRepository(newsSiteService, appDbService)
-    }
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+object RepositoryModule {
 
     @Provides
     @Singleton
@@ -56,20 +48,33 @@ class RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideShowHomeRepository(showHomeService: ShowHomeService): IShowHomeRepository {
+    fun provideNewsSiteRepository(
+        newsSiteService: NewsSiteService,
+        appDbService: IAppDbService
+    ): INewsSiteRepository {
+        return NewsSiteRepository(newsSiteService, appDbService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideShowHomeRepository(
+        showHomeService: ShowHomeService
+    ): IShowHomeRepository {
         return ShowHomeRepository(showHomeService)
     }
 
     @Provides
     @Singleton
-    fun provideNewsDetailRepository(newsDetailService: NewsDetailService): INewsDetailRepository {
+    fun provideNewsDetailRepository(
+        newsDetailService: NewsDetailService
+    ): INewsDetailRepository {
         return NewsDetailRepositoryImpl(newsDetailService)
     }
 
     @Provides
     @Singleton
     fun provideAuthRepository(
-        firebaseAuth: com.google.firebase.auth.FirebaseAuth,
+        firebaseAuth: FirebaseAuth,
         appDatabase: AppDatabase
     ): IAuthRepository {
         return AuthRepositoryImpl(firebaseAuth, appDatabase)
@@ -85,9 +90,10 @@ class RepositoryModule {
     @Singleton
     fun provideAppUserSiteRepository(
         firestore: FirebaseFirestore,
-        appDatabase: AppDatabase
+        appDatabase: AppDatabase,
+        @ApplicationContext context: Context
     ): IAppUserSiteRepository {
-        return AppUserSiteRepositoryImpl(firestore, appDatabase)
+        return AppUserSiteRepositoryImpl(firestore, appDatabase, context)
     }
 
     @Provides

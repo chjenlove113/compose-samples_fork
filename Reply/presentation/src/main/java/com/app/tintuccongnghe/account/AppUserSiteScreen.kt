@@ -2,6 +2,7 @@
 
 package com.app.tintuccongnghe.account
 
+import android.app.Activity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.app.tintuccongnghe.domain.models.AppUserSite
 import com.app.tintuccongnghe.presentation.R
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -39,8 +42,12 @@ fun AppUserSiteScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
     var showLoginRequiredDialog by remember { mutableStateOf(false) }
+    var showCloudDialog by remember { mutableStateOf(false) }
+    var showLimitDialog by remember { mutableStateOf(false) }
     var selectedSite by remember { mutableStateOf<AppUserSite?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val sitesMap = remember(uiState.sites) {
         uiState.sites.filter { it.value.isNotEmpty() }
@@ -48,7 +55,7 @@ fun AppUserSiteScreen(
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            if (uiState.sites.isNotEmpty() && !it.contains("limit", ignoreCase = true)) {
+            if (uiState.sites.isNotEmpty()) {
                 snackbarHostState.showSnackbar(it)
                 viewModel.clearError()
             }
@@ -58,7 +65,7 @@ fun AppUserSiteScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.user_sites)) },
+                title = { Text(stringResource(R.string.user_sites), maxLines = 1) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -66,14 +73,23 @@ fun AppUserSiteScreen(
                 },
                 actions = {
                     val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
-                    if (rssCount >= 5) {
-                        Text(
-                            text = "Limit 5/5 reached",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
+                    val limit = uiState.rssLimit
+
+                    if (rssCount >= limit) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.small,
                             modifier = Modifier.padding(end = 4.dp)
-                        )
+                        ) {
+                            Text(
+                                text = "Limit $rssCount/$limit",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
+
                     // Sync Data Button with login check
                     IconButton(onClick = {
                         if (uiState.isLoggedIn) {
@@ -126,7 +142,21 @@ fun AppUserSiteScreen(
                         }
                     }
                 } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp)
+                    ) {
+                        item {
+                            val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
+                            SubscriptionStatusCard(
+                                hasCloud = uiState.hasCloudStorageSubscription,
+                                hasLimitSub = uiState.hasActiveSubscription,
+                                rssCount = rssCount,
+                                limit = uiState.rssLimit,
+                                onCloudClick = { showCloudDialog = true },
+                                onLimitClick = { showLimitDialog = true }
+                            )
+                        }
                         sitesMap.forEach { (kind, sites) ->
                             stickyHeader {
                                 HeaderItem(kind)
@@ -144,10 +174,12 @@ fun AppUserSiteScreen(
                                     onSync = {
                                         viewModel.syncSite(site)
                                     },
+                                    onCopy = {
+                                        viewModel.copySite(site.Id)
+                                    },
                                     isSyncing = uiState.syncingSiteIds.contains(site.Id),
                                     onNavigateToRss = onNavigateToRss
                                 )
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             }
                         }
                     }
@@ -177,11 +209,45 @@ fun AppUserSiteScreen(
         )
     }
 
+    if (showCloudDialog) {
+        CloudStorageSubscriptionDialog(
+            onDismiss = { showCloudDialog = false },
+            onSubscribe = { productId ->
+                showCloudDialog = false
+                viewModel.buySubscription(context as Activity, productId) { success ->
+                    scope.launch {
+                        snackbarHostState.showSnackbar(if (success) "Subscription flow started" else "Failed to launch billing flow")
+                    }
+                }
+            }
+        )
+    }
+
+    if (showLimitDialog) {
+        WebsiteLimitSubscriptionDialog(
+            onDismiss = { showLimitDialog = false },
+            onSubscribe = { productId ->
+                showLimitDialog = false
+                viewModel.buySubscription(context as Activity, productId) { success ->
+                    scope.launch {
+                        snackbarHostState.showSnackbar(if (success) "Subscription flow started" else "Failed to launch billing flow")
+                    }
+                }
+            }
+        )
+    }
+
     if (showDialog) {
         val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
+        val limit = uiState.rssLimit
         SiteDialog(
             site = selectedSite,
             rssCount = rssCount,
+            limit = limit,
+            onUpgradeClick = {
+                showDialog = false
+                showLimitDialog = true
+            },
             onDismiss = { showDialog = false },
             onConfirm = { id, name, url, icon, kind, group, isActive ->
                 viewModel.createOrUpdateSite(id, name, url, icon, kind, group, isActive, false)
@@ -196,19 +262,102 @@ fun AppUserSiteScreen(
 }
 
 @Composable
-fun HeaderItem(kind: String) {
-    Box(
+fun SubscriptionStatusCard(
+    hasCloud: Boolean,
+    hasLimitSub: Boolean,
+    rssCount: Int,
+    limit: Int,
+    onCloudClick: () -> Unit,
+    onLimitClick: () -> Unit
+) {
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Text(
-            text = stringResource(R.string.kind_format, kind),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Quản lý Gói cước & Đám mây",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Website Limit: $rssCount / $limit",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = if (hasLimitSub) "Đã nâng cấp (+30 sites)" else "Miễn phí (Tối đa 5 sites)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (!hasLimitSub) {
+                    Button(onClick = onLimitClick, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                        Text("Nâng cấp", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Cloud Storage Sync",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = if (hasCloud) "Đang hoạt động" else "Chưa kích hoạt",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (hasCloud) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                    )
+                }
+                if (!hasCloud) {
+                    Button(onClick = onCloudClick, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                        Text("Mua Cloud", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HeaderItem(kind: String) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Category: $kind".uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
     }
 }
 
@@ -218,113 +367,153 @@ fun SiteListItem(
     onToggleActive: (Boolean) -> Unit,
     onEdit: () -> Unit,
     onSync: () -> Unit,
+    onCopy: () -> Unit,
     isSyncing: Boolean,
     onNavigateToRss: (Int, String) -> Unit
 ) {
-    ListItem(
-        headlineContent = {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(site.Name, modifier = Modifier.weight(1f, false))
-                if (!site.isSynced) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = MaterialTheme.shapes.small
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = site.Name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f, false)
+                    )
+                    if (!site.isSynced) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.extraSmall
+                        ) {
+                            Text(
+                                text = "Unsynced",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(
+                        checked = site.IsActive,
+                        onCheckedChange = { isChecked -> onToggleActive(isChecked) }
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(
+                        onClick = onEdit,
+                        enabled = site.AllowEdit,
+                        modifier = Modifier.size(36.dp)
                     ) {
-                        Text(
-                            text = "Unsynced",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = stringResource(R.string.edit),
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
             }
-        },
-        supportingContent = {
-            Column {
-                Text(site.Url)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = site.Url,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.items_count, site.itemCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+                if (site.lastRefreshTime != null) {
                     Text(
-                        text = stringResource(R.string.items_count, site.itemCount),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    if (site.lastRefreshTime != null) {
-                        Text(
-                            text = stringResource(R.string.last_refresh, formatTime(site.lastRefreshTime!!)),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-                if (site.nextRefreshTime != null) {
-                    Text(
-                        text = stringResource(R.string.next_refresh, formatTime(site.nextRefreshTime!!)),
+                        text = "• Refresh: ${formatTime(site.lastRefreshTime!!)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (site.GROUP == "1" && site.Url.isNotBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (site.AllowEdit) {
+                    FilledTonalButton(
+                        onClick = { onNavigateToRss(site.Id, site.GROUP) },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("Go to News", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
 
-                        Button(
-                            onClick = { onNavigateToRss(site.Id, site.GROUP) },
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Text("Go to News", style = MaterialTheme.typography.labelMedium)
-                        }
-
-                        Button(
-                            onClick = onSync,
-                            enabled = !isSyncing,
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            if (isSyncing) {
-                                LoadingIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Syncing...", style = MaterialTheme.typography.labelMedium)
-                            } else {
-                                Text("Sync News", style = MaterialTheme.typography.labelMedium)
-                            }
+                if (site.GROUP == "1" && site.Url.isNotBlank()) {
+                    Button(
+                        onClick = onSync,
+                        enabled = !isSyncing,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        if (isSyncing) {
+                            LoadingIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Syncing...", style = MaterialTheme.typography.labelMedium)
+                        } else {
+                            Text("Sync News", style = MaterialTheme.typography.labelMedium)
                         }
                     }
-
-
                 }
-            }
-        },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(
-                    checked = site.GROUP == "1",
-                    onCheckedChange = { isChecked -> onToggleActive(isChecked) }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
-                    onClick = onEdit,
-                    enabled = site.AllowEdit
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit))
+
+                if (site.GROUP == "2") {
+                    OutlinedButton(
+                        onClick = onCopy,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("Copy site", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
             }
         }
-    )
+    }
 }
 
 private fun formatTime(timestamp: Long): String {
@@ -333,9 +522,246 @@ private fun formatTime(timestamp: Long): String {
 }
 
 @Composable
+fun CloudStorageSubscriptionDialog(
+    onDismiss: () -> Unit,
+    onSubscribe: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(
+                    text = "Subscription Cloud Storage",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Đồng bộ lưu trữ đám mây Google Firestore cho dữ liệu cá nhân của bạn.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSubscribe("cloud_storage_monthly_sub") },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Monthly Plan",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "1 Month • Cloud Storage",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = "$0.99",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSubscribe("cloud_storage_annual_sub") },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Annual Plan",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = MaterialTheme.shapes.extraSmall
+                                ) {
+                                    Text(
+                                        text = "BEST VALUE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "1 Year • Cloud Storage",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Text(
+                            text = "$5.99",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Đóng")
+            }
+        }
+    )
+}
+
+@Composable
+fun WebsiteLimitSubscriptionDialog(
+    onDismiss: () -> Unit,
+    onSubscribe: (String) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(
+                    text = "Nâng cấp giới hạn Website",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Mở rộng thêm 30 website (Nâng tổng giới hạn lên 35 website RSS).",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Weekly
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSubscribe("rss_weekly_sub") },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Weekly Plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("1 Week • +30 Websites", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("$0.49", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
+
+                // Monthly
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSubscribe("rss_monthly_sub") },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Monthly Plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("1 Month • +30 Websites", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("$0.99", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
+
+                // Annual
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSubscribe("rss_annual_sub") },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Annual Plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    shape = MaterialTheme.shapes.extraSmall
+                                ) {
+                                    Text(
+                                        text = "BEST VALUE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSecondary,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Text("1 Year • +30 Websites", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        }
+                        Text("$5.59", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Đóng")
+            }
+        }
+    )
+}
+
+@Composable
 fun SiteDialog(
     site: AppUserSite? = null,
     rssCount: Int = 0,
+    limit: Int = 5,
+    onUpgradeClick: () -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean) -> Unit,
     onDelete: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean) -> Unit
@@ -352,6 +778,7 @@ fun SiteDialog(
         title = { Text(if (isEdit) stringResource(R.string.update_site) else stringResource(R.string.add_new_site)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -416,37 +843,38 @@ fun SiteDialog(
         confirmButton = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (site != null && site.GROUP == "1") {
-                    val group = site.GROUP
-                    TextButton(
-                        onClick = { onDelete(site.Id, name, url, icon, kind, group, isActive) },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text(stringResource(R.string.delete))
+                if (!isEdit && rssCount >= limit) {
+                    TextButton(onClick = onUpgradeClick) {
+                        Text("Limit $rssCount/$limit. Tap to Upgrade", color = MaterialTheme.colorScheme.error)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
                 }
 
-                if (!isEdit && rssCount >= 5) {
-                    Text(
-                        text = "Limit 5/5 reached",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                }
+                Row {
+                    if (site != null && site.GROUP == "1") {
+                        val group = site.GROUP
+                        TextButton(
+                            onClick = { onDelete(site.Id, name, url, icon, kind, group, isActive) },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text(stringResource(R.string.delete))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
 
-                Button(
-                    onClick = {
-                        val group = site?.GROUP ?: "1" // Default to 1 for new RSS sites
-                        onConfirm(site?.Id ?: 0, name, url, icon, kind, group, isActive)
-                    },
-                    enabled = name.isNotBlank() && url.isNotBlank() && (isEdit || rssCount < 5)
-                ) {
-                    Text(if (isEdit) stringResource(R.string.update) else stringResource(R.string.add))
+                    Button(
+                        onClick = {
+                            val group = site?.GROUP ?: "1" // Default to 1 for new RSS sites
+                            onConfirm(site?.Id ?: 0, name, url, icon, kind, group, isActive)
+                        },
+                        enabled = name.isNotBlank() && url.isNotBlank() && (isEdit || rssCount < limit)
+                    ) {
+                        Text(if (isEdit) stringResource(R.string.update) else stringResource(R.string.add))
+                    }
                 }
             }
         },
