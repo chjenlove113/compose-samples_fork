@@ -15,6 +15,9 @@ interface AppUserSiteDao {
     @Query("SELECT * FROM app_user_sites WHERE IdentityId = :identityId AND AppIdEncrypt = :appId")
     suspend fun getAppUserSitesList(identityId: String, appId: String): List<AppUserSiteEntity>
 
+    @Query("SELECT * FROM app_user_sites WHERE Id = :siteId AND `GROUP` = :siteGroup AND Kind = :siteKind LIMIT 1")
+    suspend fun getSiteById(siteId: Int, siteGroup: String, siteKind: String): AppUserSiteEntity?
+
     @Query("SELECT * FROM app_user_sites")
     suspend fun getAllSites(): List<AppUserSiteEntity>
 

@@ -180,7 +180,8 @@ class AppUserSiteRepositoryImpl @Inject constructor(
                             lastRefreshTime = existingLocal.lastRefreshTime,
                             nextRefreshTime = existingLocal.nextRefreshTime,
                             itemCount = existingLocal.itemCount,
-                            isSynced = true
+                            isSynced = true, IsActive = existingLocal.IsActive
+
                         )
                         dao.update(updatedEntity)
                     }

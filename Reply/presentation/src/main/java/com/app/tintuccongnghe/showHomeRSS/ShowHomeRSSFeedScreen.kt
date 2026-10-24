@@ -140,91 +140,82 @@ fun ShowHomeRSSFeedScreen(
         onRefresh = { viewModel.syncRss() },
         modifier = Modifier.fillMaxSize()
     ) {
-        val totalItems = uiState.sites.sumOf { it.itemCount }
-        if (totalItems == 0 && !uiState.isLoading && !uiState.isSyncing) {
-            EmptyStateWithButton(
-                message = "Your RSS feeds are empty. Sync now to get latest news.",
-                buttonText = "Sync RSS News",
-                onClick = { viewModel.syncRss() }
-            )
-        } else {
-            ListDetailPaneScaffold(
-                directive = currentScaffoldDirective,
-                value = scaffoldValue,
-                listPane = {
-                    AnimatedPane {
-                        RSSListPane(
-                            sites = uiState.sites,
-                            rssJump = rssJump,
-                            selectedItem = uiState.selectedItem,
-                            onJumpHandled = { mainViewModel.clearRssJump() },
-                            onNavigateToUserSites = onNavigateToUserSites,
-                            onSyncRss = { viewModel.syncRss() },
-                            onRssItemClick = { item ->
+        ListDetailPaneScaffold(
+            directive = currentScaffoldDirective,
+            value = scaffoldValue,
+            listPane = {
+                AnimatedPane {
+                    RSSListPane(
+                        sites = uiState.sites,
+                        rssJump = rssJump,
+                        selectedItem = uiState.selectedItem,
+                        onJumpHandled = { mainViewModel.clearRssJump() },
+                        onNavigateToUserSites = onNavigateToUserSites,
+                        onSyncRss = { viewModel.syncRss() },
+                        onRssItemClick = { item ->
+                            scope.launch {
+                                isFullScreen = false
+                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+                            }
+                        }
+                    )
+                }
+            },
+            detailPane = {
+                AnimatedPane {
+                    if (currentDetail != null) {
+                        ShowHomeRSSFeedDetailScreen(
+                            item = currentDetail,
+                            onBack = {
                                 scope.launch {
                                     isFullScreen = false
-                                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+                                    navigator.navigateBack()
                                 }
+                            },
+                            isFullScreen = isFullScreen,
+                            onToggleFullScreen = {
+                                isFullScreen = !isFullScreen
                             }
                         )
-                    }
-                },
-                detailPane = {
-                    AnimatedPane {
-                        if (currentDetail != null) {
-                            ShowHomeRSSFeedDetailScreen(
-                                item = currentDetail,
-                                onBack = {
-                                    scope.launch {
-                                        isFullScreen = false
-                                        navigator.navigateBack()
-                                    }
-                                },
-                                isFullScreen = isFullScreen,
-                                onToggleFullScreen = {
-                                    isFullScreen = !isFullScreen
-                                }
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.surfaceContainerLowest),
-                                contentAlignment = Alignment.Center
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(32.dp)
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center,
-                                    modifier = Modifier.padding(32.dp)
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    modifier = Modifier.size(72.dp)
                                 ) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        modifier = Modifier.size(72.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Outlined.Article,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(36.dp)
-                                            )
-                                        }
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.Article,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(36.dp)
+                                        )
                                     }
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = "Select an RSS article to read details",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
                                 }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Select an RSS article to read details",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
                 }
-            )
-        }
+            }
+        )
     }
 }
 

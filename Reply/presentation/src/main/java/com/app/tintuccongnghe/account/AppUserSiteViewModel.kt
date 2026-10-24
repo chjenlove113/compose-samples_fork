@@ -279,8 +279,19 @@ class AppUserSiteViewModel @Inject constructor(
             val effectiveId = if (_uiState.value.hasCloudStorageSubscription) currentIdentityId else "local_user"
             site.IdentityId = effectiveId
             site.AppIdEncrypt = AppContants.app_Id
-            val updatedSite = site.copy(IsActive = isChecked)
+
+            val updatedSite = if (!isChecked) {
+                appDatabase.rssItemDao().deleteItemsForSite(site.Id, site.GROUP, site.Kind)
+                site.copy(IsActive = false, itemCount = 0)
+            } else {
+                site.copy(IsActive = true)
+            }
+
             updateAppUserSiteUseCase(updatedSite)
+
+            if (isChecked && updatedSite.GROUP == "1" && updatedSite.Url.isNotEmpty()) {
+                syncSite(updatedSite)
+            }
         }
     }
 

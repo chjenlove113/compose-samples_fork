@@ -60,7 +60,7 @@ class ShowHomeRssViewModel @Inject constructor(
                         appDatabase.appUserSiteDao().getAllSitesFlow()
                     }
                     flow.map { entities ->
-                        entities.filter { it.GROUP == "1" }.map { it.toDomain() }
+                        entities.filter { it.GROUP == "1" && it.IsActive }.map { it.toDomain() }
                     }
                 }
                 .collect { sites ->
