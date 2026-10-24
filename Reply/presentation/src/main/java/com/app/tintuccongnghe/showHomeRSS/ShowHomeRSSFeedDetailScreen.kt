@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -87,6 +88,7 @@ fun ShowHomeRSSFeedDetailScreen(
     }
 
     var showFontScaleSheet by remember { mutableStateOf(false) }
+    var clickedLinkUrl by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState()
 
     Scaffold(
@@ -127,12 +129,6 @@ fun ShowHomeRSSFeedDetailScreen(
                             )
                         }
                     }
-//                    IconButton(onClick = {
-//                        val intent = Intent(Intent.ACTION_VIEW, currentItem.link.toUri())
-//                        context.startActivity(intent)
-//                    }) {
-//                        Icon(Icons.Default.OpenInBrowser, contentDescription = "Open in Browser")
-//                    }
                 }
             )
         }
@@ -172,7 +168,6 @@ fun ShowHomeRSSFeedDetailScreen(
                     Slider(
                         value = fontScale,
                         onValueChange = {
-                            // Snap to nearest 0.2 step
                             val snappedValue = Math.round(it * 5) / 5.0f
                             mainViewModel.setFontScale(snappedValue)
                         },
@@ -191,6 +186,44 @@ fun ShowHomeRSSFeedDetailScreen(
                 }
             }
         }
+
+        if (clickedLinkUrl != null) {
+            AlertDialog(
+                onDismissRequest = { clickedLinkUrl = null },
+                title = { Text("Liên kết bài viết") },
+                text = {
+                    Column {
+                        Text("Bạn muốn sao chép liên kết này?", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = clickedLinkUrl!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 2
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("Copied URL", clickedLinkUrl)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "Copied link to clipboard", Toast.LENGTH_SHORT).show()
+                        clickedLinkUrl = null
+                    }) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Copy")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { clickedLinkUrl = null }) {
+                        Text("Hủy")
+                    }
+                }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .padding(paddingValues)
@@ -221,7 +254,10 @@ fun ShowHomeRSSFeedDetailScreen(
                 HtmlContent(
                     html = content,
                     colorScheme = colorScheme,
-                    fontScale = fontScale
+                    fontScale = fontScale,
+                    onLinkClick = { url ->
+                        clickedLinkUrl = url
+                    }
                 )
             } else if (description != null) {
                 Text(
@@ -249,17 +285,34 @@ fun ShowHomeRSSFeedDetailScreen(
     }
 }
 
+class WebAppInterface(private val onLinkClick: (String) -> Unit) {
+    @JavascriptInterface
+    fun onLinkClicked(url: String) {
+        onLinkClick(url)
+    }
+}
+
 @Composable
 fun HtmlContent(
     html: String,
     colorScheme: ColorScheme,
-    fontScale: Float
+    fontScale: Float,
+    onLinkClick: (String) -> Unit
 ) {
     AndroidView<WebView>(
         modifier = Modifier.fillMaxWidth(),
         factory = { context ->
             WebView(context).apply {
-                webViewClient = WebViewClient()
+                addJavascriptInterface(WebAppInterface(onLinkClick), "AndroidBridge")
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                        val url = request?.url?.toString()
+                        if (url != null) {
+                            onLinkClick(url)
+                        }
+                        return true
+                    }
+                }
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -344,7 +397,14 @@ fun HtmlContent(
                 <body>
                     $html
                     <script>
-                        // Add some expressive Material 3 animations or interactions if needed
+                        document.addEventListener('click', function(e) {
+                            var target = e.target.closest('a');
+                            if (target && target.href) {
+                                e.preventDefault();
+                                AndroidBridge.onLinkClicked(target.href);
+                            }
+                        }, false);
+
                         document.addEventListener('DOMContentLoaded', () => {
                             const images = document.querySelectorAll('img');
                             images.forEach(img => {
