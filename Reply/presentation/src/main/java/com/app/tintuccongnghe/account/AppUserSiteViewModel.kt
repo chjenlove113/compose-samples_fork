@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.tintuccongnghe.data.local.AppDatabase
+import com.app.tintuccongnghe.data.local.entities.News_Site
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import com.app.tintuccongnghe.domain.models.AppUserSite
 import com.app.tintuccongnghe.domain.models.AppUserSiteCopyRequest
@@ -39,6 +40,7 @@ data class AppUserSiteUiState(
     val isLoading: Boolean = false,
     val syncingSiteIds: Set<Int> = emptySet(),
     val sites: Map<String, List<AppUserSite>> = emptyMap(),
+    val sampleSites: List<News_Site> = emptyList(),
     val error: String? = null,
     val isLoggedIn: Boolean = false,
     val hasActiveSubscription: Boolean = false,
@@ -68,6 +70,11 @@ class AppUserSiteViewModel @Inject constructor(
     private var dataCollectionJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            appDatabase.newsSiteDao().getAll().collect { samples ->
+                _uiState.update { it.copy(sampleSites = samples) }
+            }
+        }
         viewModelScope.launch {
             billingManager.hasWebsiteLimitSubscription.collect { active ->
                 val limit = if (active) 35 else 5
@@ -121,7 +128,7 @@ class AppUserSiteViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = true, error = null) }
             }
             try {
-                refreshAppUserSiteListUseCase(request)
+                refreshAppUserSiteListUseCase(request, force = false)
                 _uiState.update { it.copy(isLoading = false, error = null) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
@@ -149,7 +156,7 @@ class AppUserSiteViewModel @Inject constructor(
             viewModelScope.launch {
                 _uiState.update { it.copy(isLoading = true, error = null) }
                 try {
-                    refreshAppUserSiteListUseCase(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
+                    refreshAppUserSiteListUseCase(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id), force = true)
                     _uiState.update { it.copy(isLoading = false, error = "Synced successfully with Firestore") }
                 } catch (e: Exception) {
                     _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Sync failed") }
@@ -168,7 +175,8 @@ class AppUserSiteViewModel @Inject constructor(
     }
 
     fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) {
-        val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" }
+        // Exclude system/common sites ("IdentityId == common") from counting towards user's personal site limit
+        val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" && it.IdentityId != "common" }
         val limit = _uiState.value.rssLimit
 
         if (id == 0) {
@@ -177,7 +185,7 @@ class AppUserSiteViewModel @Inject constructor(
                 return
             }
         } else {
-            // Edit check: if subscription expired and user has > 5 sites, restrict editing
+            // Edit check: if subscription expired and user has > 5 user-created sites, restrict editing
             if (!_uiState.value.hasActiveSubscription && rssSiteCount > 5) {
                 _uiState.update { it.copy(error = "Your website limit subscription has expired. Please renew to edit RSS sites.") }
                 return

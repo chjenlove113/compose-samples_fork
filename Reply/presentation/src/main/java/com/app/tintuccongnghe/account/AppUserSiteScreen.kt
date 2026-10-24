@@ -72,7 +72,7 @@ fun AppUserSiteScreen(
                     }
                 },
                 actions = {
-                    val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
+                    val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && it.IdentityId != "common" }
                     val limit = uiState.rssLimit
 
                     if (rssCount >= limit) {
@@ -147,7 +147,7 @@ fun AppUserSiteScreen(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         item {
-                            val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
+                            val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && it.IdentityId != "common" }
                             SubscriptionStatusCard(
                                 hasCloud = uiState.hasCloudStorageSubscription,
                                 hasLimitSub = uiState.hasActiveSubscription,
@@ -238,12 +238,13 @@ fun AppUserSiteScreen(
     }
 
     if (showDialog) {
-        val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" }
+        val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && it.IdentityId != "common" }
         val limit = uiState.rssLimit
         SiteDialog(
             site = selectedSite,
             rssCount = rssCount,
             limit = limit,
+            sampleSites = uiState.sampleSites,
             onUpgradeClick = {
                 showDialog = false
                 showLimitDialog = true
@@ -401,8 +402,28 @@ fun SiteListItem(
                         maxLines = 1,
                         modifier = Modifier.weight(1f, false)
                     )
+
+                    // Source Badge: Local vs Cloud vs Common
+                    Spacer(modifier = Modifier.width(8.dp))
+                    val (badgeText, badgeContainerColor, badgeContentColor) = when {
+                        site.IdentityId == "common" -> Triple("Common", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
+                        site.IdentityId == "local_user" -> Triple("Local", MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
+                        else -> Triple("Cloud", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                    Surface(
+                        color = badgeContainerColor,
+                        shape = MaterialTheme.shapes.extraSmall
+                    ) {
+                        Text(
+                            text = badgeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = badgeContentColor,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+
                     if (!site.isSynced) {
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             color = MaterialTheme.colorScheme.errorContainer,
                             shape = MaterialTheme.shapes.extraSmall
@@ -757,10 +778,49 @@ fun WebsiteLimitSubscriptionDialog(
 }
 
 @Composable
+fun SampleRssDialog(
+    sampleSites: List<com.app.tintuccongnghe.data.local.entities.News_Site>,
+    onSelect: (String, String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Danh sách RSS mẫu từ Room DB") },
+        text = {
+            Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
+                if (sampleSites.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Không có RSS mẫu nào.")
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(sampleSites, key = { it.Id }) { site ->
+                            ListItem(
+                                modifier = Modifier.clickable {
+                                    onSelect(site.Name, site.Url ?: "", site.Key ?: "")
+                                },
+                                headlineContent = { Text(site.Name, fontWeight = FontWeight.Bold) },
+                                supportingContent = { Text(site.Url ?: "") }
+                            )
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Đóng") }
+        }
+    )
+}
+
+@Composable
 fun SiteDialog(
     site: AppUserSite? = null,
     rssCount: Int = 0,
     limit: Int = 5,
+    sampleSites: List<com.app.tintuccongnghe.data.local.entities.News_Site> = emptyList(),
     onUpgradeClick: () -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean) -> Unit,
@@ -772,13 +832,23 @@ fun SiteDialog(
     var icon by remember { mutableStateOf("") }
     var kind by remember { mutableStateOf(site?.Kind ?: "") }
     var isActive by remember { mutableStateOf(site?.IsActive ?: true) }
+    var showSamplePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isEdit) stringResource(R.string.update_site) else stringResource(R.string.add_new_site)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                if (!isEdit && sampleSites.isNotEmpty()) {
+                    OutlinedButton(
+                        onClick = { showSamplePicker = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("📚 Chọn từ Danh sách RSS mẫu")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -884,4 +954,17 @@ fun SiteDialog(
             }
         }
     )
+
+    if (showSamplePicker) {
+        SampleRssDialog(
+            sampleSites = sampleSites,
+            onSelect = { selectedName, selectedUrl, selectedKind ->
+                name = selectedName
+                url = selectedUrl
+                if (selectedKind.isNotBlank()) kind = selectedKind
+                showSamplePicker = false
+            },
+            onDismiss = { showSamplePicker = false }
+        )
+    }
 }
