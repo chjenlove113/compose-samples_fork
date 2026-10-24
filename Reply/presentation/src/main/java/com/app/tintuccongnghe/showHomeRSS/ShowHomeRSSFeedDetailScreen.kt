@@ -1,10 +1,16 @@
 package com.app.tintuccongnghe.showHomeRSS
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloseFullscreen
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FormatSize
@@ -120,12 +127,12 @@ fun ShowHomeRSSFeedDetailScreen(
                             )
                         }
                     }
-                    IconButton(onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, currentItem.link.toUri())
-                        context.startActivity(intent)
-                    }) {
-                        Icon(Icons.Default.OpenInBrowser, contentDescription = "Open in Browser")
-                    }
+//                    IconButton(onClick = {
+//                        val intent = Intent(Intent.ACTION_VIEW, currentItem.link.toUri())
+//                        context.startActivity(intent)
+//                    }) {
+//                        Icon(Icons.Default.OpenInBrowser, contentDescription = "Open in Browser")
+//                    }
                 }
             )
         }
@@ -227,12 +234,16 @@ fun ShowHomeRSSFeedDetailScreen(
             
             Button(
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, currentItem.link.toUri())
-                    context.startActivity(intent)
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("Article Link", currentItem.link)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "Copied link to clipboard", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Read Full Article")
+                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Copy Link Article")
             }
         }
     }
