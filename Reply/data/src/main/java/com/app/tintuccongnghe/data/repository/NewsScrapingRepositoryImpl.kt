@@ -1,9 +1,12 @@
 package com.app.tintuccongnghe.data.repository
 
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import com.app.tintuccongnghe.data.api.HtmlScrapingService
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.NewsDetailEntity
 import com.app.tintuccongnghe.data.local.entities.ScrapedNewsEntity
+import com.app.tintuccongnghe.data.local.entities.toDomain
 import com.app.tintuccongnghe.data.local.entities.toEntity
 import com.app.tintuccongnghe.domain.models.DetailRuleDocument
 import com.app.tintuccongnghe.domain.models.NewsCategory
@@ -14,6 +17,7 @@ import com.app.tintuccongnghe.domain.models.ParserRule
 import com.app.tintuccongnghe.domain.models.SigConfig
 import com.app.tintuccongnghe.domain.repository.INewsScrapingRepository
 import com.google.firebase.firestore.FirebaseFirestore
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,12 +30,15 @@ import javax.inject.Inject
 class NewsScrapingRepositoryImpl @Inject constructor(
     private val htmlScrapingService: HtmlScrapingService,
     private val firestore: FirebaseFirestore,
-    appDatabase: AppDatabase
+    appDatabase: AppDatabase,
+    @param:ApplicationContext private val context: Context
 ) : INewsScrapingRepository {
 
     private val scrapedNewsDao = appDatabase.scrapedNewsDao()
     private val newsDetailDao = appDatabase.newsDetailDao()
     private val newsWebsiteDao = appDatabase.newsWebsiteDao()
+    private val newsCategoryDao = appDatabase.newsCategoryDao()
+    private val detailRuleDao = appDatabase.detailRuleDao()
 
     companion object {
         private val ANDROID_USER_AGENT: String by lazy {
@@ -42,41 +49,53 @@ class NewsScrapingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getWebsites(): List<NewsWebsite> {
-        try {
-            val snapshot = firestore.collection("news_websites").get().await()
-            val remoteWebsites = snapshot.documents.mapNotNull { doc ->
-                val id = doc.id
-                val name = doc.getString("name") ?: doc.getString("strName") ?: ""
-                val baseUrl = doc.getString("baseUrl") ?: doc.getString("url") ?: ""
-                val remoteIsActive = doc.getBoolean("isActive") ?: true
+        val isDebug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val prefs = context.getSharedPreferences("news_scraping_prefs", Context.MODE_PRIVATE)
+        val lastFetchTime = prefs.getLong("last_firebase_websites_fetch", 0L)
+        val currentTime = System.currentTimeMillis()
+        val oneDayMillis = 24 * 60 * 60 * 1000L
 
-                val sigMap = doc.get("sigConfig") as? Map<*, *>
-                val sigConfig = if (sigMap != null) {
-                    SigConfig(
-                        pathname = sigMap["pathname"] as? String ?: "",
-                        secretSalt = sigMap["secretSalt"] as? String ?: "",
-                        apiKey = sigMap["apiKey"] as? String ?: "",
-                        version = sigMap["version"] as? String ?: "",
-                        whitelistParams = (sigMap["whitelistParams"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        val localWebsites = try { newsWebsiteDao.getAllWebsitesList() } catch (_: Exception) { emptyList() }
+
+        // Fetch from Firestore in Debug mode OR at most once per day in Release mode OR when local DB is empty
+        if (isDebug || currentTime - lastFetchTime >= oneDayMillis || localWebsites.isEmpty()) {
+            try {
+                val snapshot = firestore.collection("news_websites").get().await()
+                val remoteWebsites = snapshot.documents.mapNotNull { doc ->
+                    val id = doc.id
+                    val name = doc.getString("name") ?: doc.getString("strName") ?: ""
+                    val baseUrl = doc.getString("baseUrl") ?: doc.getString("url") ?: ""
+                    val remoteIsActive = doc.getBoolean("isActive") ?: true
+
+                    val sigMap = doc.get("sigConfig") as? Map<*, *>
+                    val sigConfig = if (sigMap != null) {
+                        SigConfig(
+                            pathname = sigMap["pathname"] as? String ?: "",
+                            secretSalt = sigMap["secretSalt"] as? String ?: "",
+                            apiKey = sigMap["apiKey"] as? String ?: "",
+                            version = sigMap["version"] as? String ?: "",
+                            whitelistParams = (sigMap["whitelistParams"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                        )
+                    } else null
+
+                    NewsWebsite(
+                        id = id,
+                        name = name,
+                        baseUrl = baseUrl,
+                        isActive = remoteIsActive,
+                        sigConfig = sigConfig
                     )
-                } else null
+                }
 
-                NewsWebsite(
-                    id = id,
-                    name = name,
-                    baseUrl = baseUrl,
-                    isActive = remoteIsActive,
-                    sigConfig = sigConfig
-                )
-            }
+                remoteWebsites.forEach { remote ->
+                    val existing = localWebsites.find { it.id == remote.id }
+                    val activeStatus = existing?.isActive ?: remote.isActive
+                    newsWebsiteDao.insert(remote.copy(isActive = activeStatus).toEntity())
+                }
 
-            val localWebsites = newsWebsiteDao.getAllWebsitesList()
-            remoteWebsites.forEach { remote ->
-                val existing = localWebsites.find { it.id == remote.id }
-                val activeStatus = existing?.isActive ?: remote.isActive
-                newsWebsiteDao.insert(remote.copy(isActive = activeStatus).toEntity())
-            }
-        } catch (_: Exception) {}
+                prefs.edit().putLong("last_firebase_websites_fetch", currentTime).apply()
+            } catch (_: Exception) {}
+        }
 
         return try {
             newsWebsiteDao.getAllWebsitesList().map { entity ->
@@ -98,93 +117,115 @@ class NewsScrapingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCategories(websiteId: String): List<NewsCategory> {
-        return try {
-            val snapshot = firestore.collection("news_websites")
-                .document(websiteId)
-                .collection("categories")
-                .get()
-                .await()
+        val isDebug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val prefs = context.getSharedPreferences("news_scraping_prefs", Context.MODE_PRIVATE)
+        val lastFetchTime = prefs.getLong("last_firebase_categories_${websiteId}_fetch", 0L)
+        val currentTime = System.currentTimeMillis()
+        val oneDayMillis = 24 * 60 * 60 * 1000L
 
-            snapshot.documents.mapNotNull { doc ->
-                val id = doc.id
-                val name = doc.getString("name") ?: ""
-                val url = doc.getString("url") ?: ""
-                val pageTemplate = doc.getString("pageTemplate") ?: doc.getString("strPageTemplate") ?: ""
-                val httpMethod = doc.getString("httpMethod") ?: doc.getString("strHttpMethod") ?: "GET"
-                val postBodyTemplate = doc.getString("postBodyTemplate") ?: doc.getString("strPostBodyTemplate")
-                val jsonResponseKey = doc.getString("jsonResponseKey") ?: doc.getString("strJsonResponseKey")
-                val isActive = doc.getBoolean("isActive") ?: true
+        val localCategories = try { newsCategoryDao.getCategoriesForWebsiteList(websiteId) } catch (_: Exception) { emptyList() }
 
-                val headersMap = mutableMapOf<String, String>()
-                val rawHeaders = doc.get("headers")
-                if (rawHeaders is Map<*, *>) {
-                    for ((k, v) in rawHeaders) {
-                        if (k is String && v is String) {
-                            headersMap[k] = v
+        // Fetch from Firestore in Debug mode OR at most once per day in Release mode OR when local DB is empty
+        if (isDebug || currentTime - lastFetchTime >= oneDayMillis || localCategories.isEmpty()) {
+            try {
+                val snapshot = firestore.collection("news_websites")
+                    .document(websiteId)
+                    .collection("categories")
+                    .get()
+                    .await()
+
+                val remoteCategories = snapshot.documents.mapNotNull { doc ->
+                    val id = doc.id
+                    val name = doc.getString("name") ?: ""
+                    val url = doc.getString("url") ?: ""
+                    val pageTemplate = doc.getString("pageTemplate") ?: doc.getString("strPageTemplate") ?: ""
+                    val httpMethod = doc.getString("httpMethod") ?: doc.getString("strHttpMethod") ?: "GET"
+                    val postBodyTemplate = doc.getString("postBodyTemplate") ?: doc.getString("strPostBodyTemplate")
+                    val jsonResponseKey = doc.getString("jsonResponseKey") ?: doc.getString("strJsonResponseKey")
+                    val isActive = doc.getBoolean("isActive") ?: true
+
+                    val headersMap = mutableMapOf<String, String>()
+                    val rawHeaders = doc.get("headers")
+                    if (rawHeaders is Map<*, *>) {
+                        for ((k, v) in rawHeaders) {
+                            if (k is String && v is String) {
+                                headersMap[k] = v
+                            }
                         }
                     }
-                }
 
-                val queryParamsMap = mutableMapOf<String, String>()
-                val rawQueryParams = doc.get("queryParams")
-                if (rawQueryParams is Map<*, *>) {
-                    for ((k, v) in rawQueryParams) {
-                        if (k is String && v is String) {
-                            queryParamsMap[k] = v
+                    val queryParamsMap = mutableMapOf<String, String>()
+                    val rawQueryParams = doc.get("queryParams")
+                    if (rawQueryParams is Map<*, *>) {
+                        for ((k, v) in rawQueryParams) {
+                            if (k is String && v is String) {
+                                queryParamsMap[k] = v
+                            }
                         }
                     }
-                }
 
-                val rulesList = mutableListOf<ParserRule>()
-                val rawRules = doc.get("parserRules") ?: doc.get("rules")
-                if (rawRules is List<*>) {
-                    for (item in rawRules) {
-                        if (item is Map<*, *>) {
-                            val stt = (item["stt"] as? Number)?.toInt() ?: 0
-                            val enumNews = (item["enumNews"] as? Number)?.toInt() ?: 0
-                            val strRegexName = item["strRegexName"] as? String ?: ""
-                            val strRegex = item["strRegex"] as? String ?: ""
-                            val isMatches = item["isMatches"] as? Boolean ?: false
-                            val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
-                            val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
-                            val strPrefix = item["strPrefix"] as? String ?: ""
-                            val strSufix = item["strSufix"] as? String ?: ""
-                            val isReplace = item["isReplace"] as? Boolean ?: false
-                            val textReplace = item["textReplace"] as? String ?: ""
+                    val rulesList = mutableListOf<ParserRule>()
+                    val rawRules = doc.get("parserRules") ?: doc.get("rules")
+                    if (rawRules is List<*>) {
+                        for (item in rawRules) {
+                            if (item is Map<*, *>) {
+                                val stt = (item["stt"] as? Number)?.toInt() ?: 0
+                                val enumNews = (item["enumNews"] as? Number)?.toInt() ?: 0
+                                val strRegexName = item["strRegexName"] as? String ?: ""
+                                val strRegex = item["strRegex"] as? String ?: ""
+                                val isMatches = item["isMatches"] as? Boolean ?: false
+                                val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
+                                val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
+                                val strPrefix = item["strPrefix"] as? String ?: ""
+                                val strSufix = item["strSufix"] as? String ?: ""
+                                val isReplace = item["isReplace"] as? Boolean ?: false
+                                val textReplace = item["textReplace"] as? String ?: ""
 
-                            rulesList.add(
-                                ParserRule(
-                                    stt = stt,
-                                    enumNews = enumNews,
-                                    strRegexName = strRegexName,
-                                    strRegex = strRegex,
-                                    isMatches = isMatches,
-                                    isMatchesPos = isMatchesPos,
-                                    groupPos = groupPos,
-                                    strPrefix = strPrefix,
-                                    strSufix = strSufix,
-                                    isReplace = isReplace,
-                                    textReplace = textReplace
+                                rulesList.add(
+                                    ParserRule(
+                                        stt = stt,
+                                        enumNews = enumNews,
+                                        strRegexName = strRegexName,
+                                        strRegex = strRegex,
+                                        isMatches = isMatches,
+                                        isMatchesPos = isMatchesPos,
+                                        groupPos = groupPos,
+                                        strPrefix = strPrefix,
+                                        strSufix = strSufix,
+                                        isReplace = isReplace,
+                                        textReplace = textReplace
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
+
+                    NewsCategory(
+                        id = id,
+                        name = name,
+                        url = url,
+                        pageTemplate = pageTemplate,
+                        httpMethod = httpMethod,
+                        postBodyTemplate = postBodyTemplate,
+                        jsonResponseKey = jsonResponseKey,
+                        headers = headersMap,
+                        queryParams = queryParamsMap,
+                        isActive = isActive,
+                        parserRules = rulesList
+                    )
                 }
 
-                NewsCategory(
-                    id = id,
-                    name = name,
-                    url = url,
-                    pageTemplate = pageTemplate,
-                    httpMethod = httpMethod,
-                    postBodyTemplate = postBodyTemplate,
-                    jsonResponseKey = jsonResponseKey,
-                    headers = headersMap,
-                    queryParams = queryParamsMap,
-                    isActive = isActive,
-                    parserRules = rulesList
-                )
-            }
+                if (remoteCategories.isNotEmpty()) {
+                    val entities = remoteCategories.map { it.toEntity(websiteId) }
+                    newsCategoryDao.insertAll(entities)
+                }
+
+                prefs.edit().putLong("last_firebase_categories_${websiteId}_fetch", currentTime).apply()
+            } catch (_: Exception) {}
+        }
+
+        return try {
+            newsCategoryDao.getCategoriesForWebsiteList(websiteId).map { it.toDomain() }
         } catch (_: Exception) {
             emptyList()
         }
@@ -305,35 +346,76 @@ class NewsScrapingRepositoryImpl @Inject constructor(
             )
         }
 
-        val rulesSnapshot = firestore.collection("news_websites")
-            .document(websiteId)
-            .collection("detail_rules")
-            .get()
-            .await()
+        val isDebug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val prefs = context.getSharedPreferences("news_scraping_prefs", Context.MODE_PRIVATE)
+        val lastFetchTime = prefs.getLong("last_firebase_detail_rules_${websiteId}_fetch", 0L)
+        val currentTime = System.currentTimeMillis()
+        val threeHoursMillis = 3 * 60 * 60 * 1000L
 
-        val detailRuleDocs = rulesSnapshot.documents.mapNotNull { doc ->
-            val id = doc.id
-            val name = doc.getString("name") ?: ""
-            val isActive = doc.getBoolean("isActive") ?: true
-            val targetField = (doc.get("targetField") as? Number)?.toInt() ?: 1
-            val getContentBy = doc.getString("getContentBy") ?: ""
+        val localRuleEntities = try { detailRuleDao.getRulesForWebsite(websiteId) } catch (_: Exception) { emptyList() }
 
-            val rulesList = mutableListOf<ParserRule>()
-            val rawRules = doc.get("detailParserRules") ?: doc.get("rules")
-            if (rawRules is List<*>) {
-                for (item in rawRules) {
-                    if (item is Map<*, *>) {
-                        val stt = (item["stt"] as? Number)?.toInt() ?: 0
-                        val enumNews = (item["enumNews"] as? Number)?.toInt() ?: 0
-                        val strRegexName = item["strRegexName"] as? String ?: ""
-                        val strRegex = item["strRegex"] as? String ?: ""
-                        val isMatches = item["isMatches"] as? Boolean ?: false
-                        val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
-                        val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
-                        val strPrefix = item["strPrefix"] as? String ?: ""
-                        val strSufix = item["strSufix"] as? String ?: ""
-                        val isReplace = item["isReplace"] as? Boolean ?: false
-                        val textReplace = item["textReplace"] as? String ?: ""
+        // Fetch detail_rules from Firestore in Debug mode OR at most once per 3 hours in Release mode OR when local DB is empty
+        if (isDebug || currentTime - lastFetchTime >= threeHoursMillis || localRuleEntities.isEmpty()) {
+            try {
+                val rulesSnapshot = firestore.collection("news_websites")
+                    .document(websiteId)
+                    .collection("detail_rules")
+                    .get()
+                    .await()
+
+                val remoteDetailRuleDocs = rulesSnapshot.documents.mapNotNull { doc ->
+                    val id = doc.id
+                    val name = doc.getString("name") ?: ""
+                    val isActive = doc.getBoolean("isActive") ?: true
+                    val targetField = (doc.get("targetField") as? Number)?.toInt() ?: 1
+                    val getContentBy = doc.getString("getContentBy") ?: doc.getString("strGetContentBy") ?: ""
+
+                    val rulesList = mutableListOf<ParserRule>()
+                    val rawRules = doc.get("detailParserRules") ?: doc.get("rules")
+                    if (rawRules is List<*>) {
+                        for (item in rawRules) {
+                            if (item is Map<*, *>) {
+                                val stt = (item["stt"] as? Number)?.toInt() ?: 0
+                                val enumNews = (item["enumNews"] as? Number)?.toInt() ?: 0
+                                val strRegexName = item["strRegexName"] as? String ?: ""
+                                val strRegex = item["strRegex"] as? String ?: ""
+                                val isMatches = item["isMatches"] as? Boolean ?: false
+                                val isMatchesPos = (item["isMatchesPos"] as? Number)?.toInt() ?: 0
+                                val groupPos = (item["groupPos"] as? Number)?.toInt() ?: 3
+                                val strPrefix = item["strPrefix"] as? String ?: ""
+                                val strSufix = item["strSufix"] as? String ?: ""
+                                val isReplace = item["isReplace"] as? Boolean ?: false
+                                val textReplace = item["textReplace"] as? String ?: ""
+
+                                rulesList.add(
+                                    ParserRule(
+                                        stt = stt,
+                                        enumNews = enumNews,
+                                        strRegexName = strRegexName,
+                                        strRegex = strRegex,
+                                        isMatches = isMatches,
+                                        isMatchesPos = isMatchesPos,
+                                        groupPos = groupPos,
+                                        strPrefix = strPrefix,
+                                        strSufix = strSufix,
+                                        isReplace = isReplace,
+                                        textReplace = textReplace
+                                    )
+                                )
+                            }
+                        }
+                    } else if (rawRules is Map<*, *>){
+                        val stt = (rawRules["stt"] as? Number)?.toInt() ?: 0
+                        val enumNews = (rawRules["enumNews"] as? Number)?.toInt() ?: 0
+                        val strRegexName = rawRules["strRegexName"] as? String ?: ""
+                        val strRegex = rawRules["strRegex"] as? String ?: ""
+                        val isMatches = rawRules["isMatches"] as? Boolean ?: false
+                        val isMatchesPos = (rawRules["isMatchesPos"] as? Number)?.toInt() ?: 0
+                        val groupPos = (rawRules["groupPos"] as? Number)?.toInt() ?: 3
+                        val strPrefix = rawRules["strPrefix"] as? String ?: ""
+                        val strSufix = rawRules["strSufix"] as? String ?: ""
+                        val isReplace = rawRules["isReplace"] as? Boolean ?: false
+                        val textReplace = rawRules["textReplace"] as? String ?: ""
 
                         rulesList.add(
                             ParserRule(
@@ -351,46 +433,28 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                             )
                         )
                     }
-                }
-            } else if (rawRules is Map<*, *>){
-                val stt = (rawRules["stt"] as? Number)?.toInt() ?: 0
-                val enumNews = (rawRules["enumNews"] as? Number)?.toInt() ?: 0
-                val strRegexName = rawRules["strRegexName"] as? String ?: ""
-                val strRegex = rawRules["strRegex"] as? String ?: ""
-                val isMatches = rawRules["isMatches"] as? Boolean ?: false
-                val isMatchesPos = (rawRules["isMatchesPos"] as? Number)?.toInt() ?: 0
-                val groupPos = (rawRules["groupPos"] as? Number)?.toInt() ?: 3
-                val strPrefix = rawRules["strPrefix"] as? String ?: ""
-                val strSufix = rawRules["strSufix"] as? String ?: ""
-                val isReplace = rawRules["isReplace"] as? Boolean ?: false
-                val textReplace = rawRules["textReplace"] as? String ?: ""
 
-                rulesList.add(
-                    ParserRule(
-                        stt = stt,
-                        enumNews = enumNews,
-                        strRegexName = strRegexName,
-                        strRegex = strRegex,
-                        isMatches = isMatches,
-                        isMatchesPos = isMatchesPos,
-                        groupPos = groupPos,
-                        strPrefix = strPrefix,
-                        strSufix = strSufix,
-                        isReplace = isReplace,
-                        textReplace = textReplace
+                    DetailRuleDocument(
+                        id = id,
+                        name = name,
+                        isActive = isActive,
+                        targetField = targetField,
+                        getContentBy = getContentBy,
+                        detailParserRules = rulesList
                     )
-                )
-            }
+                }
 
-            DetailRuleDocument(
-                id = id,
-                name = name,
-                isActive = isActive,
-                targetField = targetField,
-                getContentBy = getContentBy,
-                detailParserRules = rulesList
-            )
+                if (remoteDetailRuleDocs.isNotEmpty()) {
+                    val entities = remoteDetailRuleDocs.map { doc -> doc.toEntity(websiteId) }
+                    detailRuleDao.insertAll(entities)
+                }
+
+                prefs.edit().putLong("last_firebase_detail_rules_${websiteId}_fetch", currentTime).apply()
+            } catch (_: Exception) {}
         }
+
+        val ruleEntities = try { detailRuleDao.getRulesForWebsite(websiteId) } catch (_: Exception) { emptyList() }
+        val detailRuleDocs = ruleEntities.map { it.toDomain() }
 
         val defaultHeaders = mapOf(
             "User-Agent" to ANDROID_USER_AGENT,
@@ -399,6 +463,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
         )
         val response = htmlScrapingService.fetchGet(defaultHeaders, link)
         val htmlString = if (response.isSuccessful) response.body()?.string() ?: "" else ""
+
         val detail = HtmlDetailParserEngine.parse(link, websiteId, htmlString, detailRuleDocs)
 
         newsDetailDao.insertDetail(
@@ -436,9 +501,9 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                         isVideo = it.isVideo
                     )
                 }.groupBy { it.websiteId }
-                 .flatMap { (_, items) ->
-                     items.shuffled().take(10)
-                 }
+             .flatMap { unbroken ->
+                 unbroken.value.shuffled().take(10)
+             }
         }
     }
 

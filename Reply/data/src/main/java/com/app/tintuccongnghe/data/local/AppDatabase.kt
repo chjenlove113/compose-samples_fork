@@ -19,9 +19,11 @@ import com.app.tintuccongnghe.data.local.entities.*
         NotificationEntity::class,
         ScrapedNewsEntity::class,
         NewsDetailEntity::class,
-        NewsWebsiteEntity::class
+        NewsWebsiteEntity::class,
+        NewsCategoryEntity::class,
+        DetailRuleEntity::class
     ],
-    version = 23
+    version = 25
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -35,4 +37,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun scrapedNewsDao(): ScrapedNewsDao
     abstract fun newsDetailDao(): NewsDetailDao
     abstract fun newsWebsiteDao(): NewsWebsiteDao
+    abstract fun newsCategoryDao(): NewsCategoryDao
+    abstract fun detailRuleDao(): DetailRuleDao
 }

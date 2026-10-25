@@ -113,8 +113,9 @@ object RepositoryModule {
     fun provideNewsScrapingRepository(
         htmlScrapingService: HtmlScrapingService,
         firestore: FirebaseFirestore,
-        appDatabase: AppDatabase
+        appDatabase: AppDatabase,
+        @ApplicationContext context: Context
     ): INewsScrapingRepository {
-        return NewsScrapingRepositoryImpl(htmlScrapingService, firestore, appDatabase)
+        return NewsScrapingRepositoryImpl(htmlScrapingService, firestore, appDatabase, context)
     }
 }
