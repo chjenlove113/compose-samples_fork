@@ -14,9 +14,11 @@ import com.app.tintuccongnghe.domain.models.ParserRule
 import com.app.tintuccongnghe.domain.models.SigConfig
 import com.app.tintuccongnghe.domain.repository.INewsScrapingRepository
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
@@ -30,6 +32,14 @@ class NewsScrapingRepositoryImpl @Inject constructor(
     private val scrapedNewsDao = appDatabase.scrapedNewsDao()
     private val newsDetailDao = appDatabase.newsDetailDao()
     private val newsWebsiteDao = appDatabase.newsWebsiteDao()
+
+    companion object {
+        private val ANDROID_USER_AGENT: String by lazy {
+            val androidVersion = android.os.Build.VERSION.RELEASE ?: "14"
+            val deviceModel = android.os.Build.MODEL ?: "Android"
+            "Mozilla/5.0 (Linux; Android $androidVersion; $deviceModel) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.64 Mobile Safari/537.36"
+        }
+    }
 
     override suspend fun getWebsites(): List<NewsWebsite> {
         try {
@@ -180,8 +190,8 @@ class NewsScrapingRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun scrapeAndSaveNews(websiteId: String, category: NewsCategory, page: Int, append: Boolean): List<NewsItem> {
-        return try {
+    override suspend fun scrapeAndSaveNews(websiteId: String, category: NewsCategory, page: Int, append: Boolean): List<NewsItem> = withContext(Dispatchers.IO) {
+        try {
             val websiteDoc = firestore.collection("news_websites").document(websiteId).get().await()
             val sigMap = websiteDoc.get("sigConfig") as? Map<*, *>
             val sigConfig = if (sigMap != null) {
@@ -216,7 +226,9 @@ class NewsScrapingRepositoryImpl @Inject constructor(
             }
 
             val finalHeaders = mutableMapOf<String, String>().apply {
-                put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                put("User-Agent", ANDROID_USER_AGENT)
+                put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                put("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7")
                 putAll(category.headers)
             }
 
@@ -224,6 +236,11 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                 val bodyStr = (category.postBodyTemplate ?: "{}").replace("{page}", page.toString())
                 val requestBody = bodyStr.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
                 val response = htmlScrapingService.fetchPost(finalHeaders, targetUrl, requestBody)
+                
+                if (!response.isSuccessful) {
+                    return@withContext emptyList()
+                }
+
                 val rawResponse = response.body()?.string() ?: ""
                 if (!category.jsonResponseKey.isNullOrEmpty()) {
                     try {
@@ -236,12 +253,15 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                     rawResponse
                 }
             } else {
-                if (targetUrl.isEmpty()) return emptyList()
+                if (targetUrl.isEmpty()) return@withContext emptyList()
                 val response = htmlScrapingService.fetchGet(finalHeaders, targetUrl)
+                if (!response.isSuccessful) {
+                    return@withContext emptyList()
+                }
                 response.body()?.string() ?: ""
             }
 
-            if (htmlString.isEmpty()) return emptyList()
+            if (htmlString.isEmpty()) return@withContext emptyList()
 
             val items = HtmlParserEngine.parse(htmlString, category.parserRules)
 
@@ -272,10 +292,10 @@ class NewsScrapingRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getNewsDetail(websiteId: String, link: String): NewsDetail {
+    override suspend fun getNewsDetail(websiteId: String, link: String): NewsDetail = withContext(Dispatchers.IO) {
         val cached = newsDetailDao.getDetailByLink(link)
         if (cached != null) {
-            return NewsDetail(
+            return@withContext NewsDetail(
                 link = cached.link,
                 websiteId = cached.websiteId,
                 title = cached.title,
@@ -370,9 +390,13 @@ class NewsScrapingRepositoryImpl @Inject constructor(
             )
         }
 
-        val defaultHeaders = mapOf("User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+        val defaultHeaders = mapOf(
+            "User-Agent" to ANDROID_USER_AGENT,
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language" to "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
+        )
         val response = htmlScrapingService.fetchGet(defaultHeaders, link)
-        val htmlString = response.body()?.string() ?: ""
+        val htmlString = if (response.isSuccessful) response.body()?.string() ?: "" else ""
         val detail = HtmlDetailParserEngine.parse(link, websiteId, htmlString, detailRuleDocs)
 
         newsDetailDao.insertDetail(
@@ -386,7 +410,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
             )
         )
 
-        return detail
+        detail
     }
 
     override fun getHomeNews(): Flow<List<NewsItem>> {

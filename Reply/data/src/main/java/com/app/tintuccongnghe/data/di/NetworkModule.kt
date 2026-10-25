@@ -56,7 +56,18 @@ class NetworkModule {
             HttpLoggingInterceptor.Level.BASIC
         }
 
+        val cookieStore = java.util.Collections.synchronizedMap(mutableMapOf<String, List<okhttp3.Cookie>>())
+        val memoryCookieJar = object : okhttp3.CookieJar {
+            override fun saveFromResponse(url: okhttp3.HttpUrl, cookies: List<okhttp3.Cookie>) {
+                cookieStore[url.host] = cookies
+            }
+            override fun loadForRequest(url: okhttp3.HttpUrl): List<okhttp3.Cookie> {
+                return cookieStore[url.host] ?: emptyList()
+            }
+        }
+
         return OkHttpClient.Builder()
+            .cookieJar(memoryCookieJar)
             .addInterceptor(HeaderInterceptor())
             .addInterceptor(UserAgentInterceptor())
             .addInterceptor(NetworkConnectionInterceptor(context))
