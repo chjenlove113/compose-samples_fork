@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -300,14 +302,18 @@ fun HtmlContent(
     onLinkClick: (String) -> Unit
 ) {
     AndroidView<WebView>(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp),
         factory = { context ->
             WebView(context).apply {
                 addJavascriptInterface(WebAppInterface(onLinkClick), "AndroidBridge")
+                webChromeClient = WebChromeClient()
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
                         val url = request?.url?.toString()
                         if (url != null) {
+                            if (url.contains("youtube.com") || url.contains("youtu.be")) {
+                                return false // Allow YouTube loading
+                            }
                             onLinkClick(url)
                         }
                         return true
@@ -318,6 +324,9 @@ fun HtmlContent(
                     domStorageEnabled = true
                     useWideViewPort = true
                     loadWithOverviewMode = true
+                    mediaPlaybackRequiresUserGesture = false
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
                 }
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
@@ -328,6 +337,8 @@ fun HtmlContent(
             val primary = colorScheme.primary.toHtmlHex()
             val outline = colorScheme.outline.toHtmlHex()
             val baseFontSize = 16 * fontScale
+
+            val processedHtml = html.replace("<iframe ", "<iframe allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" ")
 
             val styledHtml = """
                 <!DOCTYPE html>
@@ -364,6 +375,20 @@ fun HtmlContent(
                             text-decoration: none;
                             border-bottom: 1px solid var(--md-outline);
                         }
+                        video, .wp-video {
+                            max-width: 100% !important;
+                            width: 100% !important;
+                            height: auto !important;
+                            border-radius: 12px;
+                            margin: 16px 0;
+                        }
+                        iframe {
+                            max-width: 100% !important;
+                            width: 100% !important;
+                            aspect-ratio: 16 / 9;
+                            border-radius: 12px;
+                            margin: 16px 0;
+                        }
                         img {
                             max-width: 100%;
                             height: auto;
@@ -385,6 +410,11 @@ fun HtmlContent(
                             font-size: 0.9em;
                         }
                         pre {
+                            video, .wp-video {
+                                max-width: 100% !important;
+                                width: 100% !important;
+                                height: auto !important;
+                            }
                             background-color: var(--md-outline);
                             padding: 12px;
                             border-radius: 8px;
@@ -395,11 +425,14 @@ fun HtmlContent(
                     </style>
                 </head>
                 <body>
-                    $html
+                    $processedHtml
                     <script>
                         document.addEventListener('click', function(e) {
                             var target = e.target.closest('a');
                             if (target && target.href) {
+                                if (target.href.includes('youtube.com') || target.href.includes('youtu.be')) {
+                                    return; // allow youtube links
+                                }
                                 e.preventDefault();
                                 AndroidBridge.onLinkClicked(target.href);
                             }
@@ -417,7 +450,7 @@ fun HtmlContent(
                 </body>
                 </html>
             """.trimIndent()
-            webView.loadDataWithBaseURL(null, styledHtml, "text/html", "utf-8", null)
+            webView.loadDataWithBaseURL("https://www.youtube.com", styledHtml, "text/html", "utf-8", null)
         }
     )
 }

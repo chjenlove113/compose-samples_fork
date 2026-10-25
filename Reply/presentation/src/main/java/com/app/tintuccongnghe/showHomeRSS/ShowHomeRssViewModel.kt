@@ -69,6 +69,95 @@ class ShowHomeRssViewModel @Inject constructor(
         }
     }
 
+    fun syncRssForSite(site: AppUserSite?) {
+        if (site == null) {
+            syncRss()
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true) }
+            val notificationSession = rssSyncLiveUpdate.start(1, site.Name, site.Id)
+            var newItemCount = 0
+
+            try {
+                withContext(Dispatchers.IO) {
+                    val siteDao = appDatabase.appUserSiteDao()
+                    val rssItemDao = appDatabase.rssItemDao()
+
+                    if (site.GROUP == "1" && site.Url.isNotEmpty()) {
+                        val request = Request.Builder().url(site.Url).build()
+                        okHttpClient.newCall(request).execute().use { response ->
+                            val currentTime = System.currentTimeMillis()
+                            val nextTime = currentTime + TimeUnit.MINUTES.toMillis(15)
+
+                            check(response.isSuccessful) {
+                                "${response.code} ${response.message}"
+                            }
+                            val responseBody = checkNotNull(response.body) { "Empty RSS response" }
+                            val input = SyndFeedInput()
+                            val feed: SyndFeed = input.build(XmlReader(responseBody.byteStream()))
+                            val itemsToInsert = mutableListOf<RssItemEntity>()
+                            val totalItems = feed.entries.size
+
+                            siteDao.update(site.toEntity().copy(
+                                lastRefreshTime = currentTime,
+                                nextRefreshTime = nextTime,
+                                itemCount = totalItems
+                            ))
+
+                            feed.entries.forEach { entry ->
+                                val link = entry.link ?: ""
+                                if (link.isNotEmpty()) {
+                                    val existingItem = rssItemDao.getItemByLink(link)
+                                    if (existingItem != null) {
+                                        rssItemDao.update(existingItem.copy(updDate = currentTime))
+                                    } else {
+                                        val contentValue = entry.contents?.firstOrNull()?.value
+                                            ?: entry.modules?.filterIsInstance<com.rometools.rome.feed.module.DCModule>()?.firstOrNull()?.description
+                                            ?: entry.description?.value
+
+                                        val imageUrl = entry.enclosures?.firstOrNull()?.url
+
+                                        itemsToInsert.add(
+                                            RssItemEntity(
+                                                title = entry.title ?: "",
+                                                link = link,
+                                                description = entry.description?.value,
+                                                pubDate = entry.publishedDate?.time,
+                                                siteId = site.Id,
+                                                siteGroup = site.GROUP,
+                                                siteKind = site.Kind,
+                                                updDate = currentTime,
+                                                content = contentValue,
+                                                siteName = site.Name,
+                                                imageUrl = imageUrl
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (itemsToInsert.isNotEmpty()) {
+                                rssItemDao.insertAll(itemsToInsert)
+                                newItemCount += itemsToInsert.size
+                            }
+                        }
+                    }
+                }
+                rssSyncLiveUpdate.complete(notificationSession, 1, newItemCount, 0)
+                _uiState.update { it.copy(error = null) }
+            } catch (cancellation: CancellationException) {
+                rssSyncLiveUpdate.cancel(notificationSession)
+                throw cancellation
+            } catch (error: Exception) {
+                rssSyncLiveUpdate.failed(notificationSession, error.localizedMessage)
+                _uiState.update { it.copy(error = error.localizedMessage) }
+            } finally {
+                _uiState.update { it.copy(isSyncing = false) }
+            }
+        }
+    }
+
     fun syncRss() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSyncing = true) }
@@ -186,10 +275,10 @@ class ShowHomeRssViewModel @Inject constructor(
 
     fun toggleFavorite(item: RssItemEntity) {
         viewModelScope.launch {
-            val updatedItem = item.copy(isFavorite = !item.isFavorite)
-            appDatabase.rssItemDao().update(updatedItem)
+            val updated = item.copy(isFavorite = !item.isFavorite)
+            appDatabase.rssItemDao().update(updated)
             if (_uiState.value.selectedItem?.link == item.link) {
-                _uiState.update { it.copy(selectedItem = updatedItem) }
+                _uiState.update { it.copy(selectedItem = updated) }
             }
         }
     }

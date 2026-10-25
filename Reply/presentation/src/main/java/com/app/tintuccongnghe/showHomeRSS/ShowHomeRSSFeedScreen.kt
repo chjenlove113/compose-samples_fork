@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -70,7 +71,7 @@ fun ShowHomeRSSFeedScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToUserSites: () -> Unit,
     viewModel: ShowHomeRssViewModel = hiltViewModel(),
-    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalActivity.current as ViewModelStoreOwner)
+    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ViewModelStoreOwner)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val rssJump by mainViewModel.rssJump.collectAsStateWithLifecycle()
@@ -135,149 +136,83 @@ fun ShowHomeRSSFeedScreen(
         return
     }
 
-    PullToRefreshBox(
-        isRefreshing = uiState.isSyncing,
-        onRefresh = { viewModel.syncRss() },
-        modifier = Modifier.fillMaxSize()
-    ) {
-        ListDetailPaneScaffold(
-            directive = currentScaffoldDirective,
-            value = scaffoldValue,
-            listPane = {
-                AnimatedPane {
-                    RSSListPane(
-                        sites = uiState.sites,
-                        rssJump = rssJump,
-                        selectedItem = uiState.selectedItem,
-                        onJumpHandled = { mainViewModel.clearRssJump() },
-                        onNavigateToUserSites = onNavigateToUserSites,
-                        onSyncRss = { viewModel.syncRss() },
-                        onRssItemClick = { item ->
+    ListDetailPaneScaffold(
+        directive = currentScaffoldDirective,
+        value = scaffoldValue,
+        listPane = {
+            AnimatedPane {
+                RSSListPane(
+                    sites = uiState.sites,
+                    rssJump = rssJump,
+                    selectedItem = uiState.selectedItem,
+                    onJumpHandled = { mainViewModel.clearRssJump() },
+                    onNavigateToUserSites = onNavigateToUserSites,
+                    onSyncRss = { site -> viewModel.syncRssForSite(site) },
+                    isRefreshing = uiState.isSyncing,
+                    onRssItemClick = { item ->
+                        scope.launch {
+                            isFullScreen = false
+                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+                        }
+                    }
+                )
+            }
+        },
+        detailPane = {
+            AnimatedPane {
+                if (currentDetail != null) {
+                    ShowHomeRSSFeedDetailScreen(
+                        item = currentDetail,
+                        onBack = {
                             scope.launch {
                                 isFullScreen = false
-                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+                                navigator.navigateBack()
                             }
+                        },
+                        isFullScreen = isFullScreen,
+                        onToggleFullScreen = {
+                            isFullScreen = !isFullScreen
                         }
                     )
-                }
-            },
-            detailPane = {
-                AnimatedPane {
-                    if (currentDetail != null) {
-                        ShowHomeRSSFeedDetailScreen(
-                            item = currentDetail,
-                            onBack = {
-                                scope.launch {
-                                    isFullScreen = false
-                                    navigator.navigateBack()
-                                }
-                            },
-                            isFullScreen = isFullScreen,
-                            onToggleFullScreen = {
-                                isFullScreen = !isFullScreen
-                            }
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
-                            contentAlignment = Alignment.Center
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(32.dp)
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(32.dp)
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.size(72.dp)
                             ) {
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    modifier = Modifier.size(72.dp)
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Outlined.Article,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(36.dp)
-                                        )
-                                    }
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.Article,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(36.dp)
+                                    )
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Select an RSS article to read details",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Select an RSS article to read details",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
             }
-        )
-    }
-}
-
-@Composable
-fun EmptyStateWithButton(
-    message: String,
-    buttonText: String,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(80.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.RssFeed,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text(
-                text = message,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = onClick,
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(buttonText)
-            }
         }
-    }
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -288,8 +223,9 @@ fun RSSListPane(
     selectedItem: RssItemEntity? = null,
     onJumpHandled: () -> Unit = {},
     onNavigateToUserSites: () -> Unit = {},
-    onSyncRss: () -> Unit = {},
-    onRssItemClick: (RssItemEntity) -> Unit
+    onSyncRss: (AppUserSite?) -> Unit = {},
+    onRssItemClick: (RssItemEntity) -> Unit,
+    isRefreshing: Boolean = false
 ) {
     if (sites.isEmpty()) {
         EmptyStateWithButton(
@@ -310,7 +246,7 @@ fun RSSListPane(
         adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
     ) 12.dp else 16.dp
 
-    val selectedTabIndex = if (sites.isEmpty()) 0 else pagerState.currentPage.coerceIn(0, sites.size - 1)
+    val currentSite = sites.getOrNull(pagerState.currentPage)
 
     // Ensure pager state stays within bounds if sites count changes
     LaunchedEffect(sites.size) {
@@ -332,171 +268,152 @@ fun RSSListPane(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Modern Header Bar
-        Surface(
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 1.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { onSyncRss(currentSite) },
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Modern Header Bar
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 1.dp
             ) {
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.size(40.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.RssFeed,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(40.dp)
                         ) {
-                            Text(
-                                text = "RSS Feeds",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.secondaryContainer
-                            ) {
-                                Text(
-                                    text = "${sites.size}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.RssFeed,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
-                    }
-                }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(
-                        onClick = onSyncRss,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Sync,
-                            contentDescription = "Refresh",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onNavigateToUserSites,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Subscriptions,
-                            contentDescription = "Manage Feeds",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Modern Tab Row
-        SecondaryScrollableTabRow(
-            selectedTabIndex = selectedTabIndex,
-            edgePadding = tabEdgePadding,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary,
-            divider = {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            }
-        ) {
-            sites.forEachIndexed { index, site ->
-                val isSelected = selectedTabIndex == index
-                Tab(
-                    selected = isSelected,
-                    onClick = {
-                        scope.launch { pagerState.animateScrollToPage(index) }
-                    },
-                    text = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = site.Name,
-                                style = if (isSelected)
-                                    MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                                else
-                                    MaterialTheme.typography.titleSmall,
-                                maxLines = 1
-                            )
-                            if (site.itemCount > 0) {
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "RSS Reader",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
                                 Surface(
-                                    shape = CircleShape,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = RoundedCornerShape(6.dp)
                                 ) {
                                     Text(
-                                        text = if (site.itemCount > 99) "99+" else "${site.itemCount}",
+                                        text = "${sites.size} feeds",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                                        fontSize = 10.sp
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
                             }
+                            Text(
+                                text = "Swipe or tap tabs to explore",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    },
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { onSyncRss(currentSite) }) {
+                            Icon(imageVector = Icons.Default.Sync, contentDescription = "Sync RSS")
+                        }
+                        IconButton(onClick = onNavigateToUserSites) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = "Manage User Sites")
+                        }
+                    }
+                }
+            }
+
+            // Modern Scrollable Tab Row
+            ScrollableTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                edgePadding = tabEdgePadding,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                }
+            ) {
+                sites.forEachIndexed { index, site ->
+                    val selected = pagerState.currentPage == index
+                    Tab(
+                        selected = selected,
+                        onClick = {
+                            scope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = site.Name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (site.itemCount > 0) {
+                                    Badge(
+                                        containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    ) {
+                                        Text(text = "${site.itemCount}", fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                key = { index ->
+                    val site = sites.getOrNull(index)
+                    if (site != null) "${site.Id}_${site.GROUP}_${site.Kind}" else index
+                }
+            ) { page ->
+                val site = sites.getOrNull(page) ?: return@HorizontalPager
+                RSSFeedChildScreen(
+                    siteId = site.Id,
+                    siteGroup = site.GROUP,
+                    siteKind = site.Kind,
+                    selectedItem = selectedItem,
+                    onItemClick = onRssItemClick
                 )
             }
-        }
-
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .weight(1f)
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
-            key = { index ->
-                val site = sites.getOrNull(index)
-                if (site != null) "${site.Id}_${site.GROUP}_${site.Kind}" else index
-            }
-        ) { page ->
-            val site = sites.getOrNull(page) ?: return@HorizontalPager
-            RSSFeedChildScreen(
-                siteId = site.Id,
-                siteGroup = site.GROUP,
-                siteKind = site.Kind,
-                selectedItem = selectedItem,
-                onItemClick = onRssItemClick
-            )
         }
     }
 }
@@ -525,12 +442,9 @@ fun RSSFeedChildScreen(
     // Scroll to selected item when it changes from a jump or navigation
     LaunchedEffect(selectedItem) {
         if (selectedItem != null) {
-            for (i in 0 until pagingItems.itemCount) {
-                val item = pagingItems.peek(i)
-                if (item != null && item.link == selectedItem.link) {
-                    listState.animateScrollToItem(i)
-                    break
-                }
+            val index = rssItemsPagingDataMatch(pagingItems, selectedItem)
+            if (index != -1) {
+                listState.animateScrollToItem(index)
             }
         }
     }
@@ -565,171 +479,127 @@ fun RSSFeedChildScreen(
     }
 }
 
+fun rssItemsPagingDataMatch(pagingItems: androidx.paging.compose.LazyPagingItems<RssItemEntity>, selectedItem: RssItemEntity): Int {
+    for (i in 0 until pagingItems.itemCount) {
+        val item = pagingItems.peek(i)
+        if (item != null && item.link == selectedItem.link) {
+            return i
+        }
+    }
+    return -1
+}
+
 @Composable
 fun RssItemRow(
     item: RssItemEntity,
-    modifier: Modifier = Modifier,
     isSelected: Boolean = false,
     onClick: () -> Unit,
-    onFavoriteClick: () -> Unit = {}
+    onFavoriteClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
-    val adaptiveInfo = currentWindowAdaptiveInfo()
-    val isCompact = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.COMPACT
-    val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
-
-    val titleStyle = if (isExpanded) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
-    val bodyStyle = if (isExpanded) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
-    val padding = if (isCompact) 12.dp else 16.dp
-
-    val cardContainerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-
-    val cardContentColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-
     ElevatedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = cardContainerColor,
-            contentColor = cardContentColor
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.elevatedCardElevation(
-            defaultElevation = if (isSelected) 4.dp else 1.dp,
-            pressedElevation = 6.dp
-        ),
-        shape = RoundedCornerShape(20.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .padding(padding)
                 .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header Row: Site Chip + Relative Time + Favorite Button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f, fill = false)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected)
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                        else
-                            MaterialTheme.colorScheme.secondaryContainer
-                    ) {
-                        Text(
-                            text = item.siteName ?: "RSS Feed",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isSelected)
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            else
-                                MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    val dateStr = formatRelativeTime(item.pubDate)
-                    if (dateStr.isNotEmpty()) {
-                        Text(
-                            text = "•  $dateStr",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isSelected)
-                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                IconButton(
-                    onClick = onFavoriteClick,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (item.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Favorite",
-                        tint = if (item.isFavorite) Color(0xFFE53935) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            if (!item.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Body Row: Title + Description + Image
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                val desc = item.description
+                if (!desc.isNullOrBlank()) {
                     Text(
-                        text = item.title,
-                        style = titleStyle,
-                        color = cardContentColor,
-                        fontWeight = FontWeight.Bold,
+                        text = desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-
-                    val description = item.description
-                    if (!description.isNullOrEmpty()) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = description,
-                            style = bodyStyle,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            color = if (isSelected)
-                                MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
-
-                if (!item.imageUrl.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = item.imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(if (isExpanded) 96.dp else 84.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+            }
+            IconButton(onClick = onFavoriteClick) {
+                Icon(
+                    imageVector = if (item.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = "Favorite",
+                    tint = if (item.isFavorite) Color.Red else LocalContentColor.current
+                )
             }
         }
     }
 }
 
-private fun formatRelativeTime(timestamp: Long?): String {
-    if (timestamp == null || timestamp <= 0) return ""
-    val diff = System.currentTimeMillis() - timestamp
-    return when {
-        diff < 0 -> "Just now"
-        diff < 60_000L -> "Just now"
-        diff < 3_600_000L -> "${diff / 60_000L}m ago"
-        diff < 86_400_000L -> "${diff / 3_600_000L}h ago"
-        diff < 172_800_000L -> "Yesterday"
-        else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(timestamp))
+@Composable
+fun EmptyStateWithButton(
+    message: String,
+    buttonText: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.size(80.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Subscriptions,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onClick) {
+                Text(buttonText)
+            }
+        }
     }
 }
