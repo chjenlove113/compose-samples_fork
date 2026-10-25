@@ -316,6 +316,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
             val name = doc.getString("name") ?: ""
             val isActive = doc.getBoolean("isActive") ?: true
             val targetField = (doc.get("targetField") as? Number)?.toInt() ?: 1
+            val getContentBy = doc.getString("getContentBy") ?: ""
 
             val rulesList = mutableListOf<ParserRule>()
             val rawRules = doc.get("detailParserRules") ?: doc.get("rules")
@@ -386,6 +387,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                 name = name,
                 isActive = isActive,
                 targetField = targetField,
+                getContentBy = getContentBy,
                 detailParserRules = rulesList
             )
         }

@@ -11,5 +11,6 @@ data class DetailRuleDocument(
     val name: String = "",
     val isActive: Boolean = true,
     val targetField: Int = 1,
+    val getContentBy: String = "",
     val detailParserRules: List<ParserRule> = emptyList()
 ) : Parcelable
