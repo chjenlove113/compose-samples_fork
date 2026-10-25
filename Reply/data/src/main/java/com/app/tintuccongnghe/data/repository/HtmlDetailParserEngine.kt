@@ -136,6 +136,7 @@ object HtmlDetailParserEngine {
         var title = ""
         var author = ""
         var publishDate = ""
+        var description = ""
         var contentHtml = ""
 
         val activeRules = ruleDocs.filter { it.isActive }
@@ -198,6 +199,7 @@ object HtmlDetailParserEngine {
                 EnumDetail.AUTHOR -> author = finalValue.decodeHtmlDetail()
                 EnumDetail.PUBLISH_DATE -> publishDate = finalValue.decodeHtmlDetail()
                 EnumDetail.CONTENT -> contentHtml = workingText.trim()
+                EnumDetail.DESCRIPTION -> description = finalValue.decodeHtmlDetail()
             }
         }
 
@@ -207,6 +209,7 @@ object HtmlDetailParserEngine {
             title = title,
             author = author,
             publishDate = publishDate,
+            description = description,
             contentHtml = contentHtml
         )
     }

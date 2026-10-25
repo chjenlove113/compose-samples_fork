@@ -113,6 +113,7 @@ fun NewsDetailScreen(
                 }
                 is NewsDetailUiState.Success -> {
                     val detail = state.detail
+                    val description = state.description
                     val processedHtml = remember(detail.contentHtml, colorScheme, isDark) {
                         try {
                             val baseFontSize = 18
@@ -169,6 +170,16 @@ fun NewsDetailScreen(
                         HorizontalDivider()
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        if (description.isNotEmpty()) {
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
                         if (processedHtml.isNotEmpty()) {
                             AndroidView(
                                 factory = { context ->
@@ -219,6 +230,6 @@ fun NewsDetailScreen(
     }
 }
 
-private fun Color.toHtmlHex(): String {
+private fun Color.toHtmlHex():String {
     return String.format("#%06X", (0xFFFFFF and this.toArgb()))
 }

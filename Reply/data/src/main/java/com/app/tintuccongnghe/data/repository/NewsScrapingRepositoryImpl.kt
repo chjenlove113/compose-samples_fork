@@ -342,6 +342,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                 title = cached.title,
                 author = cached.author,
                 publishDate = cached.publishDate,
+                description = cached.description,
                 contentHtml = cached.contentHtml
             )
         }
@@ -473,6 +474,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
                 title = detail.title,
                 author = detail.author,
                 publishDate = detail.publishDate,
+                description = detail.description,
                 contentHtml = detail.contentHtml
             )
         )
