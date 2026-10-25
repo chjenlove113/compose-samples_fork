@@ -263,7 +263,7 @@ class NewsScrapingRepositoryImpl @Inject constructor(
 
             if (htmlString.isEmpty()) return@withContext emptyList()
 
-            val items = HtmlParserEngine.parse(htmlString, category.parserRules)
+            val items = HtmlParserEngine.parse(htmlString, category.parserRules, websiteId, category.id)
 
             if (items.isNotEmpty()) {
                 val entities = items.map {
@@ -415,21 +415,28 @@ class NewsScrapingRepositoryImpl @Inject constructor(
 
     override fun getHomeNews(): Flow<List<NewsItem>> {
         return scrapedNewsDao.getHomeNews().map { entities ->
-            entities.map {
-                NewsItem(
-                    websiteId = it.websiteId,
-                    title = it.title,
-                    image = it.image,
-                    link = it.link,
-                    shortDes = it.shortDes,
-                    date = it.date,
-                    subCat = it.subCat,
-                    isVideo = it.isVideo
-                )
-            }.groupBy { it.websiteId }
-             .flatMap { (_, items) ->
-                 items.shuffled().take(10)
-             }
+            val activeWebsiteIds = try {
+                newsWebsiteDao.getAllWebsitesList().filter { it.isActive }.map { it.id }.toSet()
+            } catch (_: Exception) {
+                emptySet()
+            }
+
+            entities.filter { activeWebsiteIds.isEmpty() || it.websiteId in activeWebsiteIds }
+                .map {
+                    NewsItem(
+                        websiteId = it.websiteId,
+                        title = it.title,
+                        image = it.image,
+                        link = it.link,
+                        shortDes = it.shortDes,
+                        date = it.date,
+                        subCat = it.subCat,
+                        isVideo = it.isVideo
+                    )
+                }.groupBy { it.websiteId }
+                 .flatMap { (_, items) ->
+                     items.shuffled().take(10)
+                 }
         }
     }
 

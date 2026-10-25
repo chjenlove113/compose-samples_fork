@@ -4,6 +4,7 @@ import android.text.Html
 import com.app.tintuccongnghe.domain.models.DetailRuleDocument
 import com.app.tintuccongnghe.domain.models.EnumDetail
 import com.app.tintuccongnghe.domain.models.NewsDetail
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 fun String.decodeHtmlDetail(): String {
     return try {
@@ -13,7 +14,8 @@ fun String.decodeHtmlDetail(): String {
             @Suppress("DEPRECATION")
             Html.fromHtml(this).toString()
         }
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        FirebaseCrashlytics.getInstance().recordException(e)
         this
     }
 }
@@ -21,6 +23,10 @@ fun String.decodeHtmlDetail(): String {
 object HtmlDetailParserEngine {
 
     fun parse(link: String, websiteId: String, html: String, ruleDocs: List<DetailRuleDocument>): NewsDetail {
+        val crashlytics = FirebaseCrashlytics.getInstance()
+        if (websiteId.isNotEmpty()) crashlytics.setCustomKey("website_id", websiteId)
+        crashlytics.setCustomKey("detail_link", link)
+
         var title = ""
         var author = ""
         var publishDate = ""
@@ -36,7 +42,13 @@ object HtmlDetailParserEngine {
                 if (step.isReplace) {
                     try {
                         workingText = Regex(step.strRegex, RegexOption.DOT_MATCHES_ALL).replace(workingText, step.textReplace)
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        crashlytics.setCustomKey("failed_regex", step.strRegex)
+                        crashlytics.setCustomKey("rule_name", step.strRegexName)
+                        crashlytics.setCustomKey("detail_rule_id", ruleDoc.id)
+                        crashlytics.setCustomKey("parsing_stage", "detail_replace")
+                        crashlytics.recordException(e)
+                    }
                 } else {
                     try {
                         val regex = Regex(step.strRegex, RegexOption.DOT_MATCHES_ALL)
@@ -60,7 +72,13 @@ object HtmlDetailParserEngine {
                         if (extracted.isNotEmpty()) {
                             workingText = step.strPrefix + extracted + step.strSufix
                         }
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        crashlytics.setCustomKey("failed_regex", step.strRegex)
+                        crashlytics.setCustomKey("rule_name", step.strRegexName)
+                        crashlytics.setCustomKey("detail_rule_id", ruleDoc.id)
+                        crashlytics.setCustomKey("parsing_stage", "detail_extract")
+                        crashlytics.recordException(e)
+                    }
                 }
             }
 

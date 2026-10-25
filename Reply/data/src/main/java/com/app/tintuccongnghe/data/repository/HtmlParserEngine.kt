@@ -4,6 +4,7 @@ import android.text.Html
 import com.app.tintuccongnghe.domain.models.EnumNews
 import com.app.tintuccongnghe.domain.models.NewsItem
 import com.app.tintuccongnghe.domain.models.ParserRule
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 fun String.decodeHtml(): String {
     return try {
@@ -13,7 +14,8 @@ fun String.decodeHtml(): String {
             @Suppress("DEPRECATION")
             Html.fromHtml(this).toString()
         }
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        FirebaseCrashlytics.getInstance().recordException(e)
         this
     }
 }
@@ -23,14 +25,19 @@ fun Long.formatTimestamp(): String {
         val millis = if (this < 10000000000L) this * 1000 else this
         val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
         sdf.format(java.util.Date(millis))
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        FirebaseCrashlytics.getInstance().recordException(e)
         ""
     }
 }
 
 object HtmlParserEngine {
 
-    fun parse(html: String, rules: List<ParserRule>): List<NewsItem> {
+    fun parse(html: String, rules: List<ParserRule>, websiteId: String = "", categoryId: String = ""): List<NewsItem> {
+        val crashlytics = FirebaseCrashlytics.getInstance()
+        if (websiteId.isNotEmpty()) crashlytics.setCustomKey("website_id", websiteId)
+        if (categoryId.isNotEmpty()) crashlytics.setCustomKey("category_id", categoryId)
+
         val sortedRules = rules.sortedBy { it.stt }
         
         // Find all CONTAINER rules (enumNews == 0) sorted by stt
@@ -42,34 +49,57 @@ object HtmlParserEngine {
         for (containerRule in containerRules) {
             val containerRegex = try {
                 Regex(containerRule.strRegex, RegexOption.DOT_MATCHES_ALL)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                crashlytics.setCustomKey("failed_regex", containerRule.strRegex)
+                crashlytics.setCustomKey("rule_name", containerRule.strRegexName)
+                crashlytics.setCustomKey("parsing_stage", "container_compile")
+                crashlytics.recordException(e)
                 continue
             }
 
             if (containerRule.isReplace) {
                 try {
                     currentHtmlChunks = containerRegex.replace(currentHtmlChunks, containerRule.textReplace)
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    crashlytics.setCustomKey("failed_regex", containerRule.strRegex)
+                    crashlytics.setCustomKey("rule_name", containerRule.strRegexName)
+                    crashlytics.setCustomKey("parsing_stage", "container_replace")
+                    crashlytics.recordException(e)
+                }
             } else if (containerRule.isMatches) {
-                val matches = containerRegex.findAll(currentHtmlChunks).toList()
-                val pos = containerRule.isMatchesPos
-                val block = if (pos >= 0 && pos < matches.size) {
-                    val m = matches[pos]
-                    val groups = m.groups
-                    val gPos = containerRule.groupPos
-                    val raw = if (gPos >= 0 && gPos < groups.size) groups[gPos]?.value ?: m.value else m.value
-                    containerRule.strPrefix + raw + containerRule.strSufix
-                } else ""
-                currentHtmlChunks = block
+                try {
+                    val matches = containerRegex.findAll(currentHtmlChunks).toList()
+                    val pos = containerRule.isMatchesPos
+                    val block = if (pos >= 0 && pos < matches.size) {
+                        val m = matches[pos]
+                        val groups = m.groups
+                        val gPos = containerRule.groupPos
+                        val raw = if (gPos >= 0 && gPos < groups.size) groups[gPos]?.value ?: m.value else m.value
+                        containerRule.strPrefix + raw + containerRule.strSufix
+                    } else ""
+                    currentHtmlChunks = block
+                } catch (e: Exception) {
+                    crashlytics.setCustomKey("failed_regex", containerRule.strRegex)
+                    crashlytics.setCustomKey("rule_name", containerRule.strRegexName)
+                    crashlytics.setCustomKey("parsing_stage", "container_matches")
+                    crashlytics.recordException(e)
+                }
             } else {
-                val match = containerRegex.find(currentHtmlChunks)
-                if (match != null) {
-                    val groups = match.groups
-                    val pos = containerRule.groupPos
-                    val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
-                    currentHtmlChunks = containerRule.strPrefix + raw + containerRule.strSufix
-                } else {
-                    currentHtmlChunks = ""
+                try {
+                    val match = containerRegex.find(currentHtmlChunks)
+                    if (match != null) {
+                        val groups = match.groups
+                        val pos = containerRule.groupPos
+                        val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                        currentHtmlChunks = containerRule.strPrefix + raw + containerRule.strSufix
+                    } else {
+                        currentHtmlChunks = ""
+                    }
+                } catch (e: Exception) {
+                    crashlytics.setCustomKey("failed_regex", containerRule.strRegex)
+                    crashlytics.setCustomKey("rule_name", containerRule.strRegexName)
+                    crashlytics.setCustomKey("parsing_stage", "container_find")
+                    crashlytics.recordException(e)
                 }
             }
         }
@@ -87,7 +117,11 @@ object HtmlParserEngine {
                     val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
                     listRule.strPrefix + raw + listRule.strSufix
                 }.toList()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                crashlytics.setCustomKey("failed_regex", listRule.strRegex)
+                crashlytics.setCustomKey("rule_name", listRule.strRegexName)
+                crashlytics.setCustomKey("parsing_stage", "match_list")
+                crashlytics.recordException(e)
                 emptyList()
             }
         } else {
@@ -119,8 +153,11 @@ object HtmlParserEngine {
                     if (rule.isReplace) {
                         try {
                             fieldWorkingText = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL).replace(fieldWorkingText, rule.textReplace)
-                        } catch (_: Exception) {
-                            // ignore regex replace error
+                        } catch (e: Exception) {
+                            crashlytics.setCustomKey("failed_regex", rule.strRegex)
+                            crashlytics.setCustomKey("rule_name", rule.strRegexName)
+                            crashlytics.setCustomKey("parsing_stage", "action_replace")
+                            crashlytics.recordException(e)
                         }
                     } else {
                         try {
@@ -145,8 +182,12 @@ object HtmlParserEngine {
                             if (extracted.isNotEmpty()) {
                                 fieldWorkingText = rule.strPrefix + extracted + rule.strSufix
                             }
-                        } catch (_: Exception) {
-                            // ignore parsing error
+                        } catch (e: Exception) {
+                            fieldWorkingText = ""
+                            crashlytics.setCustomKey("failed_regex", rule.strRegex)
+                            crashlytics.setCustomKey("rule_name", rule.strRegexName)
+                            crashlytics.setCustomKey("parsing_stage", "action_extract")
+                            crashlytics.recordException(e)
                         }
                     }
                 }
