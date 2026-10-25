@@ -72,7 +72,7 @@ fun AppUserSiteScreen(
                     }
                 },
                 actions = {
-                    val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && it.IdentityId != "common" }
+                    val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && (it.IdentityId != "common" || it.IsActive) }
                     val limit = uiState.rssLimit
 
                     if (rssCount >= limit) {
@@ -147,7 +147,7 @@ fun AppUserSiteScreen(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         item {
-                            val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && it.IdentityId != "common" }
+                            val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && (it.IdentityId != "common" || it.IsActive) }
                             SubscriptionStatusCard(
                                 hasCloud = uiState.hasCloudStorageSubscription,
                                 hasLimitSub = uiState.hasActiveSubscription,
@@ -238,7 +238,7 @@ fun AppUserSiteScreen(
     }
 
     if (showDialog) {
-        val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && it.IdentityId != "common" }
+        val rssCount = uiState.sites.values.flatten().count { it.GROUP == "1" && (it.IdentityId != "common" || it.IsActive) }
         val limit = uiState.rssLimit
         SiteDialog(
             site = selectedSite,

@@ -175,8 +175,8 @@ class AppUserSiteViewModel @Inject constructor(
     }
 
     fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) {
-        // Exclude system/common sites ("IdentityId == common") from counting towards user's personal site limit
-        val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" && it.IdentityId != "common" }
+        // User sites always count. Common sites count only when IsActive == true.
+        val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" && (it.IdentityId != "common" || it.IsActive) }
         val limit = _uiState.value.rssLimit
 
         if (id == 0) {
