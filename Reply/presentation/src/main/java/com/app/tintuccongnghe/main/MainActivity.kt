@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
@@ -222,7 +223,12 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = "screen1"
                     ) {
-                        ShowHomeRoute2()
+                        NewsScrapingScreen(
+                            onItemClick = { websiteId, link ->
+                                val encoded = java.net.URLEncoder.encode(link, "UTF-8")
+                                navHost.navigate("news_detail/$websiteId/$encoded")
+                            }
+                        )
                     }
 
                     composable(
@@ -659,26 +665,26 @@ private fun navigationSuiteItems(
         onClick = {
             navigateWithBackStackHandling("screen1", navHost)
         },
-        label = { Text("#HOME") },
+        label = { Text("Scraping") },
         icon = {
             Icon(
-                imageVector = AppDestinations.HOME.icon, contentDescription = "HOME"
+                imageVector = Icons.Default.Cloud, contentDescription = "News Scraping"
             )
         },
     )
 
-    item(
-        selected = currentDestination?.hierarchy?.any { it.route == "screen_foryou" } == true,
-        onClick = {
-            navigateWithBackStackHandling("screen_foryou", navHost)
-        },
-        label = { Text("#FOR YOU") },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Face, contentDescription = "FOR YOU"
-            )
-        },
-    )
+//    item(
+//        selected = currentDestination?.hierarchy?.any { it.route == "screen_foryou" } == true,
+//        onClick = {
+//            navigateWithBackStackHandling("screen_foryou", navHost)
+//        },
+//        label = { Text("#FOR YOU") },
+//        icon = {
+//            Icon(
+//                imageVector = Icons.Default.Face, contentDescription = "FOR YOU"
+//            )
+//        },
+//    )
 
     item(
         selected = currentDestination?.hierarchy?.any { it.route?.split("?")?.firstOrNull() == "screen_rss" } == true,
@@ -695,18 +701,18 @@ private fun navigationSuiteItems(
 
 
 
-    item(
-        selected = currentDestination?.hierarchy?.any { it.route == "screen2" } == true,
-        onClick = {
-            navigateWithBackStackHandling("screen2", navHost)
-        },
-        label = { Text("#TAG") },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Tag, contentDescription = "TAG"
-            )
-        },
-    )
+//    item(
+//        selected = currentDestination?.hierarchy?.any { it.route == "screen2" } == true,
+//        onClick = {
+//            navigateWithBackStackHandling("screen2", navHost)
+//        },
+//        label = { Text("#TAG") },
+//        icon = {
+//            Icon(
+//                imageVector = Icons.Default.Tag, contentDescription = "TAG"
+//            )
+//        },
+//    )
 
 
 
