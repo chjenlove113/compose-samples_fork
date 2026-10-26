@@ -6,11 +6,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root {
-            --bg-color: ##BG_COLOR;
-            --text-primary: ##TEXT_PRIMARY;
-            --text-secondary: ##TEXT_SECONDARY;
-            --surface: ##SURFACE;
-            --primary: ##PRIMARY;
+            --bg-color: #BG_COLOR;
+            --text-primary: #TEXT_PRIMARY;
+            --text-secondary: #TEXT_SECONDARY;
+            --surface: #SURFACE;
+            --primary: #PRIMARY;
             --base-font-size: #FONT_SIZEpx;
         }
 
@@ -78,6 +78,11 @@
         }
 
         p { margin-bottom: 1.2em; }
+
+        a {
+            color: var(--primary);
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -93,5 +98,37 @@
             #CONTENT
         </div>
     </main>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var lazyImages = [].slice.call(document.querySelectorAll("img"));
+            if ("IntersectionObserver" in window) {
+                let lazyImageObserver = new IntersectionObserver(function(entries, observer) {
+                    entries.forEach(function(entry) {
+                        if (entry.isIntersecting) {
+                            let lazyImage = entry.target;
+                            if(lazyImage.dataset.src) lazyImage.src = lazyImage.dataset.src;
+                            lazyImageObserver.unobserve(lazyImage);
+                        }
+                    });
+                });
+                lazyImages.forEach(function(lazyImage) {
+                    lazyImageObserver.observe(lazyImage);
+                });
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            var target = e.target.closest('a');
+            if (target && target.href) {
+                if (target.href.includes('youtube.com') || target.href.includes('youtu.be')) {
+                    return; // allow youtube links
+                }
+                e.preventDefault();
+                if (window.AndroidBridge && window.AndroidBridge.onLinkClicked) {
+                    window.AndroidBridge.onLinkClicked(target.href);
+                }
+            }
+        }, false);
+    </script>
 </body>
 </html>

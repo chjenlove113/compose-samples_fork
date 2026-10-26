@@ -1,8 +1,12 @@
 package com.app.tintuccongnghe.newsScraping
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -45,6 +49,8 @@ fun NewsDetailScreen(
 
     val colorScheme = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
+
+    var clickedLinkUrl by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(websiteId, link) {
         viewModel.loadDetail(websiteId, link)
@@ -95,6 +101,43 @@ fun NewsDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            if (clickedLinkUrl != null) {
+                AlertDialog(
+                    onDismissRequest = { clickedLinkUrl = null },
+                    title = { Text("Liên kết bài viết") },
+                    text = {
+                        Column {
+                            Text("Bạn muốn sao chép liên kết này?", style = MaterialTheme.typography.bodyMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = clickedLinkUrl!!,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 2
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Copied URL", clickedLinkUrl)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Copied link to clipboard", Toast.LENGTH_SHORT).show()
+                            clickedLinkUrl = null
+                        }) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Copy")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { clickedLinkUrl = null }) {
+                            Text("Hủy")
+                        }
+                    }
+                )
+            }
+
             when (val state = uiState) {
                 is NewsDetailUiState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -143,7 +186,22 @@ fun NewsDetailScreen(
                         AndroidView(
                             factory = { context ->
                                 WebView(context).apply {
-                                    webViewClient = WebViewClient()
+                                    addJavascriptInterface(NewsWebAppInterface { url ->
+                                        clickedLinkUrl = url
+                                    }, "AndroidBridge")
+
+                                    webViewClient = object : WebViewClient() {
+                                        override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                                            val url = request?.url?.toString()
+                                            if (url != null) {
+                                                if (url.contains("youtube.com") || url.contains("youtu.be")) {
+                                                    return false // Allow YouTube loading
+                                                }
+                                                clickedLinkUrl = url
+                                            }
+                                            return true
+                                        }
+                                    }
                                     settings.apply {
                                         javaScriptEnabled = true
                                         domStorageEnabled = true
@@ -160,7 +218,7 @@ fun NewsDetailScreen(
                             },
                             update = { webView ->
                                 if (webView.tag != processedHtml) {
-                                    webView.loadDataWithBaseURL(null, processedHtml, "text/html", "UTF-8", null)
+                                    webView.loadDataWithBaseURL("https://www.youtube.com", processedHtml, "text/html", "UTF-8", null)
                                     webView.tag = processedHtml
                                 }
                             },
@@ -182,6 +240,13 @@ fun NewsDetailScreen(
                 }
             }
         }
+    }
+}
+
+class NewsWebAppInterface(private val onLinkClick: (String) -> Unit) {
+    @JavascriptInterface
+    fun onLinkClicked(url: String) {
+        onLinkClick(url)
     }
 }
 
