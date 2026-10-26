@@ -232,102 +232,139 @@ class NewsScrapingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun scrapeAndSaveNews(websiteId: String, category: NewsCategory, page: Int, append: Boolean): List<NewsItem> = withContext(Dispatchers.IO) {
-        try {
-            val websiteDoc = firestore.collection("news_websites").document(websiteId).get().await()
-            val sigMap = websiteDoc.get("sigConfig") as? Map<*, *>
-            val sigConfig = if (sigMap != null) {
-                SigConfig(
-                    pathname = sigMap["pathname"] as? String ?: "",
-                    secretSalt = sigMap["secretSalt"] as? String ?: "",
-                    apiKey = sigMap["apiKey"] as? String ?: "",
-                    version = sigMap["version"] as? String ?: "",
-                    whitelistParams = (sigMap["whitelistParams"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-                )
-            } else null
+        val isDebug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val prefs = context.getSharedPreferences("news_scraping_prefs", Context.MODE_PRIVATE)
+        val cacheKey = "last_scrape_cat_${category.id}_page_$page"
+        val lastScrapeTime = prefs.getLong(cacheKey, 0L)
+        val currentTime = System.currentTimeMillis()
+        val twentyMinutesMillis = 20 * 60 * 1000L
 
-            val targetUrl = if (sigConfig != null && sigConfig.secretSalt.isNotEmpty()) {
-                val websiteBaseUrl = websiteDoc.getString("baseUrl") ?: websiteDoc.getString("url") ?: category.url
-                val customParams = mutableMapOf<String, String>().apply {
-                    putAll(category.queryParams)
-                    put("page", page.toString())
-                }
-                DynamicUrlGenerator.generateUrl(websiteBaseUrl, sigConfig, customParams)
-            } else {
-                if (page > 1 && category.pageTemplate.isNotEmpty()) {
-                    if (category.pageTemplate.contains("{page}")) {
-                        category.pageTemplate.replace("{page}", page.toString())
-                    } else {
-                        "${category.pageTemplate}?page=$page"
+        val existingNews = try { scrapedNewsDao.getNewsForCategoryList(category.id) } catch (_: Exception) { emptyList() }
+        val isEmpty = existingNews.isEmpty()
+
+        // Scrape if local DB is empty, or in Debug mode, or 20 minutes have elapsed since last scrape
+        val shouldScrape = isEmpty || isDebug || currentTime - lastScrapeTime >= twentyMinutesMillis
+
+        if (shouldScrape) {
+            try {
+                val websiteDoc = firestore.collection("news_websites").document(websiteId).get().await()
+                val sigMap = websiteDoc.get("sigConfig") as? Map<*, *>
+                val sigConfig = if (sigMap != null) {
+                    SigConfig(
+                        pathname = sigMap["pathname"] as? String ?: "",
+                        secretSalt = sigMap["secretSalt"] as? String ?: "",
+                        apiKey = sigMap["apiKey"] as? String ?: "",
+                        version = sigMap["version"] as? String ?: "",
+                        whitelistParams = (sigMap["whitelistParams"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                    )
+                } else null
+
+                val targetUrl = if (sigConfig != null && sigConfig.secretSalt.isNotEmpty()) {
+                    val websiteBaseUrl = websiteDoc.getString("baseUrl") ?: websiteDoc.getString("url") ?: category.url
+                    val customParams = mutableMapOf<String, String>().apply {
+                        putAll(category.queryParams)
+                        put("page", page.toString())
                     }
-                } else if (page > 1) {
-                    if (category.url.contains("?")) "${category.url}&page=$page" else "${category.url}?page=$page"
+                    DynamicUrlGenerator.generateUrl(websiteBaseUrl, sigConfig, customParams)
                 } else {
-                    category.url
-                }
-            }
-
-            val finalHeaders = mutableMapOf<String, String>().apply {
-                put("User-Agent", ANDROID_USER_AGENT)
-                put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                put("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7")
-                putAll(category.headers)
-            }
-
-            val htmlString = if (category.httpMethod.equals("POST", ignoreCase = true)) {
-                val bodyStr = (category.postBodyTemplate ?: "{}").replace("{page}", page.toString())
-                val requestBody = bodyStr.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-                val response = htmlScrapingService.fetchPost(finalHeaders, targetUrl, requestBody)
-                
-                if (!response.isSuccessful) {
-                    return@withContext emptyList()
+                    if (page > 1 && category.pageTemplate.isNotEmpty()) {
+                        if (category.pageTemplate.contains("{page}")) {
+                            category.pageTemplate.replace("{page}", page.toString())
+                        } else {
+                            "${category.pageTemplate}?page=$page"
+                        }
+                    } else if (page > 1) {
+                        if (category.url.contains("?")) "${category.url}&page=$page" else "${category.url}?page=$page"
+                    } else {
+                        category.url
+                    }
                 }
 
-                val rawResponse = response.body()?.string() ?: ""
-                if (!category.jsonResponseKey.isNullOrEmpty()) {
-                    try {
-                        val jsonObject = org.json.JSONObject(rawResponse)
-                        jsonObject.optString(category.jsonResponseKey, rawResponse)
-                    } catch (_: Exception) {
+                val finalHeaders = mutableMapOf<String, String>().apply {
+                    put("User-Agent", ANDROID_USER_AGENT)
+                    put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                    put("Accept-Language", "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7")
+                    putAll(category.headers)
+                }
+
+                val htmlString = if (category.httpMethod.equals("POST", ignoreCase = true)) {
+                    val bodyStr = (category.postBodyTemplate ?: "{}").replace("{page}", page.toString())
+                    val requestBody = bodyStr.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+                    val response = htmlScrapingService.fetchPost(finalHeaders, targetUrl, requestBody)
+                    
+                    if (!response.isSuccessful) {
+                        return@withContext if (isEmpty) emptyList() else existingNews.map {
+                            NewsItem(websiteId = websiteId, title = it.title, image = it.image, link = it.link, shortDes = it.shortDes, date = it.date, subCat = it.subCat, isVideo = it.isVideo)
+                        }
+                    }
+
+                    val rawResponse = response.body()?.string() ?: ""
+                    if (!category.jsonResponseKey.isNullOrEmpty()) {
+                        try {
+                            val jsonObject = org.json.JSONObject(rawResponse)
+                            jsonObject.optString(category.jsonResponseKey, rawResponse)
+                        } catch (_: Exception) {
+                            rawResponse
+                        }
+                    } else {
                         rawResponse
                     }
                 } else {
-                    rawResponse
+                    if (targetUrl.isEmpty()) {
+                        return@withContext if (isEmpty) emptyList() else existingNews.map {
+                            NewsItem(websiteId = websiteId, title = it.title, image = it.image, link = it.link, shortDes = it.shortDes, date = it.date, subCat = it.subCat, isVideo = it.isVideo)
+                        }
+                    }
+                    val response = htmlScrapingService.fetchGet(finalHeaders, targetUrl)
+                    if (!response.isSuccessful) {
+                        return@withContext if (isEmpty) emptyList() else existingNews.map {
+                            NewsItem(websiteId = websiteId, title = it.title, image = it.image, link = it.link, shortDes = it.shortDes, date = it.date, subCat = it.subCat, isVideo = it.isVideo)
+                        }
+                    }
+                    response.body()?.string() ?: ""
                 }
-            } else {
-                if (targetUrl.isEmpty()) return@withContext emptyList()
-                val response = htmlScrapingService.fetchGet(finalHeaders, targetUrl)
-                if (!response.isSuccessful) {
-                    return@withContext emptyList()
+
+                if (htmlString.isNotEmpty()) {
+                    val items = HtmlParserEngine.parse(htmlString, category.parserRules, websiteId, category.id)
+                    if (items.isNotEmpty()) {
+                        val entities = items.map {
+                            ScrapedNewsEntity(
+                                link = it.link,
+                                websiteId = websiteId,
+                                categoryId = category.id,
+                                title = it.title,
+                                image = it.image,
+                                shortDes = it.shortDes,
+                                date = it.date,
+                                subCat = it.subCat,
+                                isVideo = it.isVideo,
+                                pageNumber = page
+                            )
+                        }
+                        if (!append || page == 1) {
+                            scrapedNewsDao.deleteForCategory(category.id)
+                        }
+                        scrapedNewsDao.upsertAll(entities)
+                    }
+                    prefs.edit().putLong(cacheKey, currentTime).apply()
                 }
-                response.body()?.string() ?: ""
+            } catch (_: Exception) {}
+        }
+
+        // Return data from Room database (offline-first)
+        return@withContext try {
+            scrapedNewsDao.getNewsForCategoryList(category.id).map {
+                NewsItem(
+                    websiteId = it.websiteId,
+                    title = it.title,
+                    image = it.image,
+                    link = it.link,
+                    shortDes = it.shortDes,
+                    date = it.date,
+                    subCat = it.subCat,
+                    isVideo = it.isVideo
+                )
             }
-
-            if (htmlString.isEmpty()) return@withContext emptyList()
-
-            val items = HtmlParserEngine.parse(htmlString, category.parserRules, websiteId, category.id)
-
-            if (items.isNotEmpty()) {
-                val entities = items.map {
-                    ScrapedNewsEntity(
-                        link = it.link,
-                        websiteId = websiteId,
-                        categoryId = category.id,
-                        title = it.title,
-                        image = it.image,
-                        shortDes = it.shortDes,
-                        date = it.date,
-                        subCat = it.subCat,
-                        isVideo = it.isVideo,
-                        pageNumber = page
-                    )
-                }
-                if (!append || page == 1) {
-                    scrapedNewsDao.deleteForCategory(category.id)
-                }
-                scrapedNewsDao.upsertAll(entities)
-            }
-
-            items.map { it.copy(websiteId = websiteId) }
         } catch (_: Exception) {
             emptyList()
         }

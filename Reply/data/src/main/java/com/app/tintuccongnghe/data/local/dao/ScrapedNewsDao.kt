@@ -9,6 +9,9 @@ interface ScrapedNewsDao {
     @Query("SELECT * FROM scraped_news WHERE categoryId = :categoryId")
     fun getNewsForCategory(categoryId: String): Flow<List<ScrapedNewsEntity>>
 
+    @Query("SELECT * FROM scraped_news WHERE categoryId = :categoryId")
+    suspend fun getNewsForCategoryList(categoryId: String): List<ScrapedNewsEntity>
+
     @Query("SELECT * FROM scraped_news WHERE websiteId = :websiteId")
     fun getNewsForWebsite(websiteId: String): Flow<List<ScrapedNewsEntity>>
 
