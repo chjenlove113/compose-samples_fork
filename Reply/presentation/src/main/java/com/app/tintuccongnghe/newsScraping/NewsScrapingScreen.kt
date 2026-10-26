@@ -81,17 +81,7 @@ fun NewsScrapingScreen(
         viewModel.selectOrToggleNewsItem(item)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Key-Based Scroll Restoration") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            )
-        }
-    ) { paddingValues ->
+    Scaffold { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()

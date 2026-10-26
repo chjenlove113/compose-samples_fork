@@ -8,14 +8,13 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,11 +23,11 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.core.layout.WindowWidthSizeClass
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,11 +72,15 @@ fun NewsDetailScreen(
                         )
                     }
 
-                    IconButton(onClick = onToggleExpand) {
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                            contentDescription = if (isExpanded) "Thu nhỏ" else "Phóng to"
-                        )
+                    val adaptiveInfo = currentWindowAdaptiveInfo()
+                    val isExpandedScreen = adaptiveInfo.windowSizeClass.windowWidthSizeClass != WindowWidthSizeClass.COMPACT
+                    if (isExpandedScreen) {
+                        IconButton(onClick = onToggleExpand) {
+                            Icon(
+                                imageVector = if (isExpanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                contentDescription = if (isExpanded) "Thu nhỏ" else "Phóng to"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -114,7 +117,8 @@ fun NewsDetailScreen(
                 is NewsDetailUiState.Success -> {
                     val detail = state.detail
                     val description = state.description
-                    val processedHtml = remember(detail.contentHtml, colorScheme, isDark) {
+
+                    val processedHtml = remember(detail, description, colorScheme, isDark) {
                         try {
                             val baseFontSize = 18
                             context.assets.open("news_template_v0.html").bufferedReader().use { it.readText() }
@@ -124,8 +128,10 @@ fun NewsDetailScreen(
                                 .replace("#SURFACE", colorScheme.surfaceVariant.toHtmlHex().substring(1))
                                 .replace("#PRIMARY", colorScheme.primary.toHtmlHex().substring(1))
                                 .replace("#FONT_SIZE", baseFontSize.toString())
-                                .replace("#PADDING_H", "0")
-                                .replace("#PADDING_V", "0")
+                                .replace("#TITLE", detail.title)
+                                .replace("#AUTHOR", if (detail.author.isNotEmpty()) "Tác giả: ${detail.author}" else "")
+                                .replace("#DATE", detail.publishDate)
+                                .replace("#DESCRIPTION", description)
                                 .replace("#CONTENT", detail.contentHtml)
                         } catch (e: Exception) {
                             Log.e("NewsDetailScreen", "Error loading template", e)
@@ -133,90 +139,39 @@ fun NewsDetailScreen(
                         }
                     }
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = detail.title,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
+                    if (processedHtml.isNotEmpty()) {
+                        AndroidView(
+                            factory = { context ->
+                                WebView(context).apply {
+                                    webViewClient = WebViewClient()
+                                    settings.apply {
+                                        javaScriptEnabled = true
+                                        domStorageEnabled = true
+                                        loadWithOverviewMode = true
+                                        useWideViewPort = true
+                                        setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                                    }
+                                    setBackgroundColor(0)
+                                    layoutParams = ViewGroup.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT
+                                    )
+                                }
+                            },
+                            update = { webView ->
+                                if (webView.tag != processedHtml) {
+                                    webView.loadDataWithBaseURL(null, processedHtml, "text/html", "UTF-8", null)
+                                    webView.tag = processedHtml
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            if (detail.author.isNotEmpty()) {
-                                Text(
-                                    text = "Tác giả: ${detail.author}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            if (detail.publishDate.isNotEmpty()) {
-                                Text(
-                                    text = detail.publishDate,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider()
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        if (description.isNotEmpty()) {
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-
-                        if (processedHtml.isNotEmpty()) {
-                            AndroidView(
-                                factory = { context ->
-                                    WebView(context).apply {
-                                        webViewClient = WebViewClient()
-                                        settings.apply {
-                                            javaScriptEnabled = true
-                                            domStorageEnabled = true
-                                            loadWithOverviewMode = true
-                                            useWideViewPort = true
-                                            setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                                        }
-                                        isVerticalScrollBarEnabled = false
-                                        isHorizontalScrollBarEnabled = false
-                                        overScrollMode = View.OVER_SCROLL_NEVER
-                                        setBackgroundColor(0)
-                                        isNestedScrollingEnabled = false
-                                        isFocusable = false
-                                        isFocusableInTouchMode = false
-
-                                        layoutParams = ViewGroup.LayoutParams(
-                                            ViewGroup.LayoutParams.MATCH_PARENT,
-                                            ViewGroup.LayoutParams.WRAP_CONTENT
-                                        )
-                                    }
-                                },
-                                update = { webView ->
-                                    if (webView.tag != processedHtml) {
-                                        webView.loadDataWithBaseURL(null, processedHtml, "text/html", "UTF-8", null)
-                                        webView.tag = processedHtml
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 400.dp, max = 3000.dp)
-                            )
-                        } else {
                             Text(
                                 text = "Không có nội dung chi tiết.",
                                 style = MaterialTheme.typography.bodyLarge,
@@ -230,6 +185,6 @@ fun NewsDetailScreen(
     }
 }
 
-private fun Color.toHtmlHex():String {
+private fun Color.toHtmlHex(): String {
     return String.format("#%06X", (0xFFFFFF and this.toArgb()))
 }
