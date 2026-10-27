@@ -5,17 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.tintuccongnghe.domain.models.LoginRequest
 import com.app.tintuccongnghe.domain.models.RegisterRequest
+import com.app.tintuccongnghe.domain.repository.IAuthRepository
 import com.app.tintuccongnghe.domain.usecases.LoginUseCase
 import com.app.tintuccongnghe.domain.usecases.RegisterUseCase
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 data class AuthUiState(
@@ -28,7 +26,7 @@ data class AuthUiState(
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val registerUseCase: RegisterUseCase,
-    private val firebaseAuth: FirebaseAuth
+    private val authRepository: IAuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -57,12 +55,12 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val credential = GoogleAuthProvider.getCredential(idToken, null)
-                val authResult = firebaseAuth.signInWithCredential(credential).await()
-                if (authResult.user != null) {
+                val response = authRepository.signInWithGoogle(idToken)
+                if (response.Errors.isEmpty() && response.IdentityId.isNotEmpty()) {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 } else {
-                    _uiState.update { it.copy(isLoading = false, error = "Google Sign-In failed") }
+                    val errorMsg = response.Errors.firstOrNull()?.Description ?: "Google Sign-In failed"
+                    _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Google Sign-In error") }
