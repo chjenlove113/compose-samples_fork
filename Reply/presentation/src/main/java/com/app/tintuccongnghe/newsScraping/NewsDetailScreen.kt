@@ -32,6 +32,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
+import com.app.tintuccongnghe.components.AdMobBannerAd
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +45,10 @@ fun NewsDetailScreen(
     viewModel: NewsDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val hasActiveSub by viewModel.hasActiveSubscription.collectAsStateWithLifecycle()
+    val hasCloudSub by viewModel.hasCloudStorageSubscription.collectAsStateWithLifecycle()
+    val isAdFree = hasActiveSub || hasCloudSub
+
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
@@ -172,7 +177,7 @@ fun NewsDetailScreen(
                                 .replace("#PRIMARY", colorScheme.primary.toHtmlHex().substring(1))
                                 .replace("#FONT_SIZE", baseFontSize.toString())
                                 .replace("#TITLE", detail.title)
-                                .replace("#AUTHOR", detail.author)
+                                .replace("#AUTHOR", if (detail.author.isNotEmpty()) "Tác giả: ${detail.author}" else "")
                                 .replace("#DATE", detail.publishDate)
                                 .replace("#DESCRIPTION", description)
                                 .replace("#CONTENT", detail.contentHtml)
@@ -182,58 +187,74 @@ fun NewsDetailScreen(
                         }
                     }
 
-                    if (processedHtml.isNotEmpty()) {
-                        AndroidView(
-                            factory = { context ->
-                                WebView(context).apply {
-                                    addJavascriptInterface(NewsWebAppInterface { url ->
-                                        clickedLinkUrl = url
-                                    }, "AndroidBridge")
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        if (processedHtml.isNotEmpty()) {
+                            AndroidView(
+                                factory = { context ->
+                                    WebView(context).apply {
+                                        addJavascriptInterface(NewsWebAppInterface { url ->
+                                            clickedLinkUrl = url
+                                        }, "AndroidBridge")
 
-                                    webViewClient = object : WebViewClient() {
-                                        override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
-                                            val url = request?.url?.toString()
-                                            if (url != null) {
-                                                if (url.contains("youtube.com") || url.contains("youtu.be")) {
-                                                    return false // Allow YouTube loading
+                                        webViewClient = object : WebViewClient() {
+                                            override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                                                val url = request?.url?.toString()
+                                                if (url != null) {
+                                                    if (url.contains("youtube.com") || url.contains("youtu.be")) {
+                                                        return false // Allow YouTube loading
+                                                    }
+                                                    clickedLinkUrl = url
                                                 }
-                                                clickedLinkUrl = url
+                                                return true
                                             }
-                                            return true
                                         }
+                                        settings.apply {
+                                            javaScriptEnabled = true
+                                            domStorageEnabled = true
+                                            loadWithOverviewMode = true
+                                            useWideViewPort = true
+                                            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                                        }
+                                        setBackgroundColor(0)
+                                        layoutParams = ViewGroup.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.MATCH_PARENT
+                                        )
                                     }
-                                    settings.apply {
-                                        javaScriptEnabled = true
-                                        domStorageEnabled = true
-                                        loadWithOverviewMode = true
-                                        useWideViewPort = true
-                                        setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                                },
+                                update = { webView ->
+                                    if (webView.tag != processedHtml) {
+                                        webView.loadDataWithBaseURL("https://www.youtube.com", processedHtml, "text/html", "UTF-8", null)
+                                        webView.tag = processedHtml
                                     }
-                                    setBackgroundColor(0)
-                                    layoutParams = ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-                                }
-                            },
-                            update = { webView ->
-                                if (webView.tag != processedHtml) {
-                                    webView.loadDataWithBaseURL("https://www.youtube.com", processedHtml, "text/html", "UTF-8", null)
-                                    webView.tag = processedHtml
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxSize()
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Không có nội dung chi tiết.",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Không có nội dung chi tiết.",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // AdMob Banner Ad (hidden if user purchased subscription)
+                        if (!isAdFree) {
+                            AdMobBannerAd(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
                             )
                         }
                     }

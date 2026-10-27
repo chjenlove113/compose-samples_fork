@@ -2,6 +2,7 @@ package com.app.tintuccongnghe.newsScraping
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.tintuccongnghe.account.BillingManager
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.domain.models.NewsDetail
 import com.app.tintuccongnghe.domain.repository.INewsScrapingRepository
@@ -21,8 +22,12 @@ sealed interface NewsDetailUiState {
 @HiltViewModel
 class NewsDetailViewModel @Inject constructor(
     private val repository: INewsScrapingRepository,
-    private val appDatabase: AppDatabase
+    private val appDatabase: AppDatabase,
+    billingManager: BillingManager
 ) : ViewModel() {
+
+    val hasActiveSubscription: StateFlow<Boolean> = billingManager.hasWebsiteLimitSubscription
+    val hasCloudStorageSubscription: StateFlow<Boolean> = billingManager.hasCloudStorageSubscription
 
     private val _uiState = MutableStateFlow<NewsDetailUiState>(NewsDetailUiState.Loading)
     val uiState: StateFlow<NewsDetailUiState> = _uiState.asStateFlow()
