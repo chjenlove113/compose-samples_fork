@@ -150,6 +150,7 @@ object HtmlDetailParserEngine {
                     try {
                         workingText = Regex(step.strRegex, RegexOption.DOT_MATCHES_ALL).replace(workingText, step.textReplace)
                     } catch (e: Exception) {
+                        workingText = ""
                         crashlytics.setCustomKey("failed_regex", step.strRegex)
                         crashlytics.setCustomKey("rule_name", step.strRegexName)
                         crashlytics.setCustomKey("detail_rule_id", ruleDoc.id)
@@ -180,6 +181,7 @@ object HtmlDetailParserEngine {
                             workingText = step.strPrefix + extracted + step.strSufix
                         }
                     } catch (e: Exception) {
+                        workingText = ""
                         crashlytics.setCustomKey("failed_regex", step.strRegex)
                         crashlytics.setCustomKey("rule_name", step.strRegexName)
                         crashlytics.setCustomKey("detail_rule_id", ruleDoc.id)

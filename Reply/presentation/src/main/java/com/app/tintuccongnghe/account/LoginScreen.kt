@@ -1,6 +1,9 @@
 package com.app.tintuccongnghe.account
 
 import android.util.Patterns
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,12 +15,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +43,8 @@ fun LoginScreen(
     var passwordError by remember { mutableStateOf<String?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
@@ -52,7 +61,7 @@ fun LoginScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Login with Firebase") })
+            TopAppBar(title = { Text("Login") })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -132,6 +141,55 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Login")
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            try {
+                                val credentialManager = CredentialManager.create(context)
+                                val clientId = try {
+                                    context.getString(context.resources.getIdentifier("default_web_client_id", "string", context.packageName))
+                                } catch (e: Exception) {
+                                    ""
+                                }
+
+                                val googleIdOption = GetGoogleIdOption.Builder()
+                                    .setFilterByAuthorizedAccounts(false)
+                                    .apply {
+                                        if (clientId.isNotEmpty()) {
+                                            setServerClientId(clientId)
+                                        }
+                                    }
+                                    .setAutoSelectEnabled(false)
+                                    .build()
+
+                                val request = GetCredentialRequest.Builder()
+                                    .addCredentialOption(googleIdOption)
+                                    .build()
+
+                                val result = credentialManager.getCredential(context, request)
+                                val credential = result.credential
+
+                                if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                                    val googleIdToken = googleIdTokenCredential.idToken
+                                    viewModel.signInWithGoogle(googleIdToken)
+                                } else {
+                                    snackbarHostState.showSnackbar("Unexpected credential type")
+                                }
+                            } catch (e: Exception) {
+                                if (e !is androidx.credentials.exceptions.GetCredentialCancellationException) {
+                                    snackbarHostState.showSnackbar(e.localizedMessage ?: "Google Sign-In failed")
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sign in with Google")
                 }
             }
 

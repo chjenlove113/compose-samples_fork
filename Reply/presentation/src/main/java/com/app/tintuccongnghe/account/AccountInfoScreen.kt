@@ -105,11 +105,11 @@ fun AccountInfoScreen(
                 title = "RSS Website Sources",
                 onClick = onNavigateToUserSites
             )
-            SettingItem(
-                icon = Icons.Default.Cloud,
-                title = "Firestore ETL News Scraping",
-                onClick = onNavigateToNewsScraping
-            )
+//            SettingItem(
+//                icon = Icons.Default.Cloud,
+//                title = "Firestore ETL News Scraping",
+//                onClick = onNavigateToNewsScraping
+//            )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
