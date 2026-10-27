@@ -177,7 +177,7 @@ fun NewsDetailScreen(
                                 .replace("#PRIMARY", colorScheme.primary.toHtmlHex().substring(1))
                                 .replace("#FONT_SIZE", baseFontSize.toString())
                                 .replace("#TITLE", detail.title)
-                                .replace("#AUTHOR", if (detail.author.isNotEmpty()) "Tác giả: ${detail.author}" else "")
+                                .replace("#AUTHOR", detail.author)
                                 .replace("#DATE", detail.publishDate)
                                 .replace("#DESCRIPTION", description)
                                 .replace("#CONTENT", detail.contentHtml)

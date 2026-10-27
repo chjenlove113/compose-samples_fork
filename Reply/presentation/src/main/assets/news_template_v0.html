@@ -122,13 +122,16 @@
 
         document.addEventListener('click', function(e) {
             var target = e.target.closest('a');
-            if (target && target.href) {
-                if (target.href.includes('youtube.com') || target.href.includes('youtu.be')) {
-                    return; // allow youtube links
-                }
-                e.preventDefault();
-                if (window.AndroidBridge && window.AndroidBridge.onLinkClicked) {
-                    window.AndroidBridge.onLinkClicked(target.href);
+            if (target) {
+                var hrefVal = target.getAttribute('href');
+                if (hrefVal) {
+                    if (hrefVal.includes('youtube.com') || hrefVal.includes('youtu.be')) {
+                        return; // allow youtube links
+                    }
+                    e.preventDefault();
+                    if (window.AndroidBridge && window.AndroidBridge.onLinkClicked) {
+                        window.AndroidBridge.onLinkClicked(hrefVal);
+                    }
                 }
             }
         }, false);

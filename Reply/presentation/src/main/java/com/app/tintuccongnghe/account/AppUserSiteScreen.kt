@@ -558,7 +558,7 @@ fun CloudStorageSubscriptionDialog(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Đồng bộ lưu trữ đám mây Google Firestore cho dữ liệu cá nhân của bạn.",
+                    text = "Đồng bộ lưu trữ đám mây Google Firestore cho dữ liệu cá nhân của bạn. ✨ Đặc quyền: Tự động ẩn toàn bộ quảng cáo trong ứng dụng.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -677,7 +677,7 @@ fun WebsiteLimitSubscriptionDialog(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Mở rộng thêm 30 website (Nâng tổng giới hạn lên 35 website RSS).",
+                    text = "Mở rộng thêm 30 website (Nâng tổng giới hạn lên 35 website RSS). ✨ Đặc quyền: Tự động ẩn toàn bộ quảng cáo trong ứng dụng.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
