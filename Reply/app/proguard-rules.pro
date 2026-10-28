@@ -52,4 +52,11 @@
 -dontwarn com.rometools.**
 -dontwarn org.jdom2.**
 
+# Keep Domain models, Data models, and Room Entities to prevent R8 stripping properties and causing empty lists / mapping failures
+-keep class com.app.tintuccongnghe.domain.models.** { *; }
+-keep class com.app.tintuccongnghe.data.models.** { *; }
+-keep class com.app.tintuccongnghe.data.local.entities.** { *; }
+-keep class com.app.tintuccongnghe.base.** { *; }
+
+
 
