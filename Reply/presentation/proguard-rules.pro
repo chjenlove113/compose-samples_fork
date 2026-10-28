@@ -19,3 +19,12 @@
 
 # Suppress missing classes warnings for Jetpack XR extensions
 -dontwarn com.android.extensions.xr.**
+
+# ROME (RomeTools) ProGuard / R8 rules to prevent ClassNotFoundException for feed converters (e.g. ConverterForAtom10)
+-keep class com.rometools.** { *; }
+-keep class * implements com.rometools.rome.feed.synd.impl.Converter { *; }
+-keep class * implements com.rometools.rome.io.WireFeedParser { *; }
+-keep class * implements com.rometools.rome.io.WireFeedGenerator { *; }
+-keep class * implements com.rometools.rome.feed.module.Module { *; }
+-keepattributes *Annotation*,Signature,EnclosingMethod,InnerClasses,SourceFile,LineNumberTable
+-dontwarn com.rometools.**

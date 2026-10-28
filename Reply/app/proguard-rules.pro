@@ -44,3 +44,12 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLParameters
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
+
+# ROME (RomeTools) ProGuard / R8 rules to prevent ClassNotFoundException for feed converters (e.g. ConverterForAtom10)
+-keep class com.rometools.** { *; }
+-keep class org.jdom2.** { *; }
+-keepattributes *Annotation*,Signature,EnclosingMethod,InnerClasses,SourceFile,LineNumberTable
+-dontwarn com.rometools.**
+-dontwarn org.jdom2.**
+
+

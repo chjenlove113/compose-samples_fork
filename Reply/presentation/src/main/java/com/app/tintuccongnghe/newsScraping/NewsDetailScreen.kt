@@ -103,7 +103,32 @@ fun NewsDetailScreen(
                 },
                 actions = {
                     val isFavorite = (uiState as? NewsDetailUiState.Success)?.detail?.isFavorite == true
-                    IconButton(onClick = { viewModel.toggleFavorite() }) {
+                    IconButton(onClick = {
+                        viewModel.toggleFavorite()
+                        if (!isFavorite) {
+                            if (rewardedAd != null) {
+                                rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
+                                    override fun onAdDismissedFullScreenContent() {
+                                        rewardedAd = null
+                                        loadRewardedAd(context) { ad -> rewardedAd = ad }
+                                    }
+
+                                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                                        rewardedAd = null
+                                        loadRewardedAd(context) { ad -> rewardedAd = ad }
+                                    }
+                                }
+                                rewardedAd?.show(context as Activity) { rewardItem ->
+                                    Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
+                                }
+                            } else {
+                                loadRewardedAd(context) { newAd ->
+                                    rewardedAd = newAd
+                                    newAd?.show(context as Activity) { }
+                                }
+                            }
+                        }
+                    }) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
