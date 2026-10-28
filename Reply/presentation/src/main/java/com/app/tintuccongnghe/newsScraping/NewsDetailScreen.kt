@@ -1,6 +1,8 @@
 package com.app.tintuccongnghe.newsScraping
 
 import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -80,14 +82,14 @@ fun NewsDetailScreen(
     val sheetState = rememberModalBottomSheetState()
     var rewardedAd by remember { mutableStateOf<RewardedAd?>(null) }
 
-    LaunchedEffect(websiteId, link) {
-        viewModel.loadDetail(websiteId, link)
-    }
-
     LaunchedEffect(Unit) {
         loadRewardedAd(context) { ad ->
             rewardedAd = ad
         }
+    }
+
+    LaunchedEffect(websiteId, link) {
+        viewModel.loadDetail(websiteId, link)
     }
 
     Scaffold(
@@ -101,25 +103,7 @@ fun NewsDetailScreen(
                 },
                 actions = {
                     val isFavorite = (uiState as? NewsDetailUiState.Success)?.detail?.isFavorite == true
-                    IconButton(onClick = {
-                        viewModel.toggleFavorite()
-                        if (rewardedAd != null) {
-                            rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
-                                override fun onAdDismissedFullScreenContent() {
-                                    rewardedAd = null
-                                    loadRewardedAd(context) { ad -> rewardedAd = ad }
-                                }
-
-                                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                    rewardedAd = null
-                                    loadRewardedAd(context) { ad -> rewardedAd = ad }
-                                }
-                            }
-                            rewardedAd?.show(context as Activity) { rewardItem ->
-                                Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
-                            }
-                        }
-                    }) {
+                    IconButton(onClick = { viewModel.toggleFavorite() }) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
@@ -133,25 +117,55 @@ fun NewsDetailScreen(
                             putExtra(Intent.EXTRA_TEXT, "${(uiState as? NewsDetailUiState.Success)?.detail?.title}\n\n$link")
                             type = "text/plain"
                         }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share news via"))
 
-                        if (rewardedAd != null) {
-                            rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
-                                override fun onAdDismissedFullScreenContent() {
-                                    rewardedAd = null
-                                    loadRewardedAd(context) { ad -> rewardedAd = ad }
+                        val receiverAction = "com.app.tintuccongnghe.ACTION_SHARE_CHOSEN_${System.currentTimeMillis()}"
+                        val intentFilter = android.content.IntentFilter(receiverAction)
+
+                        val broadcastReceiver = object : BroadcastReceiver() {
+                            override fun onReceive(ctx: Context?, intent: Intent?) {
+                                if (rewardedAd != null) {
+                                    rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
+                                        override fun onAdDismissedFullScreenContent() {
+                                            rewardedAd = null
+                                            loadRewardedAd(context) { newAd -> rewardedAd = newAd }
+                                        }
+
+                                        override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                                            rewardedAd = null
+                                            loadRewardedAd(context) { newAd -> rewardedAd = newAd }
+                                        }
+                                    }
+                                    rewardedAd?.show(context as Activity) { rewardItem ->
+                                        Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
+                                    }
+                                } else {
+                                    loadRewardedAd(context) { newAd ->
+                                        rewardedAd = newAd
+                                        newAd?.show(context as Activity) { }
+                                    }
                                 }
 
-                                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                    rewardedAd = null
-                                    loadRewardedAd(context) { ad -> rewardedAd = ad }
-                                }
-                            }
-                            rewardedAd?.show(context as Activity) { rewardItem ->
-                                Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
+                                try {
+                                    context.unregisterReceiver(this)
+                                } catch (_: Exception) {}
                             }
                         }
 
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            context.registerReceiver(broadcastReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+                        } else {
+                            context.registerReceiver(broadcastReceiver, intentFilter)
+                        }
+
+                        val pendingIntent = PendingIntent.getBroadcast(
+                            context,
+                            0,
+                            Intent(receiverAction).setPackage(context.packageName),
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                        )
+
+                        val chooserIntent = Intent.createChooser(shareIntent, "Share news via", pendingIntent.intentSender)
+                        context.startActivity(chooserIntent)
                     }) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
                     }
