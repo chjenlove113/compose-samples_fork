@@ -16,3 +16,6 @@
 -keepattributes Signature
 -keepattributes *Annotation*
 -keep class com.google.gson.annotations.** { *; }
+
+# Suppress missing classes warnings for Jetpack XR extensions
+-dontwarn com.android.extensions.xr.**

@@ -25,8 +25,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         //consumerProguardFiles("consumer-rules.pro")
         // Add or fix these two lines:
-        versionCode = 16  // Must be a whole integer
-        versionName = "1.6.0" // Must be a string
+        versionCode = 17  // Must be a whole integer
+        versionName = "1.7.0" // Must be a string
     }
 
     buildTypes {
@@ -90,7 +90,7 @@ dependencies {
     androidTestImplementation(composeBom)
 
     implementation("com.google.android.gms:play-services-ads:23.6.0")
-    implementation("com.android.billingclient:billing-ktx:7.1.1")
+    implementation("com.android.billingclient:billing:8.0.0")
 
     // Android Studio Preview support
     implementation("androidx.compose.ui:ui-tooling-preview")
