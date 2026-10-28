@@ -54,11 +54,7 @@ class ShowHomeRssViewModel @Inject constructor(
             getAuthInfoUseCase()
                 .flatMapLatest { auth ->
                     _uiState.update { it.copy(isLoggedIn = auth != null, isLoading = true) }
-                    val flow = if (auth != null) {
-                        appDatabase.appUserSiteDao().getAppUserSites(auth.IdentityId, AppContants.app_Id)
-                    } else {
-                        appDatabase.appUserSiteDao().getAllSitesFlow()
-                    }
+                    val flow = appDatabase.appUserSiteDao().getAllSitesFlow()
                     flow.map { entities ->
                         entities.filter { it.GROUP == "1" && it.IsActive }.map { it.toDomain() }
                     }

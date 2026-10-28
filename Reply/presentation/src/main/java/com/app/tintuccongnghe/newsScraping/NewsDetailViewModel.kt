@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.tintuccongnghe.account.BillingManager
 import com.app.tintuccongnghe.data.local.AppDatabase
+import com.app.tintuccongnghe.data.local.entities.NewsDetailEntity
 import com.app.tintuccongnghe.domain.models.NewsDetail
 import com.app.tintuccongnghe.domain.repository.INewsScrapingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,6 +43,28 @@ class NewsDetailViewModel @Inject constructor(
                 _uiState.value = NewsDetailUiState.Success(detail, description)
             } catch (e: Exception) {
                 _uiState.value = NewsDetailUiState.Error(e.localizedMessage ?: "Không thể tải chi tiết bài viết")
+            }
+        }
+    }
+
+    fun toggleFavorite() {
+        val current = _uiState.value
+        if (current is NewsDetailUiState.Success) {
+            viewModelScope.launch {
+                val updatedDetail = current.detail.copy(isFavorite = !current.detail.isFavorite)
+                appDatabase.newsDetailDao().insertDetail(
+                    NewsDetailEntity(
+                        link = updatedDetail.link,
+                        websiteId = updatedDetail.websiteId,
+                        title = updatedDetail.title,
+                        author = updatedDetail.author,
+                        publishDate = updatedDetail.publishDate,
+                        description = current.description,
+                        contentHtml = updatedDetail.contentHtml,
+                        isFavorite = updatedDetail.isFavorite
+                    )
+                )
+                _uiState.value = current.copy(detail = updatedDetail)
             }
         }
     }

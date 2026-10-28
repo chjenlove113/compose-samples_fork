@@ -16,5 +16,6 @@ data class NewsDetailEntity(
     val author: String,
     val publishDate: String,
     val description: String = "",
-    val contentHtml: String
+    val contentHtml: String,
+    val isFavorite: Boolean = false
 ) : Parcelable

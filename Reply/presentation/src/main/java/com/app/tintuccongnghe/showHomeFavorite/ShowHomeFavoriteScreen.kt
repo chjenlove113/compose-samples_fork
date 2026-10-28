@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,7 +34,8 @@ import com.app.tintuccongnghe.main.MainViewModel
 import com.app.tintuccongnghe.showHome.NewsListItem
 import com.app.tintuccongnghe.showHomeRSS.RssItemRow
 import com.app.tintuccongnghe.showHomeRSS.ShowHomeRSSFeedDetailScreen
-import com.app.tintuccongnghe.components.NewsDetailScreen
+import com.app.tintuccongnghe.components.NewsDetailScreen as LegacyNewsDetailScreen
+import com.app.tintuccongnghe.newsScraping.NewsDetailScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3Api::class)
@@ -84,7 +86,7 @@ fun ShowHomeFavoriteScreen(
                 title = { Text("Favorites") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -109,6 +111,7 @@ fun ShowHomeFavoriteScreen(
                                 favorites = uiState.favorites,
                                 selectedRssItem = uiState.selectedRssItem,
                                 selectedWebsiteNews = uiState.selectedWebsiteNews,
+                                selectedScrapedDetail = uiState.selectedScrapedDetail,
                                 onItemClick = { item ->
                                     scope.launch {
                                         isFullScreen = false
@@ -137,7 +140,7 @@ fun ShowHomeFavoriteScreen(
                                     )
                                 }
                                 is FavoriteItem.Website -> {
-                                    NewsDetailScreen(
+                                    LegacyNewsDetailScreen(
                                         news = currentDetail.news,
                                         onBack = {
                                             scope.launch {
@@ -149,6 +152,20 @@ fun ShowHomeFavoriteScreen(
                                             isFullScreen = !isFullScreen
                                         },
                                         showExpandButton = true
+                                    )
+                                }
+                                is FavoriteItem.ScrapedDetail -> {
+                                    NewsDetailScreen(
+                                        websiteId = currentDetail.detail.websiteId,
+                                        link = currentDetail.detail.link,
+                                        isExpanded = isFullScreen,
+                                        onToggleExpand = { isFullScreen = !isFullScreen },
+                                        onBack = {
+                                            scope.launch {
+                                                isFullScreen = false
+                                                navigator.navigateBack()
+                                            }
+                                        }
                                     )
                                 }
                                 else -> {
@@ -170,6 +187,7 @@ fun FavoriteListPane(
     favorites: List<FavoriteItem>,
     selectedRssItem: com.app.tintuccongnghe.data.local.entities.RssItemEntity? = null,
     selectedWebsiteNews: News? = null,
+    selectedScrapedDetail: com.app.tintuccongnghe.data.local.entities.NewsDetailEntity? = null,
     onItemClick: (FavoriteItem) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -211,6 +229,43 @@ fun FavoriteListPane(
                             bHadDetail = selectedRssItem?.link != null,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
+                    }
+                }
+                is FavoriteItem.ScrapedDetail -> {
+                    val isSelected = selectedScrapedDetail?.link == item.detail.link
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TypeLabel("Scraped Detail")
+                        }
+                        ElevatedCard(
+                            onClick = { onItemClick(item) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = item.detail.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (item.detail.description.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = item.detail.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

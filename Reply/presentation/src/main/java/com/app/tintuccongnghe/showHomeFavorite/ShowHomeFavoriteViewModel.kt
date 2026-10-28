@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.os.Parcelable
 import com.app.tintuccongnghe.data.local.AppDatabase
+import com.app.tintuccongnghe.data.local.entities.NewsDetailEntity
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import com.app.tintuccongnghe.data.mappers.toNewsModel
 import com.app.tintuccongnghe.domain.models.News
@@ -18,12 +19,15 @@ sealed class FavoriteItem : Parcelable {
     data class LocalRss(val item: RssItemEntity) : FavoriteItem()
     @Parcelize
     data class Website(val news: News) : FavoriteItem()
+    @Parcelize
+    data class ScrapedDetail(val detail: NewsDetailEntity) : FavoriteItem()
 }
 
 data class ShowHomeFavoriteUiState(
     val favorites: List<FavoriteItem> = emptyList(),
     val selectedRssItem: RssItemEntity? = null,
     val selectedWebsiteNews: News? = null,
+    val selectedScrapedDetail: NewsDetailEntity? = null,
     val isLoading: Boolean = false
 )
 
@@ -44,12 +48,14 @@ class ShowHomeFavoriteViewModel @Inject constructor(
         
         val rssFavoritesFlow = appDatabase.rssItemDao().getFavoriteItems()
         val websiteFavoritesFlow = appDatabase.newsDao().getAll()
+        val scrapedDetailFavoritesFlow = appDatabase.newsDetailDao().getFavoriteDetails()
 
-        combine(rssFavoritesFlow, websiteFavoritesFlow) { rssItems, websiteNewsEntities ->
+        combine(rssFavoritesFlow, websiteFavoritesFlow, scrapedDetailFavoritesFlow) { rssItems, websiteNewsEntities, scrapedDetails ->
             val combined = mutableListOf<FavoriteItem>()
             
             combined.addAll(rssItems.map { FavoriteItem.LocalRss(it) })
             combined.addAll(websiteNewsEntities.map { FavoriteItem.Website(it.toNewsModel()) })
+            combined.addAll(scrapedDetails.map { FavoriteItem.ScrapedDetail(it) })
             
             combined.sortedWith { a, b ->
                 val timeA = when (a) {
@@ -57,12 +63,14 @@ class ShowHomeFavoriteViewModel @Inject constructor(
                     is FavoriteItem.Website -> {
                         websiteNewsEntities.find { it.Id == a.news.Id }?.CreatedAt?.time ?: 0L
                     }
+                    is FavoriteItem.ScrapedDetail -> 0L
                 }
                 val timeB = when (b) {
                     is FavoriteItem.LocalRss -> b.item.pubDate ?: 0L
                     is FavoriteItem.Website -> {
                         websiteNewsEntities.find { it.Id == b.news.Id }?.CreatedAt?.time ?: 0L
                     }
+                    is FavoriteItem.ScrapedDetail -> 0L
                 }
                 timeB.compareTo(timeA) // Descending
             }
@@ -74,13 +82,16 @@ class ShowHomeFavoriteViewModel @Inject constructor(
     fun setSelectedItem(item: FavoriteItem?) {
         when (item) {
             is FavoriteItem.LocalRss -> {
-                _uiState.update { it.copy(selectedRssItem = item.item, selectedWebsiteNews = null) }
+                _uiState.update { it.copy(selectedRssItem = item.item, selectedWebsiteNews = null, selectedScrapedDetail = null) }
             }
             is FavoriteItem.Website -> {
-                _uiState.update { it.copy(selectedWebsiteNews = item.news, selectedRssItem = null) }
+                _uiState.update { it.copy(selectedWebsiteNews = item.news, selectedRssItem = null, selectedScrapedDetail = null) }
+            }
+            is FavoriteItem.ScrapedDetail -> {
+                _uiState.update { it.copy(selectedScrapedDetail = item.detail, selectedRssItem = null, selectedWebsiteNews = null) }
             }
             null -> {
-                _uiState.update { it.copy(selectedRssItem = null, selectedWebsiteNews = null) }
+                _uiState.update { it.copy(selectedRssItem = null, selectedWebsiteNews = null, selectedScrapedDetail = null) }
             }
         }
     }
@@ -103,6 +114,16 @@ class ShowHomeFavoriteViewModel @Inject constructor(
                 if (_uiState.value.selectedWebsiteNews?.Id == news.Id) {
                     _uiState.update { it.copy(selectedWebsiteNews = null) }
                 }
+            }
+        }
+    }
+
+    fun toggleFavoriteScrapedDetail(detail: NewsDetailEntity) {
+        viewModelScope.launch {
+            val updated = detail.copy(isFavorite = !detail.isFavorite)
+            appDatabase.newsDetailDao().insertDetail(updated)
+            if (_uiState.value.selectedScrapedDetail?.link == detail.link) {
+                _uiState.update { it.copy(selectedScrapedDetail = if (updated.isFavorite) updated else null) }
             }
         }
     }

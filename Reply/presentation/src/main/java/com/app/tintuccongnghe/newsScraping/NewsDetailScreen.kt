@@ -1,8 +1,12 @@
 package com.app.tintuccongnghe.newsScraping
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
@@ -10,13 +14,19 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
@@ -27,12 +37,20 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.app.tintuccongnghe.components.AdMobBannerAd
+import com.app.tintuccongnghe.components.loadRewardedAd
+import com.app.tintuccongnghe.main.MainViewModel
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.rewarded.RewardedAd
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,12 +60,14 @@ fun NewsDetailScreen(
     isExpanded: Boolean = false,
     onToggleExpand: () -> Unit = {},
     onBack: () -> Unit,
-    viewModel: NewsDetailViewModel = hiltViewModel()
+    viewModel: NewsDetailViewModel = hiltViewModel(),
+    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val hasActiveSub by viewModel.hasActiveSubscription.collectAsStateWithLifecycle()
     val hasCloudSub by viewModel.hasCloudStorageSubscription.collectAsStateWithLifecycle()
     val isAdFree = hasActiveSub || hasCloudSub
+    val fontScale by mainViewModel.fontScale.collectAsStateWithLifecycle()
 
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
@@ -56,9 +76,18 @@ fun NewsDetailScreen(
     val isDark = isSystemInDarkTheme()
 
     var clickedLinkUrl by remember { mutableStateOf<String?>(null) }
+    var showFontScaleSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    var rewardedAd by remember { mutableStateOf<RewardedAd?>(null) }
 
     LaunchedEffect(websiteId, link) {
         viewModel.loadDetail(websiteId, link)
+    }
+
+    LaunchedEffect(Unit) {
+        loadRewardedAd(context) { ad ->
+            rewardedAd = ad
+        }
     }
 
     Scaffold(
@@ -71,6 +100,66 @@ fun NewsDetailScreen(
                     }
                 },
                 actions = {
+                    val isFavorite = (uiState as? NewsDetailUiState.Success)?.detail?.isFavorite == true
+                    IconButton(onClick = {
+                        viewModel.toggleFavorite()
+                        if (rewardedAd != null) {
+                            rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
+                                override fun onAdDismissedFullScreenContent() {
+                                    rewardedAd = null
+                                    loadRewardedAd(context) { ad -> rewardedAd = ad }
+                                }
+
+                                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                                    rewardedAd = null
+                                    loadRewardedAd(context) { ad -> rewardedAd = ad }
+                                }
+                            }
+                            rewardedAd?.show(context as Activity) { rewardItem ->
+                                Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
+                            }
+                        }
+                    }) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (isFavorite) Color.Red else LocalContentColor.current
+                        )
+                    }
+
+                    IconButton(onClick = {
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, "${(uiState as? NewsDetailUiState.Success)?.detail?.title}\n\n$link")
+                            type = "text/plain"
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share news via"))
+
+                        if (rewardedAd != null) {
+                            rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
+                                override fun onAdDismissedFullScreenContent() {
+                                    rewardedAd = null
+                                    loadRewardedAd(context) { ad -> rewardedAd = ad }
+                                }
+
+                                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                                    rewardedAd = null
+                                    loadRewardedAd(context) { ad -> rewardedAd = ad }
+                                }
+                            }
+                            rewardedAd?.show(context as Activity) { rewardItem ->
+                                Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
+                            }
+                        }
+
+                    }) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
+                    }
+
+                    IconButton(onClick = { showFontScaleSheet = true }) {
+                        Icon(imageVector = Icons.Default.FormatSize, contentDescription = "Change Font Scale")
+                    }
+
                     IconButton(
                         onClick = {
                             clipboardManager.setText(AnnotatedString(link))
@@ -106,6 +195,60 @@ fun NewsDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            if (showFontScaleSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showFontScaleSheet = false },
+                    sheetState = sheetState,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 32.dp, start = 24.dp, end = 24.dp, top = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Font Size",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = String.format(Locale.getDefault(), "%.1fx", fontScale),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Slider(
+                            value = fontScale,
+                            onValueChange = {
+                                val snappedValue = Math.round(it * 5) / 5.0f
+                                mainViewModel.setFontScale(snappedValue)
+                            },
+                            valueRange = 0.6f..1.4f,
+                            steps = 3,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("A", fontSize = 12.sp)
+                            Text("A", fontSize = 20.sp)
+                        }
+                    }
+                }
+            }
+
             if (clickedLinkUrl != null) {
                 AlertDialog(
                     onDismissRequest = { clickedLinkUrl = null },
@@ -166,9 +309,9 @@ fun NewsDetailScreen(
                     val detail = state.detail
                     val description = state.description
 
-                    val processedHtml = remember(detail, description, colorScheme, isDark) {
+                    val processedHtml = remember(detail, description, colorScheme, isDark, fontScale) {
                         try {
-                            val baseFontSize = 18
+                            val baseFontSize = (18 * fontScale).toInt()
                             context.assets.open("news_template_v0.html").bufferedReader().use { it.readText() }
                                 .replace("#BG_COLOR", colorScheme.surfaceContainer.toHtmlHex().substring(1))
                                 .replace("#TEXT_PRIMARY", colorScheme.onBackground.toHtmlHex().substring(1))

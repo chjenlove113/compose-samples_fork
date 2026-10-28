@@ -23,7 +23,7 @@ import com.app.tintuccongnghe.data.local.entities.*
         NewsCategoryEntity::class,
         DetailRuleEntity::class
     ],
-    version = 27
+    version = 28
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
