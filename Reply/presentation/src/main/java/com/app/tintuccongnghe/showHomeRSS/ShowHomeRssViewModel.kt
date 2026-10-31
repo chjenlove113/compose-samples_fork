@@ -7,7 +7,9 @@ import com.app.tintuccongnghe.data.local.entities.RssItemEntity
 import com.app.tintuccongnghe.data.local.entities.toDomain
 import com.app.tintuccongnghe.data.local.entities.toEntity
 import com.app.tintuccongnghe.domain.models.AppUserSite
+import com.app.tintuccongnghe.domain.models.AppUserSiteRequest
 import com.app.tintuccongnghe.domain.usecases.GetAuthInfoUseCase
+import com.app.tintuccongnghe.domain.usecases.RefreshAppUserSiteListUseCase
 import com.app.tintuccongnghe.notifications.RssSyncLiveUpdate
 import com.app.tintuccongnghe.utils.AppContants
 import com.rometools.rome.feed.synd.SyndFeed
@@ -39,7 +41,8 @@ class ShowHomeRssViewModel @Inject constructor(
     private val appDatabase: AppDatabase,
     private val okHttpClient: OkHttpClient,
     private val getAuthInfoUseCase: GetAuthInfoUseCase,
-    private val rssSyncLiveUpdate: RssSyncLiveUpdate
+    private val rssSyncLiveUpdate: RssSyncLiveUpdate,
+    private val refreshAppUserSiteListUseCase: RefreshAppUserSiteListUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ShowHomeRssUiState())
@@ -54,8 +57,18 @@ class ShowHomeRssViewModel @Inject constructor(
             getAuthInfoUseCase()
                 .flatMapLatest { auth ->
                     _uiState.update { it.copy(isLoggedIn = auth != null, isLoading = true) }
-                    val flow = appDatabase.appUserSiteDao().getAllSitesFlow()
-                    flow.map { entities ->
+                    val identityId = auth?.IdentityId ?: "local_user"
+                    val request = AppUserSiteRequest(identityId, "UserIdEncrypt", AppContants.app_Id)
+
+                    val dao = appDatabase.appUserSiteDao()
+                    val initialSites = dao.getAllSites()
+                    if (initialSites.isEmpty() || initialSites.none { it.GROUP == "1" && it.IsActive }) {
+                        try {
+                            refreshAppUserSiteListUseCase(request, force = true)
+                        } catch (_: Exception) {}
+                    }
+
+                    dao.getAllSitesFlow().map { entities ->
                         entities.filter { it.GROUP == "1" && it.IsActive }.map { it.toDomain() }
                     }
                 }

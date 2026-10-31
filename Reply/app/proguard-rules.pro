@@ -58,5 +58,11 @@
 -keep class com.app.tintuccongnghe.data.local.entities.** { *; }
 -keep class com.app.tintuccongnghe.base.** { *; }
 
+# Gson TypeToken and Serialization support
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
+-keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
+
+
 
 

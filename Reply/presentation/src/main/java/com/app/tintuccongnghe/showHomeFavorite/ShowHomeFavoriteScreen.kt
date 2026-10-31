@@ -50,21 +50,31 @@ fun ShowHomeFavoriteScreen(
     val scope = rememberCoroutineScope()
     var isFullScreen by rememberSaveable { mutableStateOf(false) }
 
-    // Handle system back button
-    BackHandler(navigator.canNavigateBack() || isFullScreen) {
-        if (isFullScreen) {
-            isFullScreen = false
-        } else {
-            scope.launch {
-                navigator.navigateBack()
-            }
-        }
-    }
-
     // Sync Navigator state back to ViewModel
     val currentDetail = navigator.currentDestination?.contentKey as? FavoriteItem
     LaunchedEffect(currentDetail) {
         viewModel.setSelectedItem(currentDetail)
+    }
+
+    val canGoBack = isFullScreen || navigator.canNavigateBack() || (currentDetail != null)
+
+    val handleBack: () -> Unit = {
+        if (isFullScreen) {
+            isFullScreen = false
+        } else if (navigator.canNavigateBack()) {
+            scope.launch {
+                navigator.navigateBack()
+            }
+        } else if (currentDetail != null) {
+            scope.launch {
+                navigator.navigateTo(ListDetailPaneScaffoldRole.List)
+            }
+        }
+    }
+
+    // Handle system back button
+    BackHandler(canGoBack) {
+        handleBack()
     }
 
     // Determine if we should show List or Detail as the single pane when maxHorizontalPartitions = 1
@@ -80,6 +90,107 @@ fun ShowHomeFavoriteScreen(
         currentDestination = navigator.currentDestination
     )
 
+    if (uiState.favorites.isEmpty() && !uiState.isLoading) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Favorites") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No favorites yet.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    } else {
+        ListDetailPaneScaffold(
+            directive = currentScaffoldDirective,
+            value = scaffoldValue,
+            listPane = {
+                AnimatedPane {
+                    FavoriteListPane(
+                        favorites = uiState.favorites,
+                        selectedRssItem = uiState.selectedRssItem,
+                        selectedWebsiteNews = uiState.selectedWebsiteNews,
+                        selectedScrapedDetail = uiState.selectedScrapedDetail,
+                        onBack = onBack,
+                        onItemClick = { item ->
+                            scope.launch {
+                                isFullScreen = false
+                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
+                            }
+                        }
+                    )
+                }
+            },
+            detailPane = {
+                AnimatedPane {
+                    when (currentDetail) {
+                        is FavoriteItem.LocalRss -> {
+                            ShowHomeRSSFeedDetailScreen(
+                                item = currentDetail.item,
+                                onBack = handleBack,
+                                isFullScreen = isFullScreen,
+                                onToggleFullScreen = {
+                                    isFullScreen = !isFullScreen
+                                }
+                            )
+                        }
+                        is FavoriteItem.Website -> {
+                            LegacyNewsDetailScreen(
+                                news = currentDetail.news,
+                                onBack = handleBack,
+                                onExpand = {
+                                    isFullScreen = !isFullScreen
+                                },
+                                showExpandButton = true
+                            )
+                        }
+                        is FavoriteItem.ScrapedDetail -> {
+                            NewsDetailScreen(
+                                websiteId = currentDetail.detail.websiteId,
+                                link = currentDetail.detail.link,
+                                isExpanded = isFullScreen,
+                                onToggleExpand = { isFullScreen = !isFullScreen },
+                                onBack = handleBack
+                            )
+                        }
+                        else -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Select an article to view details")
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FavoriteListPane(
+    favorites: List<FavoriteItem>,
+    selectedRssItem: com.app.tintuccongnghe.data.local.entities.RssItemEntity? = null,
+    selectedWebsiteNews: News? = null,
+    selectedScrapedDetail: com.app.tintuccongnghe.data.local.entities.NewsDetailEntity? = null,
+    onBack: () -> Unit,
+    onItemClick: (FavoriteItem) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -92,106 +203,12 @@ fun ShowHomeFavoriteScreen(
             )
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            if (uiState.favorites.isEmpty() && !uiState.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "No favorites yet.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                ListDetailPaneScaffold(
-                    directive = currentScaffoldDirective,
-                    value = scaffoldValue,
-                    listPane = {
-                        AnimatedPane {
-                            FavoriteListPane(
-                                favorites = uiState.favorites,
-                                selectedRssItem = uiState.selectedRssItem,
-                                selectedWebsiteNews = uiState.selectedWebsiteNews,
-                                selectedScrapedDetail = uiState.selectedScrapedDetail,
-                                onItemClick = { item ->
-                                    scope.launch {
-                                        isFullScreen = false
-                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, item)
-                                    }
-                                }
-                            )
-                        }
-                    },
-                    detailPane = {
-                        AnimatedPane {
-                            when (currentDetail) {
-                                is FavoriteItem.LocalRss -> {
-                                    ShowHomeRSSFeedDetailScreen(
-                                        item = currentDetail.item,
-                                        onBack = {
-                                            scope.launch {
-                                                isFullScreen = false
-                                                navigator.navigateBack()
-                                            }
-                                        },
-                                        isFullScreen = isFullScreen,
-                                        onToggleFullScreen = {
-                                            isFullScreen = !isFullScreen
-                                        }
-                                    )
-                                }
-                                is FavoriteItem.Website -> {
-                                    LegacyNewsDetailScreen(
-                                        news = currentDetail.news,
-                                        onBack = {
-                                            scope.launch {
-                                                isFullScreen = false
-                                                navigator.navigateBack()
-                                            }
-                                        },
-                                        onExpand = {
-                                            isFullScreen = !isFullScreen
-                                        },
-                                        showExpandButton = true
-                                    )
-                                }
-                                is FavoriteItem.ScrapedDetail -> {
-                                    NewsDetailScreen(
-                                        websiteId = currentDetail.detail.websiteId,
-                                        link = currentDetail.detail.link,
-                                        isExpanded = isFullScreen,
-                                        onToggleExpand = { isFullScreen = !isFullScreen },
-                                        onBack = {
-                                            scope.launch {
-                                                isFullScreen = false
-                                                navigator.navigateBack()
-                                            }
-                                        }
-                                    )
-                                }
-                                else -> {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("Select an article to view details")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun FavoriteListPane(
-    favorites: List<FavoriteItem>,
-    selectedRssItem: com.app.tintuccongnghe.data.local.entities.RssItemEntity? = null,
-    selectedWebsiteNews: News? = null,
-    selectedScrapedDetail: com.app.tintuccongnghe.data.local.entities.NewsDetailEntity? = null,
-    onItemClick: (FavoriteItem) -> Unit
-) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(favorites) { item ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            items(favorites) { item ->
             when (item) {
                 is FavoriteItem.LocalRss -> {
                     val isSelected = selectedRssItem?.link == item.item.link
@@ -271,6 +288,7 @@ fun FavoriteListPane(
             }
         }
     }
+}
 }
 
 @Composable

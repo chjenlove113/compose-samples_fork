@@ -25,8 +25,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         //consumerProguardFiles("consumer-rules.pro")
         // Add or fix these two lines:
-        versionCode = 17  // Must be a whole integer
-        versionName = "1.7.0" // Must be a string
+        versionCode = 19  // Must be a whole integer
+        versionName = "1.9.0" // Must be a string
     }
 
     buildTypes {
@@ -37,6 +37,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
     compileOptions {

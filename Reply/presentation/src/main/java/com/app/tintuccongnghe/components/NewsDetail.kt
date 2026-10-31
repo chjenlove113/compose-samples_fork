@@ -331,7 +331,7 @@ fun NewsDetailScreen(
             )
         },
         bottomBar = {
-            AdMobBannerAd(modifier= Modifier.padding(8.dp))
+            AdMobBannerAd(modifier= Modifier.padding(10.dp))
         },
         floatingActionButton = {
             AnimatedVisibility(

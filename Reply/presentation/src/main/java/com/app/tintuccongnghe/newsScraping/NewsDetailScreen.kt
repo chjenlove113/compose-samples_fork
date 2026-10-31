@@ -95,7 +95,7 @@ fun NewsDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chi tiết bài viết") },
+                title = { Text("Chi tiết") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -436,7 +436,7 @@ fun NewsDetailScreen(
                             AdMobBannerAd(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
+                                    .padding(vertical = 10.dp)
                             )
                         }
                     }

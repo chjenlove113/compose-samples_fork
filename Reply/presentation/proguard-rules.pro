@@ -14,9 +14,10 @@
 -keep class com.app.tintuccongnghe.base.** { *; }
 
 # Keep annotations for Gson
--keepattributes Signature
--keepattributes *Annotation*
+-keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
 -keep class com.google.gson.annotations.** { *; }
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
 
 # Suppress missing classes warnings for Jetpack XR extensions
 -dontwarn com.android.extensions.xr.**

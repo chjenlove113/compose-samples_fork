@@ -90,25 +90,35 @@ fun ShowHomeRSSFeedScreen(
         }
     }
 
-    // Handle system back button
-    BackHandler(navigator.canNavigateBack() || isFullScreen) {
-        if (isFullScreen) {
-            isFullScreen = false
-        } else {
-            scope.launch {
-                navigator.navigateBack()
-            }
-        }
-    }
-
     // Sync Navigator state back to ViewModel
     val currentDetail = navigator.currentDestination?.contentKey as? RssItemEntity
     LaunchedEffect(currentDetail) {
         viewModel.setSelectedRssItem(currentDetail)
     }
 
+    val canGoBack = isFullScreen || navigator.canNavigateBack() || (currentDetail != null)
+
+    val handleBack: () -> Unit = {
+        if (isFullScreen) {
+            isFullScreen = false
+        } else if (navigator.canNavigateBack()) {
+            scope.launch {
+                navigator.navigateBack()
+            }
+        } else if (currentDetail != null) {
+            scope.launch {
+                navigator.navigateTo(ListDetailPaneScaffoldRole.List)
+            }
+        }
+    }
+
+    // Handle system back button
+    BackHandler(canGoBack) {
+        handleBack()
+    }
+
     // Determine if we should show List or Detail as the single pane when maxHorizontalPartitions = 1
-    val currentScaffoldDirective = if (isFullScreen) {
+    val currentScaffoldDirective = if (isFullScreen || currentDetail == null) {
         navigator.scaffoldDirective.copy(maxHorizontalPartitions = 1)
     } else {
         navigator.scaffoldDirective
@@ -163,12 +173,7 @@ fun ShowHomeRSSFeedScreen(
                 if (currentDetail != null) {
                     ShowHomeRSSFeedDetailScreen(
                         item = currentDetail,
-                        onBack = {
-                            scope.launch {
-                                isFullScreen = false
-                                navigator.navigateBack()
-                            }
-                        },
+                        onBack = handleBack,
                         isFullScreen = isFullScreen,
                         onToggleFullScreen = {
                             isFullScreen = !isFullScreen
