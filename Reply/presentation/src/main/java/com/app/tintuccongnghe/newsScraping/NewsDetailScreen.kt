@@ -63,7 +63,7 @@ fun NewsDetailScreen(
     onToggleExpand: () -> Unit = {},
     onBack: () -> Unit,
     viewModel: NewsDetailViewModel = hiltViewModel(),
-    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
+    mainViewModel: MainViewModel = hiltViewModel(viewModelStoreOwner = androidx.activity.compose.LocalActivity.current as ComponentActivity)
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val hasActiveSub by viewModel.hasActiveSubscription.collectAsStateWithLifecycle()
@@ -79,6 +79,8 @@ fun NewsDetailScreen(
 
     var clickedLinkUrl by remember { mutableStateOf<String?>(null) }
     var showFontScaleSheet by remember { mutableStateOf(false) }
+    var showFavoriteAdConsentDialog by remember { mutableStateOf(false) }
+    var showShareAdConsentDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     var rewardedAd by remember { mutableStateOf<RewardedAd?>(null) }
 
@@ -104,93 +106,24 @@ fun NewsDetailScreen(
                 actions = {
                     val isFavorite = (uiState as? NewsDetailUiState.Success)?.detail?.isFavorite == true
                     IconButton(onClick = {
-                        viewModel.toggleFavorite()
-                        if (!isFavorite) {
-                            if (rewardedAd != null) {
-                                rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
-                                    override fun onAdDismissedFullScreenContent() {
-                                        rewardedAd = null
-                                        loadRewardedAd(context) { ad -> rewardedAd = ad }
-                                    }
-
-                                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                        rewardedAd = null
-                                        loadRewardedAd(context) { ad -> rewardedAd = ad }
-                                    }
-                                }
-                                rewardedAd?.show(context as Activity) { rewardItem ->
-                                    Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
-                                }
-                            } else {
-                                loadRewardedAd(context) { newAd ->
-                                    rewardedAd = newAd
-                                    newAd?.show(context as Activity) { }
-                                }
-                            }
+                        if (isFavorite) {
+                            // Unfavorite directly without ad
+                            viewModel.toggleFavorite()
+                        } else {
+                            // Prompt for user choice before showing rewarded ad
+                            showFavoriteAdConsentDialog = true
                         }
                     }) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                            contentDescription = if (isFavorite) "Bỏ yêu thích" else "Thêm vào yêu thích",
                             tint = if (isFavorite) Color.Red else LocalContentColor.current
                         )
                     }
 
                     IconButton(onClick = {
-                        val shareIntent = Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, "${(uiState as? NewsDetailUiState.Success)?.detail?.title}\n\n$link")
-                            type = "text/plain"
-                        }
-
-                        val receiverAction = "com.app.tintuccongnghe.ACTION_SHARE_CHOSEN_${System.currentTimeMillis()}"
-                        val intentFilter = android.content.IntentFilter(receiverAction)
-
-                        val broadcastReceiver = object : BroadcastReceiver() {
-                            override fun onReceive(ctx: Context?, intent: Intent?) {
-                                if (rewardedAd != null) {
-                                    rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
-                                        override fun onAdDismissedFullScreenContent() {
-                                            rewardedAd = null
-                                            loadRewardedAd(context) { newAd -> rewardedAd = newAd }
-                                        }
-
-                                        override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                                            rewardedAd = null
-                                            loadRewardedAd(context) { newAd -> rewardedAd = newAd }
-                                        }
-                                    }
-                                    rewardedAd?.show(context as Activity) { rewardItem ->
-                                        Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
-                                    }
-                                } else {
-                                    loadRewardedAd(context) { newAd ->
-                                        rewardedAd = newAd
-                                        newAd?.show(context as Activity) { }
-                                    }
-                                }
-
-                                try {
-                                    context.unregisterReceiver(this)
-                                } catch (_: Exception) {}
-                            }
-                        }
-
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                            context.registerReceiver(broadcastReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
-                        } else {
-                            context.registerReceiver(broadcastReceiver, intentFilter)
-                        }
-
-                        val pendingIntent = PendingIntent.getBroadcast(
-                            context,
-                            0,
-                            Intent(receiverAction).setPackage(context.packageName),
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-                        )
-
-                        val chooserIntent = Intent.createChooser(shareIntent, "Share news via", pendingIntent.intentSender)
-                        context.startActivity(chooserIntent)
+                        // Prompt for user choice before showing rewarded ad for Share
+                        showShareAdConsentDialog = true
                     }) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
                     }
@@ -286,6 +219,35 @@ fun NewsDetailScreen(
                         }
                     }
                 }
+            }
+
+            if (showFavoriteAdConsentDialog) {
+                RewardedAdConsentDialog(
+                    title = "Lưu bài viết yêu thích",
+                    message = "Bạn có muốn xem một quảng cáo ngắn để lưu bài viết này vào danh sách Yêu thích không?",
+                    onConfirm = {
+                        showFavoriteAdConsentDialog = false
+                        showRewardedAdForAction(context, rewardedAd) {
+                            viewModel.toggleFavorite()
+                        }
+                    },
+                    onDismiss = { showFavoriteAdConsentDialog = false }
+                )
+            }
+
+            if (showShareAdConsentDialog) {
+                RewardedAdConsentDialog(
+                    title = "Chia sẻ bài viết",
+                    message = "Bạn có muốn xem một quảng cáo ngắn để chia sẻ bài viết này không?",
+                    onConfirm = {
+                        showShareAdConsentDialog = false
+                        val articleTitle = (uiState as? NewsDetailUiState.Success)?.detail?.title ?: ""
+                        showRewardedAdForAction(context, rewardedAd) {
+                            triggerShareIntent(context, articleTitle, link)
+                        }
+                    },
+                    onDismiss = { showShareAdConsentDialog = false }
+                )
             }
 
             if (clickedLinkUrl != null) {
@@ -446,10 +408,104 @@ fun NewsDetailScreen(
     }
 }
 
+@Composable
+fun RewardedAdConsentDialog(
+    title: String,
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Xem quảng cáo")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Hủy")
+            }
+        }
+    )
+}
+
 class NewsWebAppInterface(private val onLinkClick: (String) -> Unit) {
     @JavascriptInterface
     fun onLinkClicked(url: String) {
         onLinkClick(url)
+    }
+}
+
+private fun triggerShareIntent(context: Context, title: String, link: String) {
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT, "$title\n\n$link")
+        type = "text/plain"
+    }
+    val chooserIntent = Intent.createChooser(shareIntent, "Chia sẻ bài viết qua")
+    context.startActivity(chooserIntent)
+}
+
+private fun showRewardedAdForAction(
+    context: Context,
+    currentAd: RewardedAd?,
+    onRewardEarned: () -> Unit
+) {
+    val activity = context as? Activity
+    if (activity == null) {
+        onRewardEarned()
+        return
+    }
+
+    if (currentAd != null) {
+        currentAd.fullScreenContentCallback = object : FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() {
+                loadRewardedAd(context) { }
+            }
+
+            override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                Log.e("AdMob", "Ad failed to show: ${adError.message}")
+                onRewardEarned()
+                loadRewardedAd(context) { }
+            }
+        }
+        currentAd.show(activity) { rewardItem ->
+            Log.d("AdMob", "User earned reward: ${rewardItem.amount} ${rewardItem.type}")
+            onRewardEarned()
+        }
+    } else {
+        Toast.makeText(context, "Đang tải quảng cáo, vui lòng đợi...", Toast.LENGTH_SHORT).show()
+        loadRewardedAd(context) { newAd ->
+            if (newAd != null) {
+                newAd.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    override fun onAdDismissedFullScreenContent() {
+                        loadRewardedAd(context) { }
+                    }
+
+                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                        onRewardEarned()
+                    }
+                }
+                newAd.show(activity) { _ ->
+                    onRewardEarned()
+                }
+            } else {
+                onRewardEarned()
+            }
+        }
     }
 }
 

@@ -225,8 +225,8 @@ class MainActivity : ComponentActivity() {
                     ) {
                         NewsScrapingScreen(
                             onItemClick = { websiteId, link ->
-                                val encoded = java.net.URLEncoder.encode(link, "UTF-8")
-                                navHost.navigate("news_detail/$websiteId/$encoded")
+                                val encoded = if (link.startsWith("http%3A") || link.startsWith("https%3A")) link else java.net.URLEncoder.encode(link, "UTF-8")
+                                navHost.navigateSafe("news_detail/$websiteId/$encoded")
                             }
                         )
                     }
@@ -235,7 +235,7 @@ class MainActivity : ComponentActivity() {
                         route = "screen_foryou"
                     ) {
                         ShowHomeForYouRoute(
-                            onNavigateToLogin = { navHost.navigate("login") }
+                            onNavigateToLogin = { navHost.navigateSafe("login") }
                         )
                     }
 
@@ -254,7 +254,7 @@ class MainActivity : ComponentActivity() {
                     composable(
                         route = "screen_favorites"
                     ) {
-                        ShowHomeFavoriteScreen(onBack = { navHost.popBackStack() })
+                        ShowHomeFavoriteScreen(onBack = { navHost.popBackStackSafe() })
                     }
 
                     composable(
@@ -264,8 +264,8 @@ class MainActivity : ComponentActivity() {
                         )
                     ) {
                         ShowHomeRSSFeedScreen(
-                            onNavigateToLogin = { navHost.navigate("login") },
-                            onNavigateToUserSites = { navHost.navigate("user_sites") }
+                            onNavigateToLogin = { navHost.navigateSafe("login") },
+                            onNavigateToUserSites = { navHost.navigateSafe("user_sites") }
                         )
                     }
 
@@ -273,13 +273,13 @@ class MainActivity : ComponentActivity() {
                         route = "account"
                     ) {
                         AccountInfoScreen(
-                            onNavigateToLogin = { navHost.navigate("login") },
-                            onNavigateToUserSites = { navHost.navigate("user_sites") },
-                            onNavigateToUserCategories = { navHost.navigate("user_categories") },
-                            onNavigateToFavorites = { navHost.navigate("screen_favorites") },
-                            onNavigateToNotifications = { navHost.navigate("notifications") },
-                            onNavigateToLanguage = { navHost.navigate("language") },
-                            onNavigateToNewsScraping = { navHost.navigate("news_scraping") }
+                            onNavigateToLogin = { navHost.navigateSafe("login") },
+                            onNavigateToUserSites = { navHost.navigateSafe("user_sites") },
+                            onNavigateToUserCategories = { navHost.navigateSafe("user_categories") },
+                            onNavigateToFavorites = { navHost.navigateSafe("screen_favorites") },
+                            onNavigateToNotifications = { navHost.navigateSafe("notifications") },
+                            onNavigateToLanguage = { navHost.navigateSafe("language") },
+                            onNavigateToNewsScraping = { navHost.navigateSafe("news_scraping") }
                         )
                     }
 
@@ -288,8 +288,8 @@ class MainActivity : ComponentActivity() {
                     ) {
                         NewsScrapingScreen(
                             onItemClick = { websiteId, link ->
-                                val encoded = java.net.URLEncoder.encode(link, "UTF-8")
-                                navHost.navigate("news_detail/$websiteId/$encoded")
+                                val encoded = if (link.startsWith("http%3A") || link.startsWith("https%3A")) link else java.net.URLEncoder.encode(link, "UTF-8")
+                                navHost.navigateSafe("news_detail/$websiteId/$encoded")
                             }
                         )
                     }
@@ -306,7 +306,7 @@ class MainActivity : ComponentActivity() {
                         NewsDetailScreen(
                             websiteId = websiteId,
                             link = link,
-                            onBack = { navHost.popBackStack() }
+                            onBack = { navHost.popBackStackSafe() }
                         )
                     }
 
@@ -314,7 +314,7 @@ class MainActivity : ComponentActivity() {
                         route = "language"
                     ) {
                         LanguageScreen(
-                            onBack = { navHost.popBackStack() }
+                            onBack = { navHost.popBackStackSafe() }
                         )
                     }
 
@@ -322,11 +322,11 @@ class MainActivity : ComponentActivity() {
                         route = "notifications"
                     ) {
                         NotificationsScreen(
-                            onBack = { navHost.popBackStack() },
+                            onBack = { navHost.popBackStackSafe() },
                             onNotificationClick = { newsJson ->
                                 // newsJson in Entity is already a JSON string of NewsNotificationPayload
                                 val encoded = Uri.encode(newsJson)
-                                navHost.navigate("news_detail/$encoded")
+                                navHost.navigateSafe("news_detail/$encoded")
                             }
                         )
                     }
@@ -335,8 +335,8 @@ class MainActivity : ComponentActivity() {
                         route = "user_sites"
                     ) {
                         AppUserSiteScreen(
-                            onBack = { navHost.popBackStack() },
-                            onNavigateToLogin = { navHost.navigate("login") },
+                            onBack = { navHost.popBackStackSafe() },
+                            onNavigateToLogin = { navHost.navigateSafe("login") },
                             onNavigateToRss = { id, group ->
                                 mainViewModel.setRssJump(id, group)
                                 navigateWithBackStackHandling("screen_rss", navHost)
@@ -348,7 +348,7 @@ class MainActivity : ComponentActivity() {
                         route = "user_categories"
                     ) {
                         AppUserCategoryScreen(
-                            onBack = { navHost.popBackStack() }
+                            onBack = { navHost.popBackStackSafe() }
                         )
                     }
 
@@ -361,8 +361,8 @@ class MainActivity : ComponentActivity() {
                     ) { backStackEntry ->
                         val githubCode = backStackEntry.arguments?.getString("code")
                         LoginScreen(
-                            onNavigateToRegister = { navHost.navigate("register") },
-                            onLoginSuccess = { navHost.popBackStack() },
+                            onNavigateToRegister = { navHost.navigateSafe("register") },
+                            onLoginSuccess = { navHost.popBackStackSafe() },
                             githubCode = githubCode
                         )
                     }
@@ -371,8 +371,8 @@ class MainActivity : ComponentActivity() {
                         route = "register"
                     ) {
                         RegisterScreen(
-                            onNavigateToLogin = { navHost.navigate("login") },
-                            onRegisterSuccess = { navHost.popBackStack() }
+                            onNavigateToLogin = { navHost.navigateSafe("login") },
+                            onRegisterSuccess = { navHost.popBackStackSafe() }
                         )
                     }
 
@@ -401,7 +401,10 @@ class MainActivity : ComponentActivity() {
                             if (payload != null) {
                                 mainViewModel.selectNews(payload.news, payload.tabKey)
                                 navHost.navigate("screen1") {
-                                    popUpTo("screen1") { inclusive = true }
+                                    popUpTo(navHost.graph.findStartDestination().id) {
+                                        inclusive = false
+                                    }
+                                    launchSingleTop = true
                                 }
                             }
                         }
@@ -645,7 +648,31 @@ class TopLevelBackStack<T: Any>(startKey: T) {
     }
 }
 
+fun NavHostController.popBackStackSafe(): Boolean {
+    val currentEntry = currentBackStackEntry
+    if (currentEntry != null && 
+        currentEntry.lifecycle.currentState == androidx.lifecycle.Lifecycle.State.RESUMED && 
+        previousBackStackEntry != null
+    ) {
+        return popBackStack()
+    }
+    return false
+}
+
+fun NavHostController.navigateSafe(route: String, builder: (androidx.navigation.NavOptionsBuilder.() -> Unit)? = null) {
+    val currentEntry = currentBackStackEntry
+    if (currentEntry == null || currentEntry.lifecycle.currentState == androidx.lifecycle.Lifecycle.State.RESUMED) {
+        if (currentDestination?.route == route) return
+        if (builder != null) {
+            navigate(route, builder)
+        } else {
+            navigate(route)
+        }
+    }
+}
+
 fun navigateWithBackStackHandling(route: String, navHost: NavHostController) {
+    if (navHost.currentDestination?.route == route) return
     navHost.navigate(route) {
         popUpTo(navHost.graph.findStartDestination().id) {
             saveState = true
