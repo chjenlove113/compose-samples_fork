@@ -1,6 +1,7 @@
 package com.app.tintuccongnghe.data.repository
 
 import android.text.Html
+import androidx.annotation.Keep
 import com.app.tintuccongnghe.domain.models.DetailRuleDocument
 import com.app.tintuccongnghe.domain.models.EnumDetail
 import com.app.tintuccongnghe.domain.models.NewsDetail
@@ -24,26 +25,32 @@ fun String.decodeHtmlDetail(): String {
 }
 
 // Next.js __NEXT_DATA__ JSON Data Classes
+@Keep
 data class NextDataWrapper(
     @SerializedName("props") val props: NextProps? = null
 )
 
+@Keep
 data class NextProps(
     @SerializedName("pageProps") val pageProps: NextPageProps? = null
 )
 
+@Keep
 data class NextPageProps(
     @SerializedName("resp") val resp: NextResp? = null
 )
 
+@Keep
 data class NextResp(
     @SerializedName("data") val data: NextDataContent? = null
 )
 
+@Keep
 data class NextDataContent(
     @SerializedName("content") val content: NextDetailContent? = null
 )
 
+@Keep
 data class NextDetailContent(
     @SerializedName("title") val title: String? = null,
     @SerializedName("description") val description: String? = null,
@@ -52,10 +59,12 @@ data class NextDetailContent(
     @SerializedName("bodys") val bodys: List<NextBodyBlock>? = null
 )
 
+@Keep
 data class NextPublisher(
     @SerializedName("name") val name: String? = null
 )
 
+@Keep
 data class NextBodyBlock(
     @SerializedName("type") val type: String? = null,
     @SerializedName("subType") val subType: String? = null,

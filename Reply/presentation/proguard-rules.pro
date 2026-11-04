@@ -11,6 +11,7 @@
 -keep class com.app.tintuccongnghe.domain.models.** { *; }
 -keep class com.app.tintuccongnghe.data.models.** { *; }
 -keep class com.app.tintuccongnghe.data.local.entities.** { *; }
+-keep class com.app.tintuccongnghe.data.repository.Next** { *; }
 -keep class com.app.tintuccongnghe.base.** { *; }
 
 # Keep annotations for Gson
