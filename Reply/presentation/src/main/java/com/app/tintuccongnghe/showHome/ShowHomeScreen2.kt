@@ -332,15 +332,23 @@ fun ShowHomeScreen2(
                         }
                         val pagerState = rememberPagerState(pageCount = { tabs.size }, initialPage = initialPageIndex)
 
+                        val selectedTabIndex = if (tabs.isEmpty()) 0 else pagerState.currentPage.coerceIn(0, tabs.size - 1)
+
+                        LaunchedEffect(tabs.size) {
+                            if (tabs.isNotEmpty() && pagerState.currentPage >= tabs.size) {
+                                pagerState.scrollToPage(tabs.size - 1)
+                            }
+                        }
+
                         Column {
                             // Tab Row implementation - Use pagerState.currentPage directly to avoid feedback loops
                             PrimaryScrollableTabRow(
-                                selectedTabIndex = pagerState.currentPage,
+                                selectedTabIndex = selectedTabIndex,
                                 edgePadding = pagePadding
                             ) {
                                 tabs.forEachIndexed { index, tab ->
                                     Tab(
-                                        selected = pagerState.currentPage == index,
+                                        selected = selectedTabIndex == index,
                                         onClick = {
                                             scope.launch { pagerState.animateScrollToPage(index) }
                                         },
@@ -354,7 +362,7 @@ fun ShowHomeScreen2(
                                 state = pagerState,
                                 modifier = Modifier.fillMaxSize()
                             ) { page ->
-                                tabs[page].screen()
+                                tabs.getOrNull(page)?.screen()
                             }
                         }
 

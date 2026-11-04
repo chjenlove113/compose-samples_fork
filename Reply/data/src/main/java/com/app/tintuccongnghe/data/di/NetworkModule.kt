@@ -4,11 +4,15 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import com.app.tintuccongnghe.data.api.AppUserSiteService
 import com.app.tintuccongnghe.data.api.AuthService
+import com.app.tintuccongnghe.data.api.HtmlScrapingService
 import com.app.tintuccongnghe.data.api.NewsDetailService
 import com.app.tintuccongnghe.data.api.NewsTagService
 import com.app.tintuccongnghe.data.api.ShowHomeService
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
 import com.app.tintuccongnghe.data.networks.HeaderInterceptor
 import com.app.tintuccongnghe.data.networks.NetworkConnectionInterceptor
+import com.app.tintuccongnghe.data.networks.UserAgentInterceptor
 import com.app.tintuccongnghe.domain.util.DefaultDispatcherProvider
 import com.app.tintuccongnghe.domain.util.DispatcherProvider
 import com.app.tintuccongnghe.utils.AppContants
@@ -52,8 +56,20 @@ class NetworkModule {
             HttpLoggingInterceptor.Level.BASIC
         }
 
+        val cookieStore = java.util.Collections.synchronizedMap(mutableMapOf<String, List<okhttp3.Cookie>>())
+        val memoryCookieJar = object : okhttp3.CookieJar {
+            override fun saveFromResponse(url: okhttp3.HttpUrl, cookies: List<okhttp3.Cookie>) {
+                cookieStore[url.host] = cookies
+            }
+            override fun loadForRequest(url: okhttp3.HttpUrl): List<okhttp3.Cookie> {
+                return cookieStore[url.host] ?: emptyList()
+            }
+        }
+
         return OkHttpClient.Builder()
+            .cookieJar(memoryCookieJar)
             .addInterceptor(HeaderInterceptor())
+            .addInterceptor(UserAgentInterceptor())
             .addInterceptor(NetworkConnectionInterceptor(context))
             .addInterceptor(loggingInterceptor)
             .writeTimeout(60, TimeUnit.SECONDS)
@@ -119,5 +135,23 @@ class NetworkModule {
     @Singleton
     fun provideAppUserSiteService(retrofit: Retrofit): AppUserSiteService {
         return retrofit.create(AppUserSiteService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideHtmlScrapingService(retrofit: Retrofit): HtmlScrapingService {
+        return retrofit.create(HtmlScrapingService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseFirestore(): FirebaseFirestore {
+        return FirebaseFirestore.getInstance()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseAuth(): com.google.firebase.auth.FirebaseAuth {
+        return com.google.firebase.auth.FirebaseAuth.getInstance()
     }
 }

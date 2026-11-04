@@ -4,23 +4,27 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.app.tintuccongnghe.data.local.converter.Converters
-import com.app.tintuccongnghe.data.local.dao.NewsDao
-import com.app.tintuccongnghe.data.local.dao.NewsSiteDao
-import com.app.tintuccongnghe.data.local.dao.NewsTagDao
-import com.app.tintuccongnghe.data.local.dao.AuthDao
-import com.app.tintuccongnghe.data.local.dao.AppUserSiteDao
-import com.app.tintuccongnghe.data.local.dao.RssItemDao
-import com.app.tintuccongnghe.data.local.entities.AuthEntity
-import com.app.tintuccongnghe.data.local.entities.News
-import com.app.tintuccongnghe.data.local.entities.News_Site
-import com.app.tintuccongnghe.data.local.entities.News_Tag
-import com.app.tintuccongnghe.data.local.entities.SavedTagSlug
-import com.app.tintuccongnghe.data.local.entities.AppUserSiteEntity
-import com.app.tintuccongnghe.data.local.entities.RssItemEntity
-import com.app.tintuccongnghe.data.local.entities.NotificationEntity
-import com.app.tintuccongnghe.data.local.dao.NotificationDao
+import com.app.tintuccongnghe.data.local.dao.*
+import com.app.tintuccongnghe.data.local.entities.*
 
-@Database(entities = [News_Tag::class, News_Site::class, News::class, AuthEntity::class, SavedTagSlug::class, AppUserSiteEntity::class, RssItemEntity::class, NotificationEntity::class], version = 15)
+@Database(
+    entities = [
+        News_Tag::class,
+        News_Site::class,
+        News::class,
+        AuthEntity::class,
+        SavedTagSlug::class,
+        AppUserSiteEntity::class,
+        RssItemEntity::class,
+        NotificationEntity::class,
+        ScrapedNewsEntity::class,
+        NewsDetailEntity::class,
+        NewsWebsiteEntity::class,
+        NewsCategoryEntity::class,
+        DetailRuleEntity::class
+    ],
+    version = 28
+)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun newsTagDao(): NewsTagDao
@@ -30,4 +34,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appUserSiteDao(): AppUserSiteDao
     abstract fun rssItemDao(): RssItemDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun scrapedNewsDao(): ScrapedNewsDao
+    abstract fun newsDetailDao(): NewsDetailDao
+    abstract fun newsWebsiteDao(): NewsWebsiteDao
+    abstract fun newsCategoryDao(): NewsCategoryDao
+    abstract fun detailRuleDao(): DetailRuleDao
 }

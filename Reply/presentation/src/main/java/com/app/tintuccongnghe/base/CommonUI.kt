@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import androidx.window.layout.FoldingFeature
 import coil3.compose.AsyncImage
-import com.google.zxing.common.StringUtils
 import com.app.tintuccongnghe.domain.models.News
 import com.app.tintuccongnghe.domain.util.isValidUrl
 import com.app.tintuccongnghe.presentation.R

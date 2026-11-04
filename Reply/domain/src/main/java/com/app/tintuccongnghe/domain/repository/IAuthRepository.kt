@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.Flow
 interface IAuthRepository {
     suspend fun register(request: RegisterRequest): RegisterResponse
     suspend fun login(request: LoginRequest): LoginResponse
+    suspend fun signInWithGoogle(idToken: String): LoginResponse
     fun getAuthInfo(): Flow<LoginResponse?>
     suspend fun logout()
     suspend fun deleteAccount(): DeleteAccountResponse
 }
-

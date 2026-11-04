@@ -1,7 +1,7 @@
 package com.app.tintuccongnghe.data.di
 
-import com.app.tintuccongnghe.data.api.AppUserSiteService
-import com.app.tintuccongnghe.data.api.AuthService
+import android.content.Context
+import com.app.tintuccongnghe.data.api.HtmlScrapingService
 import com.app.tintuccongnghe.data.api.NewsDetailService
 import com.app.tintuccongnghe.data.api.NewsSiteService
 import com.app.tintuccongnghe.data.api.NewsTagService
@@ -13,6 +13,7 @@ import com.app.tintuccongnghe.data.repository.AuthRepositoryImpl
 import com.app.tintuccongnghe.data.repository.NewsDetailRepositoryImpl
 import com.app.tintuccongnghe.data.repository.NewsSiteRepository
 import com.app.tintuccongnghe.data.repository.NewsTagRepository
+import com.app.tintuccongnghe.data.repository.NewsScrapingRepositoryImpl
 import com.app.tintuccongnghe.data.repository.ShowHomeRepository
 import com.app.tintuccongnghe.data.repository.SettingsRepositoryImpl
 import com.app.tintuccongnghe.data.repository.RssRepositoryImpl
@@ -21,27 +22,20 @@ import com.app.tintuccongnghe.domain.repository.IAuthRepository
 import com.app.tintuccongnghe.domain.repository.INewsDetailRepository
 import com.app.tintuccongnghe.domain.repository.INewsSiteRepository
 import com.app.tintuccongnghe.domain.repository.INewsTagRepository
+import com.app.tintuccongnghe.domain.repository.INewsScrapingRepository
 import com.app.tintuccongnghe.domain.repository.IRssRepository
 import com.app.tintuccongnghe.domain.repository.ISettingsRepository
 import com.app.tintuccongnghe.domain.repository.IShowHomeRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
 import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Singleton
 
 @Module
-@InstallIn(SingletonComponent::class)
-class RepositoryModule {
-
-    @Provides
-    @Singleton
-    fun provideNewsSiteRepository(
-        newsSiteService: NewsSiteService,
-        appDbService: IAppDbService
-    ): INewsSiteRepository {
-        return NewsSiteRepository(newsSiteService, appDbService)
-    }
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+object RepositoryModule {
 
     @Provides
     @Singleton
@@ -54,23 +48,36 @@ class RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideShowHomeRepository(showHomeService: ShowHomeService): IShowHomeRepository {
+    fun provideNewsSiteRepository(
+        newsSiteService: NewsSiteService,
+        appDbService: IAppDbService
+    ): INewsSiteRepository {
+        return NewsSiteRepository(newsSiteService, appDbService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideShowHomeRepository(
+        showHomeService: ShowHomeService
+    ): IShowHomeRepository {
         return ShowHomeRepository(showHomeService)
     }
 
     @Provides
     @Singleton
-    fun provideNewsDetailRepository(newsDetailService: NewsDetailService): INewsDetailRepository {
+    fun provideNewsDetailRepository(
+        newsDetailService: NewsDetailService
+    ): INewsDetailRepository {
         return NewsDetailRepositoryImpl(newsDetailService)
     }
 
     @Provides
     @Singleton
     fun provideAuthRepository(
-        authService: AuthService,
+        firebaseAuth: FirebaseAuth,
         appDatabase: AppDatabase
     ): IAuthRepository {
-        return AuthRepositoryImpl(authService, appDatabase)
+        return AuthRepositoryImpl(firebaseAuth, appDatabase)
     }
 
     @Provides
@@ -82,10 +89,11 @@ class RepositoryModule {
     @Provides
     @Singleton
     fun provideAppUserSiteRepository(
-        appUserSiteService: AppUserSiteService,
-        appDatabase: AppDatabase
+        firestore: FirebaseFirestore,
+        appDatabase: AppDatabase,
+        @ApplicationContext context: Context
     ): IAppUserSiteRepository {
-        return AppUserSiteRepositoryImpl(appUserSiteService, appDatabase)
+        return AppUserSiteRepositoryImpl(firestore, appDatabase, context)
     }
 
     @Provides
@@ -98,5 +106,16 @@ class RepositoryModule {
             appDatabase,
             okHttpClient
         )
+    }
+
+    @Provides
+    @Singleton
+    fun provideNewsScrapingRepository(
+        htmlScrapingService: HtmlScrapingService,
+        firestore: FirebaseFirestore,
+        appDatabase: AppDatabase,
+        @ApplicationContext context: Context
+    ): INewsScrapingRepository {
+        return NewsScrapingRepositoryImpl(htmlScrapingService, firestore, appDatabase, context)
     }
 }

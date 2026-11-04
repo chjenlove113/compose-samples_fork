@@ -1,9 +1,14 @@
 package com.app.tintuccongnghe.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import com.app.tintuccongnghe.domain.models.AppUserSite
 
-@Entity(tableName = "app_user_sites", primaryKeys = ["Id", "GROUP", "Kind"])
+@Entity(
+    tableName = "app_user_sites",
+    primaryKeys = ["Id"],
+    indices = [Index(value = ["Id", "GROUP", "Kind"], unique = true)]
+)
 data class AppUserSiteEntity(
     val Id: Int,
     val Key: String,
@@ -22,7 +27,8 @@ data class AppUserSiteEntity(
     val AppIdEncrypt: String,
     val lastRefreshTime: Long? = null,
     val nextRefreshTime: Long? = null,
-    val itemCount: Int = 0
+    val itemCount: Int = 0,
+    val isSynced: Boolean = true
 )
 
 fun AppUserSiteEntity.toDomain() = AppUserSite(
@@ -43,7 +49,8 @@ fun AppUserSiteEntity.toDomain() = AppUserSite(
     AppIdEncrypt = AppIdEncrypt,
     lastRefreshTime = lastRefreshTime,
     nextRefreshTime = nextRefreshTime,
-    itemCount = itemCount
+    itemCount = itemCount,
+    isSynced = isSynced
 )
 
 fun AppUserSite.toEntity() = AppUserSiteEntity(
@@ -64,5 +71,6 @@ fun AppUserSite.toEntity() = AppUserSiteEntity(
     AppIdEncrypt = AppIdEncrypt,
     lastRefreshTime = lastRefreshTime,
     nextRefreshTime = nextRefreshTime,
-    itemCount = itemCount
+    itemCount = itemCount,
+    isSynced = isSynced
 )

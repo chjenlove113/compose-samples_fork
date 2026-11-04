@@ -7,7 +7,7 @@ import javax.inject.Inject
 class RefreshAppUserSiteListUseCase @Inject constructor(
     private val repository: IAppUserSiteRepository
 ) {
-    suspend operator fun invoke(request: AppUserSiteRequest) {
-        repository.refreshAppUserSiteList(request)
+    suspend operator fun invoke(request: AppUserSiteRequest, force: Boolean = false) {
+        repository.refreshAppUserSiteList(request, force)
     }
 }

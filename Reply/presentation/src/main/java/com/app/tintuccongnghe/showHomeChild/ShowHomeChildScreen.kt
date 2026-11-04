@@ -227,11 +227,19 @@ fun DynamicTabLayoutScreen(
         val pagerState = rememberPagerState(pageCount = { tabDefinitions.size }, initialPage = initialPageIndex)
         val scope = rememberCoroutineScope()
 
+        val selectedTabIndex = if (tabDefinitions.isEmpty()) 0 else pagerState.currentPage.coerceIn(0, tabDefinitions.size - 1)
+
+        LaunchedEffect(tabDefinitions.size) {
+            if (tabDefinitions.isNotEmpty() && pagerState.currentPage >= tabDefinitions.size) {
+                pagerState.scrollToPage(tabDefinitions.size - 1)
+            }
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
-            PrimaryScrollableTabRow(selectedTabIndex = pagerState.currentPage) {
+            PrimaryScrollableTabRow(selectedTabIndex = selectedTabIndex) {
                 tabDefinitions.forEachIndexed { index, tab ->
                     Tab(
-                        selected = pagerState.currentPage == index,
+                        selected = selectedTabIndex == index,
                         onClick = {
                             scope.launch {
                                 pagerState.animateScrollToPage(index)

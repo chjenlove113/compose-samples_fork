@@ -4,8 +4,6 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.google.android.gms.ads.MobileAds
-import com.facebook.FacebookSdk
-import com.facebook.appevents.AppEventsLogger
 import com.app.tintuccongnghe.work.WorkScheduler
 import com.app.tintuccongnghe.work.Work2Scheduler
 import com.app.tintuccongnghe.domain.usecases.GetDailyRefreshSettingsUseCase
@@ -40,8 +38,6 @@ class NewsApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        FacebookSdk.sdkInitialize(applicationContext)
-        AppEventsLogger.activateApp(this)
         MobileAds.initialize(this) {}
         
         CoroutineScope(Dispatchers.Main).launch {

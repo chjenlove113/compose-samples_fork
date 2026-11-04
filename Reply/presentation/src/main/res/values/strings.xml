@@ -26,9 +26,6 @@
     <string name="news_tag_empty_news_title">No articles found</string>
     <string name="news_tag_empty_news_message">Try another topic or check again later.</string>
 
-    <string name="facebook_app_id">1217019803774262</string>
-    <string name="facebook_client_token">4b3b0bb3503ded6150cb88f6c301365f</string>
-
     <string name="user_sites">User Sites</string>
     <string name="user_categories">User Categories</string>
     <string name="add_category">Add Category</string>
@@ -78,4 +75,6 @@
     <string name="rss_sync_failed">RSS sync failed</string>
     <string name="rss_sync_failed_description">Could not refresh your RSS feeds</string>
     <string name="press_back_again_to_exit">Press back again to exit</string>
+    <string name="default_web_client_id" translatable="false">484626410238-begct4g6fe7drn0l60s8rrrjmptuqrho.apps.googleusercontent.com</string>
+
 </resources>

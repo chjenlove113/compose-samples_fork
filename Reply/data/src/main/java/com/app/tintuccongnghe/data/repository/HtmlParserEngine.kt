@@ -1,0 +1,238 @@
+package com.app.tintuccongnghe.data.repository
+
+import android.text.Html
+import com.app.tintuccongnghe.domain.models.EnumNews
+import com.app.tintuccongnghe.domain.models.NewsItem
+import com.app.tintuccongnghe.domain.models.ParserRule
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+
+fun String.decodeHtml(): String {
+    return try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            Html.fromHtml(this, Html.FROM_HTML_MODE_LEGACY).toString()
+        } else {
+            @Suppress("DEPRECATION")
+            Html.fromHtml(this).toString()
+        }
+    } catch (e: Exception) {
+        FirebaseCrashlytics.getInstance().recordException(e)
+        this
+    }
+}
+
+fun Long.formatTimestamp(): String {
+    return try {
+        val millis = if (this < 10000000000L) this * 1000 else this
+        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+        sdf.format(java.util.Date(millis))
+    } catch (e: Exception) {
+        FirebaseCrashlytics.getInstance().recordException(e)
+        ""
+    }
+}
+
+object HtmlParserEngine {
+
+    fun parse(html: String, rules: List<ParserRule>, websiteId: String = "", categoryId: String = ""): List<NewsItem> {
+        val crashlytics = FirebaseCrashlytics.getInstance()
+        if (websiteId.isNotEmpty()) crashlytics.setCustomKey("website_id", websiteId)
+        if (categoryId.isNotEmpty()) crashlytics.setCustomKey("category_id", categoryId)
+
+        val sortedRules = rules.sortedBy { it.stt }
+        
+        // Find all CONTAINER rules (enumNews == 0) sorted by stt
+        val containerRules = sortedRules.filter { it.enumNews == EnumNews.CONTAINER.value }
+
+        var currentHtmlChunks: String = html
+
+        // Iterate through all CONTAINER rules sequentially by stt
+        for (containerRule in containerRules) {
+            val containerRegex = try {
+                Regex(containerRule.strRegex, RegexOption.DOT_MATCHES_ALL)
+            } catch (e: Exception) {
+                crashlytics.setCustomKey("failed_regex", containerRule.strRegex)
+                crashlytics.setCustomKey("rule_name", containerRule.strRegexName)
+                crashlytics.setCustomKey("parsing_stage", "container_compile")
+                crashlytics.recordException(e)
+                continue
+            }
+
+            if (containerRule.isReplace) {
+                try {
+                    currentHtmlChunks = containerRegex.replace(currentHtmlChunks, containerRule.textReplace)
+                } catch (e: Exception) {
+                    crashlytics.setCustomKey("failed_regex", containerRule.strRegex)
+                    crashlytics.setCustomKey("rule_name", containerRule.strRegexName)
+                    crashlytics.setCustomKey("parsing_stage", "container_replace")
+                    crashlytics.recordException(e)
+                }
+            } else if (containerRule.isMatches) {
+                try {
+                    val matches = containerRegex.findAll(currentHtmlChunks).toList()
+                    val pos = containerRule.isMatchesPos
+                    val block = if (pos >= 0 && pos < matches.size) {
+                        val m = matches[pos]
+                        val groups = m.groups
+                        val gPos = containerRule.groupPos
+                        val raw = if (gPos >= 0 && gPos < groups.size) groups[gPos]?.value ?: m.value else m.value
+                        containerRule.strPrefix + raw + containerRule.strSufix
+                    } else ""
+                    currentHtmlChunks = block
+                } catch (e: Exception) {
+                    crashlytics.setCustomKey("failed_regex", containerRule.strRegex)
+                    crashlytics.setCustomKey("rule_name", containerRule.strRegexName)
+                    crashlytics.setCustomKey("parsing_stage", "container_matches")
+                    crashlytics.recordException(e)
+                }
+            } else {
+                try {
+                    val match = containerRegex.find(currentHtmlChunks)
+                    if (match != null) {
+                        val groups = match.groups
+                        val pos = containerRule.groupPos
+                        val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                        currentHtmlChunks = containerRule.strPrefix + raw + containerRule.strSufix
+                    } else {
+                        currentHtmlChunks = ""
+                    }
+                } catch (e: Exception) {
+                    crashlytics.setCustomKey("failed_regex", containerRule.strRegex)
+                    crashlytics.setCustomKey("rule_name", containerRule.strRegexName)
+                    crashlytics.setCustomKey("parsing_stage", "container_find")
+                    crashlytics.recordException(e)
+                }
+            }
+        }
+
+        // Find MATCH_LIST rules
+        val isListRules = sortedRules.filter { it.enumNews == EnumNews.MATCH_LIST.value }
+
+        val itemHtmlList = if (isListRules.isNotEmpty()) {
+            val listRule = isListRules.first()
+            try {
+                val listRegex = Regex(listRule.strRegex, RegexOption.DOT_MATCHES_ALL)
+                listRegex.findAll(currentHtmlChunks).map { match ->
+                    val groups = match.groups
+                    val pos = listRule.groupPos
+                    val raw = if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                    listRule.strPrefix + raw + listRule.strSufix
+                }.toList()
+            } catch (e: Exception) {
+                crashlytics.setCustomKey("failed_regex", listRule.strRegex)
+                crashlytics.setCustomKey("rule_name", listRule.strRegexName)
+                crashlytics.setCustomKey("parsing_stage", "match_list")
+                crashlytics.recordException(e)
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+
+        val actionRules = sortedRules.filter { it.enumNews != EnumNews.CONTAINER.value && it.enumNews != EnumNews.MATCH_LIST.value }
+        val newsItems = mutableListOf<NewsItem>()
+
+        // Group action rules by EnumNews so multiple sequential regex steps can be run per target field
+        val groupedActionRules = actionRules.groupBy { it.enumNews }
+
+        // Process each itemHtml
+        for (itemHtml in itemHtmlList) {
+            var title = ""
+            var image = ""
+            var link = ""
+            var shortDes = ""
+            var date = ""
+            var subCat = ""
+            var isVideo = false
+            var timestamp = 0L
+
+            for ((enumKey, rulesList) in groupedActionRules) {
+                val sortedFieldRules = rulesList.sortedBy { it.stt }
+                var fieldWorkingText = itemHtml
+
+                for (rule in sortedFieldRules) {
+                    if (rule.isReplace) {
+                        try {
+                            fieldWorkingText = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL).replace(fieldWorkingText, rule.textReplace)
+                        } catch (e: Exception) {
+                            crashlytics.setCustomKey("failed_regex", rule.strRegex)
+                            crashlytics.setCustomKey("rule_name", rule.strRegexName)
+                            crashlytics.setCustomKey("parsing_stage", "action_replace")
+                            crashlytics.recordException(e)
+                        }
+                    } else {
+                        try {
+                            val regex = Regex(rule.strRegex, RegexOption.DOT_MATCHES_ALL)
+                            val extracted = if (rule.isMatches) {
+                                val matches = regex.findAll(fieldWorkingText).toList()
+                                val match = matches.getOrNull(rule.isMatchesPos)
+                                if (match != null) {
+                                    val groups = match.groups
+                                    val pos = rule.groupPos
+                                    if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                                } else ""
+                            } else {
+                                val match = regex.find(fieldWorkingText)
+                                if (match != null) {
+                                    val groups = match.groups
+                                    val pos = rule.groupPos
+                                    if (pos >= 0 && pos < groups.size) groups[pos]?.value ?: match.value else match.value
+                                } else ""
+                            }
+
+                            if (extracted.isNotEmpty()) {
+                                fieldWorkingText = rule.strPrefix + extracted + rule.strSufix
+                            }
+                        } catch (e: Exception) {
+                            fieldWorkingText = ""
+                            crashlytics.setCustomKey("failed_regex", rule.strRegex)
+                            crashlytics.setCustomKey("rule_name", rule.strRegexName)
+                            crashlytics.setCustomKey("parsing_stage", "action_extract")
+                            crashlytics.recordException(e)
+                        }
+                    }
+                }
+
+                val finalVal = fieldWorkingText.trim().decodeHtml()
+                if (finalVal.isNotEmpty()) {
+                    when (EnumNews.fromValue(enumKey)) {
+                        EnumNews.TITLE -> title = finalVal
+                        EnumNews.IMAGE -> image = fieldWorkingText.trim()
+                        EnumNews.LINK -> link = fieldWorkingText.trim().decodeHtml()
+                        EnumNews.SHORT_DES -> shortDes = finalVal
+                        EnumNews.DATE -> date = finalVal
+                        EnumNews.SUB_CAT -> subCat = finalVal
+                        EnumNews.IS_VIDEO -> isVideo = finalVal.lowercase() in listOf("true", "1", "yes")
+                        EnumNews.TIMESTAMP -> {
+                            timestamp = finalVal.toLongOrNull() ?: 0L
+                            if (timestamp > 0L && date.isEmpty()) {
+                                date = timestamp.formatTimestamp()
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+            }
+
+            if (date.isEmpty() && timestamp > 0L) {
+                date = timestamp.formatTimestamp()
+            }
+
+            if (title.isNotEmpty() || link.isNotEmpty()) {
+                newsItems.add(
+                    NewsItem(
+                        title = title,
+                        image = image,
+                        link = link,
+                        shortDes = shortDes,
+                        date = date,
+                        subCat = subCat,
+                        isVideo = isVideo,
+                        timestamp = timestamp
+                    )
+                )
+            }
+        }
+
+        return newsItems
+    }
+}

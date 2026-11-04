@@ -27,6 +27,9 @@ interface RssItemDao {
     @Query("DELETE FROM rss_items WHERE siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind")
     suspend fun deleteItemsForSite(siteId: Int, siteGroup: String, siteKind: String)
 
+    @Query("SELECT COUNT(*) FROM rss_items WHERE siteId = :siteId AND siteGroup = :siteGroup AND siteKind = :siteKind")
+    suspend fun getItemCountForSite(siteId: Int, siteGroup: String, siteKind: String): Int
+
     @Query("SELECT * FROM rss_items WHERE isFavorite = 1 ORDER BY pubDate DESC")
     fun getFavoriteItems(): Flow<List<RssItemEntity>>
 

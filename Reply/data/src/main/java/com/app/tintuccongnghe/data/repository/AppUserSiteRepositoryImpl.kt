@@ -1,6 +1,6 @@
 package com.app.tintuccongnghe.data.repository
 
-import com.app.tintuccongnghe.data.api.AppUserSiteService
+import android.content.Context
 import com.app.tintuccongnghe.data.local.AppDatabase
 import com.app.tintuccongnghe.data.local.entities.toDomain
 import com.app.tintuccongnghe.data.local.entities.toEntity
@@ -10,65 +10,196 @@ import com.app.tintuccongnghe.domain.models.AppUserSiteCreateRequest
 import com.app.tintuccongnghe.domain.models.AppUserSiteCreateResponse
 import com.app.tintuccongnghe.domain.models.AppUserSiteRequest
 import com.app.tintuccongnghe.domain.repository.IAppUserSiteRepository
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class AppUserSiteRepositoryImpl @Inject constructor(
-    private val service: AppUserSiteService,
-    private val database: AppDatabase
+    private val firestore: FirebaseFirestore,
+    private val database: AppDatabase,
+    @param:ApplicationContext private val context: Context
 ) : IAppUserSiteRepository {
 
     private val dao = database.appUserSiteDao()
 
     override fun getAppUserSiteList(request: AppUserSiteRequest): Flow<List<AppUserSite>> {
-        return dao.getAppUserSites(request.IdentityId, request.AppIdEncrypt).map { entities ->
+        return dao.getAppUserSitesWithCommon(request.IdentityId, request.AppIdEncrypt).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
-    override suspend fun refreshAppUserSiteList(request: AppUserSiteRequest) {
-        val remoteList = service.getAppUserSiteList(request)
-        val localList = dao.getAppUserSitesList(request.IdentityId, request.AppIdEncrypt)
-        
-        val remoteKeys = remoteList.map { Triple(it.Id, it.GROUP, it.Kind) }.toSet()
-        
-        // 1. Delete local items that are no longer on the server
-        localList.forEach { local ->
-            if (Triple(local.Id, local.GROUP, local.Kind) !in remoteKeys) {
-                dao.delete(local)
-            }
+    override suspend fun refreshAppUserSiteList(request: AppUserSiteRequest, force: Boolean) {
+        val prefs = context.getSharedPreferences("app_user_site_prefs", Context.MODE_PRIVATE)
+        val lastFetchTime = prefs.getLong("last_firebase_fetch_${request.IdentityId}", 0L)
+        val currentTime = System.currentTimeMillis()
+        val oneDayMillis = 24 * 60 * 60 * 1000L
+
+        // Condition: Fetch from Firebase at most once per day (unless force == true or local_user)
+        if (!force && currentTime - lastFetchTime < oneDayMillis && request.IdentityId != "local_user") {
+            return
         }
-        
-        // 2. Sync Server data to Local (Insert or Update)
-        remoteList.forEach { remote ->
-            // Ensure request identifiers are set on the remote objects before conversion
-            remote.IdentityId = request.IdentityId
-            remote.AppIdEncrypt = request.AppIdEncrypt
-            
-            val existing = localList.find { 
-                it.Id == remote.Id && it.GROUP == remote.GROUP && it.Kind == remote.Kind 
+
+        try {
+            // 1. PUSH: Upload unsynced local items to Firestore server ONLY if logged in
+            if (request.IdentityId != "local_user") {
+                val localListForPush = dao.getAllSites()
+                val unsyncedItems = localListForPush.filter { !it.isSynced && it.IdentityId == request.IdentityId }
+
+                unsyncedItems.forEach { local ->
+                    try {
+                        val querySnapshot = firestore.collection("user_sites")
+                            .whereEqualTo("IdentityId", local.IdentityId)
+                            .whereEqualTo("Id", local.Id)
+                            .get()
+                            .await()
+
+                        val siteMap = mapOf(
+                            "Id" to local.Id,
+                            "Key" to local.Key,
+                            "Name" to local.Name,
+                            "TextColor" to local.TextColor,
+                            "BackgroundColor" to local.BackgroundColor,
+                            "Url" to local.Url,
+                            "IsActive" to local.IsActive,
+                            "Kind" to local.Kind,
+                            "GROUP" to local.GROUP,
+                            "Stt" to local.Stt,
+                            "LimitEdit" to local.LimitEdit,
+                            "AllowEdit" to local.AllowEdit,
+                            "OtherCanSee" to local.OtherCanSee,
+                            "IdentityId" to local.IdentityId,
+                            "AppIdEncrypt" to local.AppIdEncrypt
+                        )
+
+                        if (!querySnapshot.isEmpty) {
+                            for (doc in querySnapshot.documents) {
+                                doc.reference.set(siteMap, SetOptions.merge()).await()
+                            }
+                        } else {
+                            firestore.collection("user_sites").add(siteMap).await()
+                        }
+
+                        dao.update(local.copy(isSynced = true))
+                    } catch (_: Exception) {}
+                }
             }
-            
-            if (existing != null) {
-                // Update existing item, preserving local metadata like sync times and item counts
-                val updatedEntity = remote.toEntity().copy(
-                    lastRefreshTime = existing.lastRefreshTime,
-                    nextRefreshTime = existing.nextRefreshTime,
-                    itemCount = existing.itemCount
-                )
-                dao.update(updatedEntity)
-            } else {
-                // New item found on server, insert into local database
-                dao.insert(remote.toEntity())
+
+            // 2. PULL: Fetch remote items from Firestore (always fetch "common", and user specific if logged in)
+            val remoteItems = mutableListOf<AppUserSite>()
+
+            try {
+                val commonSnapshot = firestore.collection("user_sites")
+                    .whereEqualTo("IdentityId", "common")
+                    .get()
+                    .await()
+
+                val commonList = commonSnapshot.documents.mapNotNull { doc ->
+                    try {
+                        AppUserSite(
+                            Id = (doc.getLong("Id") ?: doc.getLong("id") ?: 0).toInt(),
+                            Key = doc.getString("Key") ?: doc.getString("key") ?: "",
+                            Name = doc.getString("Name") ?: doc.getString("name") ?: "",
+                            TextColor = doc.getString("TextColor") ?: doc.getString("textColor"),
+                            BackgroundColor = doc.getString("BackgroundColor") ?: doc.getString("backgroundColor"),
+                            Url = doc.getString("Url") ?: doc.getString("url") ?: "",
+                            IsActive = doc.getBoolean("IsActive") ?: doc.getBoolean("isActive") ?: true,
+                            Kind = doc.getString("Kind") ?: doc.getString("kind") ?: "",
+                            GROUP = doc.getString("GROUP") ?: doc.getString("group") ?: "",
+                            Stt = (doc.getLong("Stt") ?: doc.getLong("stt") ?: 0).toInt(),
+                            LimitEdit = doc.getBoolean("LimitEdit") ?: doc.getBoolean("limitEdit") ?: false,
+                            AllowEdit = doc.getBoolean("AllowEdit") ?: doc.getBoolean("allowEdit") ?: true,
+                            OtherCanSee = doc.getBoolean("OtherCanSee") ?: doc.getBoolean("otherCanSee") ?: false,
+                            IdentityId = "common",
+                            AppIdEncrypt = doc.getString("AppIdEncrypt") ?: doc.getString("appIdEncrypt") ?: request.AppIdEncrypt,
+                            isSynced = true
+                        )
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                remoteItems.addAll(commonList)
+            } catch (_: Exception) {}
+
+            if (request.IdentityId != "local_user") {
+                try {
+                    val userSnapshot = firestore.collection("user_sites")
+                        .whereEqualTo("IdentityId", request.IdentityId)
+                        .get()
+                        .await()
+
+                    val userList = userSnapshot.documents.mapNotNull { doc ->
+                        try {
+                            AppUserSite(
+                                Id = (doc.getLong("Id") ?: doc.getLong("id") ?: 0).toInt(),
+                                Key = doc.getString("Key") ?: doc.getString("key") ?: "",
+                                Name = doc.getString("Name") ?: doc.getString("name") ?: "",
+                                TextColor = doc.getString("TextColor") ?: doc.getString("textColor"),
+                                BackgroundColor = doc.getString("BackgroundColor") ?: doc.getString("backgroundColor"),
+                                Url = doc.getString("Url") ?: doc.getString("url") ?: "",
+                                IsActive = doc.getBoolean("IsActive") ?: doc.getBoolean("isActive") ?: true,
+                                Kind = doc.getString("Kind") ?: doc.getString("kind") ?: "",
+                                GROUP = doc.getString("GROUP") ?: doc.getString("group") ?: "",
+                                Stt = (doc.getLong("Stt") ?: doc.getLong("stt") ?: 0).toInt(),
+                                LimitEdit = doc.getBoolean("LimitEdit") ?: doc.getBoolean("limitEdit") ?: false,
+                                AllowEdit = doc.getBoolean("AllowEdit") ?: doc.getBoolean("allowEdit") ?: true,
+                                OtherCanSee = doc.getBoolean("OtherCanSee") ?: doc.getBoolean("otherCanSee") ?: false,
+                                IdentityId = request.IdentityId,
+                                AppIdEncrypt = doc.getString("AppIdEncrypt") ?: doc.getString("appIdEncrypt") ?: request.AppIdEncrypt,
+                                isSynced = true
+                            )
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    remoteItems.addAll(userList)
+                } catch (_: Exception) {}
             }
+
+            val localList = dao.getAllSites()
+
+            // 3. Compare remote items with local Room database and update/insert
+            remoteItems.forEach { remote ->
+                val existingLocal = if (request.IdentityId != "local_user" && remote.IdentityId == request.IdentityId) {
+                    localList.find { it.IdentityId == request.IdentityId && it.Key == remote.Key }
+                } else {
+                    localList.find { it.Key == remote.Key }
+                }
+
+                if (existingLocal == null) {
+                    val targetIdentityId = if (remote.IdentityId == request.IdentityId) request.IdentityId else "common"
+                    dao.insert(remote.toEntity().copy(IdentityId = targetIdentityId))
+                } else {
+                    if (existingLocal.isSynced) {
+                        val updatedEntity = remote.toEntity().copy(
+                            IdentityId = existingLocal.IdentityId,
+                            GROUP = existingLocal.GROUP,
+                            lastRefreshTime = existingLocal.lastRefreshTime,
+                            nextRefreshTime = existingLocal.nextRefreshTime,
+                            itemCount = existingLocal.itemCount,
+                            isSynced = true, IsActive = existingLocal.IsActive
+
+                        )
+                        dao.update(updatedEntity)
+                    }
+                }
+            }
+
+            // Save last fetch timestamp
+            prefs.edit().putLong("last_firebase_fetch_${request.IdentityId}", currentTime).apply()
+        } catch (e: Exception) {
+            // Offline fallback: UI will gracefully display data from Room database
         }
     }
 
     override suspend fun updateAppUserSite(site: AppUserSite): Boolean {
         return try {
-            service.updateAppUserSite(site)
-            dao.insert(site.toEntity())
+            val isLoggedIn = site.IdentityId != "local_user"
+            val entity = site.toEntity().copy(isSynced = !isLoggedIn)
+            dao.insert(entity)
             true
         } catch (e: Exception) {
             false
@@ -76,17 +207,74 @@ class AppUserSiteRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createOrUpdateAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse {
-        return service.createOrUpdateAppUserSite(request)
+        return try {
+            val siteId = if (request.Id == 0) (System.currentTimeMillis() % Int.MAX_VALUE).toInt() else request.Id
+            val isLoggedIn = request.IdentityId != "local_user"
+
+            val site = AppUserSite(
+                Id = siteId,
+                Key = request.Name,
+                Name = request.Name,
+                TextColor = null,
+                BackgroundColor = null,
+                Url = request.Url,
+                IsActive = request.Status,
+                Kind = request.Kind,
+                GROUP = request.GROUP,
+                Stt = 0,
+                LimitEdit = false,
+                AllowEdit = true,
+                OtherCanSee = request.OtherCanSee,
+                IdentityId = request.IdentityId,
+                AppIdEncrypt = request.AppIdEncrypt,
+                isSynced = !isLoggedIn
+            )
+            dao.insert(site.toEntity())
+            AppUserSiteCreateResponse(Id = siteId, Mess = "Success")
+        } catch (e: Exception) {
+            AppUserSiteCreateResponse(Id = request.Id, Mess = e.message ?: "Error")
+        }
     }
 
     override suspend fun deleteAppUserSite(request: AppUserSiteCreateRequest): AppUserSiteCreateResponse {
-        // Delete locally first for immediate UI update and clean local state
-        dao.deleteById(request.Id, request.GROUP, request.Kind)
-        // Then notify the server
-        return service.deleteAppUserSite(request)
+        dao.deleteById(request.Id)
+
+        if (request.IdentityId != "local_user") {
+            try {
+                val querySnapshot = firestore.collection("user_sites")
+                    .whereEqualTo("IdentityId", request.IdentityId)
+                    .whereEqualTo("Id", request.Id)
+                    .get()
+                    .await()
+
+                for (doc in querySnapshot.documents) {
+                    doc.reference.delete().await()
+                }
+            } catch (_: Exception) {}
+        }
+        return AppUserSiteCreateResponse(Id = request.Id, Mess = "Success")
     }
 
     override suspend fun copyAppUserSite(request: AppUserSiteCopyRequest): AppUserSiteCreateResponse {
-        return service.copyAppUserSite(request)
+        return try {
+            val localList = dao.getAllSites()
+            val target = localList.find { it.Id == request.Id }
+            if (target != null) {
+                val newId = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
+                val isLoggedIn = request.IdentityId != "local_user"
+                val copiedEntity = target.copy(
+                    Id = newId,
+                    Name = "${target.Name} (Copy)",
+                    IdentityId = request.IdentityId,
+                    isSynced = !isLoggedIn
+                )
+                dao.insert(copiedEntity)
+                AppUserSiteCreateResponse(Id = newId, Mess = "Success")
+            } else {
+                AppUserSiteCreateResponse(Id = request.Id, Mess = "Site not found")
+            }
+        } catch (e: Exception) {
+            AppUserSiteCreateResponse(Id = request.Id, Mess = e.message ?: "Error")
+        }
     }
 }

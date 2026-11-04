@@ -44,3 +44,25 @@
 -dontwarn org.openjsse.javax.net.ssl.SSLParameters
 -dontwarn org.openjsse.javax.net.ssl.SSLSocket
 -dontwarn org.openjsse.net.ssl.OpenJSSE
+
+# ROME (RomeTools) ProGuard / R8 rules to prevent ClassNotFoundException for feed converters (e.g. ConverterForAtom10)
+-keep class com.rometools.** { *; }
+-keep class org.jdom2.** { *; }
+-keepattributes *Annotation*,Signature,EnclosingMethod,InnerClasses,SourceFile,LineNumberTable
+-dontwarn com.rometools.**
+-dontwarn org.jdom2.**
+
+# Keep Domain models, Data models, and Room Entities to prevent R8 stripping properties and causing empty lists / mapping failures
+-keep class com.app.tintuccongnghe.domain.models.** { *; }
+-keep class com.app.tintuccongnghe.data.models.** { *; }
+-keep class com.app.tintuccongnghe.data.local.entities.** { *; }
+-keep class com.app.tintuccongnghe.base.** { *; }
+
+# Gson TypeToken and Serialization support
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
+-keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
+
+
+
+

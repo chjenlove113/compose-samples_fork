@@ -1,9 +1,11 @@
 package com.app.tintuccongnghe.account
 
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.tintuccongnghe.domain.models.LoginRequest
 import com.app.tintuccongnghe.domain.models.RegisterRequest
+import com.app.tintuccongnghe.domain.repository.IAuthRepository
 import com.app.tintuccongnghe.domain.usecases.LoginUseCase
 import com.app.tintuccongnghe.domain.usecases.RegisterUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,23 +25,20 @@ data class AuthUiState(
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val registerUseCase: RegisterUseCase
+    private val registerUseCase: RegisterUseCase,
+    private val authRepository: IAuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    fun login(request: LoginRequest) {
-        if (request.Username.isBlank() || request.Password.isBlank()) {
-            _uiState.update { it.copy(error = "Username and password cannot be empty") }
-            return
-        }
+    fun login(email: String, password: String) {
+        if (!validateInput(email, password)) return
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                // Ensure Externalauth is false for username/password login
-                val loginRequest = request.copy(Externalauth = false)
-                val response = loginUseCase(loginRequest)
+                val response = loginUseCase(LoginRequest(Username = email.trim(), Password = password))
                 if (response.Errors.isEmpty()) {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 } else {
@@ -52,38 +51,35 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun socialLogin(provider: String, idToken: String, email: String, username: String) {
+    fun signInWithGoogle(idToken: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val request = LoginRequest(
-                    Username = username,
-                    Password = "", // Password not needed for social login
-                    Email = email,
-                    Provider = provider,
-                    IdToken = idToken,
-                    Externalauth = true
-                )
-                val response = loginUseCase(request)
-                if (response.Errors.isEmpty()) {
+                val response = authRepository.signInWithGoogle(idToken)
+                if (response.Errors.isEmpty() && response.IdentityId.isNotEmpty()) {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 } else {
-                    val errorMsg = response.Errors.firstOrNull()?.Description ?: "Social login failed"
+                    val errorMsg = response.Errors.firstOrNull()?.Description ?: "Google Sign-In failed"
                     _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Unknown error") }
+                _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Google Sign-In error") }
             }
         }
     }
 
-    fun register(request: RegisterRequest) {
+    fun register(email: String, password: String, confirmPassword: String) {
+        if (!validateInput(email, password)) return
+        if (password != confirmPassword) {
+            _uiState.update { it.copy(error = "Passwords do not match") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val response = registerUseCase(request)
+                val response = registerUseCase(RegisterRequest(Email = email.trim(), Password = password, UserName = email.trim()))
                 if (response.Errors.isEmpty()) {
-                    // Registration success also triggers login internally in repository
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 } else {
                     val errorMsg = response.Errors.joinToString { it.Description }
@@ -93,5 +89,21 @@ class LoginViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Unknown error") }
             }
         }
+    }
+
+    private fun validateInput(email: String, password: String): Boolean {
+        if (email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            _uiState.update { it.copy(error = "Invalid email format") }
+            return false
+        }
+        if (password.length < 6) {
+            _uiState.update { it.copy(error = "Password must be at least 6 characters") }
+            return false
+        }
+        return true
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
     }
 }

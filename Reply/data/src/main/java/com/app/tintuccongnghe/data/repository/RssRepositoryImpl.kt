@@ -39,7 +39,7 @@ class RssRepositoryImpl @Inject constructor(
 
     override fun getRssSites(): Flow<List<AppUserSite>> {
         return siteDao.getAllSitesFlow().map { entities -> 
-            entities.filter { it.GROUP == "1" }.map { it.toDomain() }
+            entities.filter { it.GROUP == "1" && it.IsActive }.map { it.toDomain() }
         }
     }
 
@@ -107,7 +107,7 @@ class RssRepositoryImpl @Inject constructor(
 
     override suspend fun refreshRssItems() = withContext(Dispatchers.IO) {
         Log.d("RssRepositoryImpl", "Refreshing RSS items...")
-        val sites = siteDao.getAllSites()
+        val sites = siteDao.getAllSites().filter { it.IsActive }
         
         sites.forEach { site ->
             try {

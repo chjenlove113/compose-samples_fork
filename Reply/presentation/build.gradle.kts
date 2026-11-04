@@ -25,8 +25,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         //consumerProguardFiles("consumer-rules.pro")
         // Add or fix these two lines:
-        versionCode = 15  // Must be a whole integer
-        versionName = "1.2.0" // Must be a string
+        versionCode = 21  // Must be a whole integer
+        versionName = "2.1.0" // Must be a string
     }
 
     buildTypes {
@@ -37,6 +37,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
     compileOptions {
@@ -75,10 +78,8 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
-    implementation(libs.facebook.login)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.lifecycle.viewmodel.android)
-    implementation(libs.androidx.compose.adaptive.navigation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
@@ -90,6 +91,7 @@ dependencies {
     androidTestImplementation(composeBom)
 
     implementation("com.google.android.gms:play-services-ads:23.6.0")
+    implementation("com.android.billingclient:billing:8.0.0")
 
     // Android Studio Preview support
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -110,24 +112,23 @@ dependencies {
 
     implementation("androidx.activity:activity-compose:1.10.0")
 
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    // Navigation & Hilt Integration
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
 
-    val nav_version = "2.9.0"
-
-    implementation("androidx.navigation:navigation-compose:$nav_version")
-
-    implementation(libs.kotlinx.serialization.json)
-
-    implementation("io.coil-kt.coil3:coil-compose:3.2.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
-
+    // Navigation 3 & Adaptive Navigation
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.material3.adaptive.navigation3)
-    implementation(libs.kotlinx.serialization.core)
+    implementation(libs.androidx.compose.material3.adaptive.navigationSuite)
+    implementation(libs.androidx.compose.adaptive.navigation)
 
-    implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
+    implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
+
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.serialization.core)
 
     implementation(libs.androidx.paging.compose)
 
@@ -146,6 +147,8 @@ dependencies {
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.1")
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)

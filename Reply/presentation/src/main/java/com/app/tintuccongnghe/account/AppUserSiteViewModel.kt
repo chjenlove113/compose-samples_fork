@@ -1,10 +1,11 @@
 package com.app.tintuccongnghe.account
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.tintuccongnghe.data.local.AppDatabase
+import com.app.tintuccongnghe.data.local.entities.News_Site
 import com.app.tintuccongnghe.data.local.entities.RssItemEntity
-import com.app.tintuccongnghe.data.local.entities.toEntity
 import com.app.tintuccongnghe.domain.models.AppUserSite
 import com.app.tintuccongnghe.domain.models.AppUserSiteCopyRequest
 import com.app.tintuccongnghe.domain.models.AppUserSiteRequest
@@ -33,15 +34,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 data class AppUserSiteUiState(
     val isLoading: Boolean = false,
     val syncingSiteIds: Set<Int> = emptySet(),
     val sites: Map<String, List<AppUserSite>> = emptyMap(),
+    val sampleSites: List<News_Site> = emptyList(),
     val error: String? = null,
-    val isLoggedIn: Boolean = false
+    val isLoggedIn: Boolean = false,
+    val hasActiveSubscription: Boolean = false,
+    val hasCloudStorageSubscription: Boolean = false,
+    val rssLimit: Int = 5
 )
 
 @HiltViewModel
@@ -55,7 +59,8 @@ class AppUserSiteViewModel @Inject constructor(
     private val createOrUpdateAppUserSiteUseCase: CreateOrUpdateAppUserSiteUseCase,
     private val deleteAppUserSiteUseCase: DeleteAppUserSiteUseCase,
     private val copyAppUserSiteUseCase: CopyAppUserSiteUseCase,
-    private val rssSyncLiveUpdate: RssSyncLiveUpdate
+    private val rssSyncLiveUpdate: RssSyncLiveUpdate,
+    private val billingManager: BillingManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppUserSiteUiState())
@@ -66,13 +71,32 @@ class AppUserSiteViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            appDatabase.newsSiteDao().getAll().collect { samples ->
+                _uiState.update { it.copy(sampleSites = samples) }
+            }
+        }
+        viewModelScope.launch {
+            billingManager.hasWebsiteLimitSubscription.collect { active ->
+                val limit = if (active) 35 else 5
+                _uiState.update { it.copy(hasActiveSubscription = active, rssLimit = limit) }
+            }
+        }
+        viewModelScope.launch {
+            billingManager.hasCloudStorageSubscription.collect { active ->
+                _uiState.update { it.copy(hasCloudStorageSubscription = active) }
+                // Re-initialize data with effective identity ID based on cloud subscription status
+                if (currentIdentityId.isNotEmpty()) {
+                    initData(currentIdentityId)
+                }
+            }
+        }
+        viewModelScope.launch {
             getAuthInfoUseCase().collect { auth ->
                 _uiState.update { it.copy(isLoggedIn = auth != null) }
-                auth?.let {
-                    initData(it.IdentityId)
-                } ?: run {
-                    _uiState.update { it.copy(sites = emptyMap()) }
-                    dataCollectionJob?.cancel()
+                if (auth != null) {
+                    initData(auth.IdentityId)
+                } else {
+                    initData("local_user")
                 }
             }
         }
@@ -80,7 +104,8 @@ class AppUserSiteViewModel @Inject constructor(
 
     private fun initData(identityId: String) {
         currentIdentityId = identityId
-        val request = AppUserSiteRequest(identityId, "UserIdEncrypt", AppContants.app_Id)
+        val effectiveId = if (_uiState.value.hasCloudStorageSubscription) identityId else "local_user"
+        val request = AppUserSiteRequest(effectiveId, "UserIdEncrypt", AppContants.app_Id)
         observeSites(request)
         loadSites(request)
     }
@@ -103,7 +128,7 @@ class AppUserSiteViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = true, error = null) }
             }
             try {
-                refreshAppUserSiteListUseCase(request)
+                refreshAppUserSiteListUseCase(request, force = false)
                 _uiState.update { it.copy(isLoading = false, error = null) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
@@ -113,7 +138,8 @@ class AppUserSiteViewModel @Inject constructor(
 
     fun retryLoad() {
         if (currentIdentityId.isNotEmpty()) {
-            loadSites(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
+            val effectiveId = if (_uiState.value.hasCloudStorageSubscription) currentIdentityId else "local_user"
+            loadSites(AppUserSiteRequest(effectiveId, "UserIdEncrypt", AppContants.app_Id))
         }
     }
 
@@ -121,14 +147,52 @@ class AppUserSiteViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
+    fun syncData() {
+        if (!_uiState.value.hasCloudStorageSubscription) {
+            _uiState.update { it.copy(error = "Bạn chưa mua gói Cloud Storage. Không thể đồng bộ lên cloud.") }
+            return
+        }
+        if (currentIdentityId.isNotEmpty() && currentIdentityId != "local_user") {
+            viewModelScope.launch {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+                try {
+                    refreshAppUserSiteListUseCase(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id), force = true)
+                    _uiState.update { it.copy(isLoading = false, error = "Synced successfully with Firestore") }
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoading = false, error = e.localizedMessage ?: "Sync failed") }
+                }
+            }
+        } else {
+            _uiState.update { it.copy(error = "Vui lòng đăng nhập tài khoản để đồng bộ cloud.") }
+        }
+    }
+
+    fun buySubscription(activity: Activity, productId: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = billingManager.launchBillingFlow(activity, productId)
+            onResult(success)
+        }
+    }
+
     fun createOrUpdateSite(id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) {
+        // User sites always count. Common sites count only when IsActive == true.
+        val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" && (it.IdentityId != "common" || it.IsActive) }
+        val limit = _uiState.value.rssLimit
+
         if (id == 0) {
-            val rssSiteCount = _uiState.value.sites.values.flatten().count { it.GROUP == "1" }
-            if (rssSiteCount >= 10) {
-                _uiState.update { it.copy(error = "You have reached the limit of 10 RSS sites.") }
+            if (rssSiteCount >= limit) {
+                _uiState.update { it.copy(error = "You have reached the limit of $limit RSS sites. Upgrade limit subscription for 35 sites.") }
+                return
+            }
+        } else {
+            // Edit check: if subscription expired and user has > 5 user-created sites, restrict editing
+            if (!_uiState.value.hasActiveSubscription && rssSiteCount > 5) {
+                _uiState.update { it.copy(error = "Your website limit subscription has expired. Please renew to edit RSS sites.") }
                 return
             }
         }
+
+        val effectiveId = if (_uiState.value.hasCloudStorageSubscription) currentIdentityId else "local_user"
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -142,13 +206,14 @@ class AppUserSiteViewModel @Inject constructor(
                     OtherCanSee = otherCanSee,
                     Kind = kind,
                     GROUP = group,
-                    IdentityId = currentIdentityId,
+                    IdentityId = effectiveId,
                     AppIdEncrypt = AppContants.app_Id
                 )
                 val response = createOrUpdateAppUserSiteUseCase(request)
                 if (response.Id > 0 || response.Mess == "") {
                     // Refresh the list
-                    loadSites(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
+                    val reqId = if (_uiState.value.hasCloudStorageSubscription) currentIdentityId else "local_user"
+                    loadSites(AppUserSiteRequest(reqId, "UserIdEncrypt", AppContants.app_Id))
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = response.Mess) }
                 }
@@ -159,6 +224,7 @@ class AppUserSiteViewModel @Inject constructor(
     }
 
     fun deleteSite(id: Int, name: String, url: String, icon: String, kind: String, group: String, isActive: Boolean, otherCanSee: Boolean) {
+        val effectiveId = if (_uiState.value.hasCloudStorageSubscription) currentIdentityId else "local_user"
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -171,12 +237,13 @@ class AppUserSiteViewModel @Inject constructor(
                     OtherCanSee = otherCanSee,
                     Kind = kind,
                     GROUP = group,
-                    IdentityId = currentIdentityId,
+                    IdentityId = effectiveId,
                     AppIdEncrypt = AppContants.app_Id
                 )
                 val response = deleteAppUserSiteUseCase(request)
                 if (response.Id > 0 || response.Mess == "") {
-                    loadSites(AppUserSiteRequest(currentIdentityId, "UserIdEncrypt", AppContants.app_Id))
+                    val reqId = if (_uiState.value.hasCloudStorageSubscription) currentIdentityId else "local_user"
+                    loadSites(AppUserSiteRequest(reqId, "UserIdEncrypt", AppContants.app_Id))
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = response.Mess) }
                 }
@@ -187,11 +254,12 @@ class AppUserSiteViewModel @Inject constructor(
     }
 
     fun copySite(id: Int) {
+        val effectiveId = if (_uiState.value.hasCloudStorageSubscription) currentIdentityId else "local_user"
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val request = AppUserSiteCopyRequest(
-                    IdentityId = currentIdentityId,
+                    IdentityId = effectiveId,
                     Id = id
                 )
                 val response = copyAppUserSiteUseCase(request)
@@ -206,18 +274,24 @@ class AppUserSiteViewModel @Inject constructor(
         }
     }
 
-    fun toggleActive(site: AppUserSite) {
+    fun toggleActive(site: AppUserSite, isChecked: Boolean) {
         viewModelScope.launch {
-            site.IdentityId = currentIdentityId
+            val effectiveId = if (_uiState.value.hasCloudStorageSubscription) currentIdentityId else "local_user"
+            site.IdentityId = effectiveId
             site.AppIdEncrypt = AppContants.app_Id
-            val updatedSite = site.copy(IsActive = !site.IsActive)
+
+            val updatedSite = if (!isChecked) {
+                appDatabase.rssItemDao().deleteItemsForSite(site.Id, site.GROUP, site.Kind)
+                site.copy(IsActive = false, itemCount = 0)
+            } else {
+                site.copy(IsActive = true)
+            }
+
             updateAppUserSiteUseCase(updatedSite)
-        }
-    }
-    
-    fun updateSite(site: AppUserSite) {
-        viewModelScope.launch {
-            updateAppUserSiteUseCase(site)
+
+            if (isChecked && updatedSite.GROUP == "1" && updatedSite.Url.isNotEmpty()) {
+                syncSite(updatedSite)
+            }
         }
     }
 
@@ -234,73 +308,35 @@ class AppUserSiteViewModel @Inject constructor(
             try {
                 withContext(Dispatchers.IO) {
                     if (site.GROUP == "1" && site.Url.isNotEmpty()) {
-                        val request = Request.Builder().url(site.Url).build()
-                        okHttpClient.newCall(request).execute().use { response ->
-                            val currentTime = System.currentTimeMillis()
-                            val nextTime = currentTime + TimeUnit.MINUTES.toMillis(15)
-
-                            check(response.isSuccessful) {
-                                "${response.code} ${response.message}"
-                            }
-                            val responseBody = checkNotNull(response.body) { "Empty RSS response" }
-                            val input = SyndFeedInput()
-                            val feed: SyndFeed = input.build(XmlReader(responseBody.byteStream()))
-                            val itemsToInsert = mutableListOf<RssItemEntity>()
-                            val totalItems = feed.entries.size
-
-                            val siteEntity = site.toEntity().copy(
-                                lastRefreshTime = currentTime,
-                                nextRefreshTime = nextTime,
-                                itemCount = totalItems
+                        val syndFeed: SyndFeed = SyndFeedInput().build(XmlReader(okHttpClient.newCall(Request.Builder().url(site.Url).build()).execute().body!!.byteStream()))
+                        val rssEntities = syndFeed.entries.map { entry ->
+                            RssItemEntity(
+                                title = entry.title ?: "",
+                                link = entry.link ?: "",
+                                description = entry.description?.value,
+                                pubDate = entry.publishedDate?.time ?: System.currentTimeMillis(),
+                                siteId = site.Id,
+                                siteGroup = site.GROUP,
+                                siteKind = site.Kind
                             )
-                            appDatabase.appUserSiteDao().update(siteEntity)
-
-                            feed.entries.forEach { entry ->
-                                val link = entry.link ?: ""
-                                if (link.isNotEmpty()) {
-                                    val rssItemDao = appDatabase.rssItemDao()
-                                    val existingItem = rssItemDao.getItemByLink(link)
-                                    if (existingItem != null) {
-                                        rssItemDao.update(existingItem.copy(updDate = currentTime))
-                                    } else {
-                                        val contentValue = entry.contents?.firstOrNull()?.value
-                                            ?: entry.modules?.filterIsInstance<com.rometools.rome.feed.module.DCModule>()?.firstOrNull()?.description
-                                            ?: entry.description?.value
-
-                                        itemsToInsert.add(
-                                            RssItemEntity(
-                                                title = entry.title ?: "",
-                                                link = link,
-                                                description = entry.description?.value,
-                                                pubDate = entry.publishedDate?.time,
-                                                siteId = site.Id,
-                                                siteGroup = site.GROUP,
-                                                siteKind = site.Kind,
-                                                updDate = currentTime,
-                                                content = contentValue,
-                                                siteName = site.Name
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-
-                            if (itemsToInsert.isNotEmpty()) {
-                                appDatabase.rssItemDao().insertAll(itemsToInsert)
-                                newItemCount = itemsToInsert.size
-                            }
                         }
+                        newItemCount = rssEntities.size
+                        appDatabase.rssItemDao().insertAll(rssEntities)
                     }
                 }
-                rssSyncLiveUpdate.update(notificationSession, 1, 1, site.Name)
+
+                val currentTime = System.currentTimeMillis()
+                val updatedSite = site.copy(
+                    lastRefreshTime = currentTime,
+                    nextRefreshTime = currentTime + (30 * 60 * 1000),
+                    itemCount = newItemCount
+                )
+                updateAppUserSiteUseCase(updatedSite)
                 rssSyncLiveUpdate.complete(notificationSession, 1, newItemCount)
-            } catch (cancellation: CancellationException) {
-                rssSyncLiveUpdate.cancel(notificationSession)
-                throw cancellation
-            } catch (error: Exception) {
-                error.printStackTrace()
-                rssSyncLiveUpdate.failed(notificationSession, error.localizedMessage)
-                _uiState.update { it.copy(error = error.localizedMessage) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                rssSyncLiveUpdate.failed(notificationSession, e.localizedMessage ?: "Sync failed")
             } finally {
                 _uiState.update { it.copy(syncingSiteIds = it.syncingSiteIds - site.Id) }
             }
